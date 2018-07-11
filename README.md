@@ -5,7 +5,8 @@
 - Real 3D physics for each limb instead of atoms+chains system which I actually don't like for bad performance and disability to remove them from their pools here. These are at sdAtom.js file.
 - Improve network connection quality. At least it should be more obvious why some players will have problems with connection establish. Maybe once it will be getting more popular - server should be aware of these limits and keep information on connection problems across players?
 - More gameplay elements needs to be added in future if this will be getting more of a serious turn.
-- Network side cheat/hack/abusement fixes should be probable delayed to the latest stage, they might slow down other updates in my opinion.
+- Network side cheat/hack/abusement fixes should be probably delayed to the latest stage, they might slow down other updates in my opinion.
+- Storymode could take in place and as a side-effect also bring more people to multiplayer. But it is better to make sure core mechanics such as multiplayer do work and work in stable way. Maybe even switch to server-oriented mode where players can host their own customizable servers.
 
 # dev: Short feature/class description FAQ
 
