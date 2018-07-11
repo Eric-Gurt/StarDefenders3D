@@ -1,3 +1,11 @@
+# TODO
+
+- Randomly generated stars of various brightness. I'd pick them from spread algorithm shotgun is using, probably put them into separate mesh that is always visible. Since it is better to exclude transparency (unless it is done with some dither visibility shader), they are better to have additive blending (three.js supports it).
+- Real 3D physics for each limb instead of atoms+chains system which I actually don't like for bad performance and disability to remove them from their pools here. These are at sdAtom.js file.
+- Improve network connection quality. At least it should be more obvious why some players will have problems with connection establish. Maybe once it will be getting more popular - server should be aware of these limits and keep information on connection problems across players?
+- More gameplay elements needs to be added in future if this will be getting more of a serious turn.
+- Network side cheat/hack/abusement fixes should be probable delayed to the latest stage, they might slow down other updates in my opinion.
+
 # StarDefenders3D
 Free-to-play peer-to-peer game based around idead of destructible world, relative projectile velocities and "freely" camera rotation.
 
