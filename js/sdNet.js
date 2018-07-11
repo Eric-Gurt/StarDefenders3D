@@ -519,32 +519,39 @@ class sdNet
 
 					if ( sdNet.match_uid !== match_uid )
 					{
-						sdNet.match_uid = match_uid;
+						if ( main.game_loop_started )
+						{
+							document.getElementById('status_field').innerHTML = 'Match was found, but was unable to connect while playing';
+						}
+						else
+						{
+							sdNet.match_uid = match_uid;
 
-						document.getElementById('status_field').innerHTML = 'Match found, requesting match info...';
+							document.getElementById('status_field').innerHTML = 'Match found, requesting match info...';
 
-						sdNet.httpGetContent({ request:'get_match_info', key:sdNet.key, uid:sdNet.uid, pass_plus_key:sdNet.pass_plus_key, peer_id:sdNet.peer.id, match_uid:match_uid }, 
-							function( v )
-							{
-								let parts = v.split('|');
-
-								if ( parts[ 0 ] !== 'done' )
-								throw new Error( v );
-
-								function MakingSurePeerIsConnectedToSocketServerThenEval()
+							sdNet.httpGetContent({ request:'get_match_info', key:sdNet.key, uid:sdNet.uid, pass_plus_key:sdNet.pass_plus_key, peer_id:sdNet.peer.id, match_uid:match_uid }, 
+								function( v )
 								{
-									if ( sdNet.peer.disconnected )
-									setTimeout( MakingSurePeerIsConnectedToSocketServerThenEval, 500 );
-									else
+									let parts = v.split('|');
+
+									if ( parts[ 0 ] !== 'done' )
+									throw new Error( v );
+
+									function MakingSurePeerIsConnectedToSocketServerThenEval()
 									{
-										document.getElementById('status_field').innerHTML = 'Everything seems to be done, might throw an error in console if any of peers is unreachable';
-										eval( parts[ 1 ] );
+										if ( sdNet.peer.disconnected )
+										setTimeout( MakingSurePeerIsConnectedToSocketServerThenEval, 500 );
+										else
+										{
+											document.getElementById('status_field').innerHTML = 'Everything seems to be done, might throw an error in console if any of peers is unreachable';
+											eval( parts[ 1 ] );
+										}
 									}
-								}
-								document.getElementById('status_field').innerHTML = 'Mathch info found, waiting on peer server connection...';
-								MakingSurePeerIsConnectedToSocketServerThenEval();
-							},
-						true );
+									document.getElementById('status_field').innerHTML = 'Match info found, waiting on peer server connection...';
+									MakingSurePeerIsConnectedToSocketServerThenEval();
+								},
+							true );
+						}
 					}
 					else
 					{
