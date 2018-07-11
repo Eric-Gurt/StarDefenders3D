@@ -1,0 +1,408 @@
+<html>
+    <head>
+	<title>Star Defenders 3D</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="js/three.js-dev/build/three.js"></script>
+	<script src="js/three.js-dev/examples/js/shaders/CopyShader.js"></script>
+	<script src="js/three.js-dev/examples/js/postprocessing/EffectComposer.js"></script>
+	<script src="js/three.js-dev/examples/js/postprocessing/ShaderPass.js"></script>
+	<script src="js/three.js-dev/examples/js/postprocessing/RenderPass.js"></script>
+	<script src="js/three.js-dev/examples/js/renderers/Projector.js"></script>
+	<script src="js/THREE_addon.js"></script>
+	<script src="js/BitmapData.js"></script>
+	<script src="js/ftscroller.js"></script>
+	<script src="js/lz-string.js"></script>
+	<style>
+	    body
+	    {
+		pointer-events: none;
+		user-select: none;
+	    }
+	    div, img, span, th, td, input, select
+	    {
+		pointer-events: inherit;
+		color: white;
+		font-family: Arial;
+		font-size: 1.25vh;
+		font-weight: bold;
+		box-sizing: border-box;
+		user-select: none;
+	    }
+	    canvas
+	    {
+		pointer-events: auto;
+		user-select: auto;
+	    }
+	    a, a:link, a:visited
+	    {
+		text-decoration: none;
+		color: white;
+		
+		pointer-events: auto;
+		user-select: none;
+	    }
+	    a:hover
+	    {
+		color:yellow;
+	    }
+	    a:active
+	    {
+		color:red;
+	    }
+	    .clickable
+	    {
+		pointer-events: auto;
+	    }
+	    .r_conteiner, input, select
+	    {
+		display:block;
+		padding:1vh;
+		background-color:rgba(0,0,0,0.2);
+		border-radius:1vh;
+		vertical-align: middle;
+		border:0px;
+	    }
+	    table
+	    {
+		width:100%;
+		border:0px;
+		padding:0px;
+		margin:0px;
+		background-color:rgba(0,0,0,0.6);
+		border-radius:1vh;
+		border-collapse: collapse;
+	    }
+	    tr.red
+	    {
+		background-color:rgba(70,0,0,0.6);
+	    }
+	    tr.blue
+	    {
+		background-color:rgba(0,0,150,0.6);
+	    }
+	    tr.red:nth-child(odd)
+	    {
+		background-color:rgba(90,0,0,0.6);
+	    }
+	    tr.blue:nth-child(odd)
+	    {
+		background-color:rgba(0,0,200,0.6);
+	    }
+	    th, td
+	    {
+		padding: 1vh;
+	    }
+	    td
+	    {
+		border-right: 1px solid rgba(0,0,0,0.25);
+	    }
+	    td:nth-last-child(1)
+	    {
+		border-right:none;
+	    }
+	    th
+	    {
+		background-color:rgba(100,120,150,0.6);
+		border-right: 1px solid rgba(0,0,0,0.25);
+		
+		width: 14%;
+	    }
+	    th:nth-child(1)
+	    {
+		border-radius:1vh 0 0 0;
+	    }
+	    th:nth-last-child(1)
+	    {
+		border-radius:0 1vh 0 0;
+		border-right:none;
+	    }
+	    td.mid
+	    {
+		text-align: center;
+	    }
+	    span.team_score
+	    {
+		color:rgb(255,255,255);
+		text-shadow: 0px 0px 2vh rgba(0,0,0,1);
+		margin-left:1vh;
+		margin-right:1vh;
+		
+		display:inline-block;
+		width:3vh;
+		font-size:3vh;
+		vertical-align: middle;
+	    }
+	    tr:nth-last-child(1) td:nth-child(1)
+	    {
+		border-radius:0 0 0 1vh;
+	    }
+	    tr:nth-last-child(1) td:nth-last-child(1)
+	    {
+		border-radius:0 0 1vh 0;
+	    }
+	    .listplayer
+	    {
+		display:block;
+		width:100%;
+		padding:0.5vh;
+		box-sizing: border-box;
+		border-radius:0.5vh;
+	    }
+	    .listplayer:hover
+	    {
+		background-color:rgba(0,0,0,0.2);
+	    }
+	    .listplayer_me
+	    {
+		background-color:rgba(0,255,0,0.2);
+	    }
+	    .listplayer_invite
+	    {
+		display:block;
+		width:calc( 100% - 2vh );
+		padding:1vh;
+		margin:1vh;
+		margin-top:2vh;
+		box-sizing: border-box;
+		border-radius:0.5vh;
+		background-color:rgba(255,255,0,0.2);
+	    }
+	    #chat_box div
+	    {
+		margin: 1vh;
+	    }
+	</style>
+    </head>
+    <body style="margin:0px;overflow:hidden" ondragstart="return false;" ondrop="return false;">
+	<script src="js/sdShaderMaterial.js"></script>
+	<script src="js/sdRandomPattern.js"></script>
+	<script src="js/peer.js"></script>
+	<script src="js/md5-min.js"></script>
+	<script src="js/sdSync.js"></script>
+	<script src="js/sdByteShifter.js"></script>
+	<script src="js/sdCharacter.js"></script>
+	<script src="js/sdBullet.js"></script>
+	<script src="js/sdAtom.js"></script>
+	<script src="js/sdSound.js"></script>
+	<script src="js/pb2HighRangeColor.js"></script>
+	
+	<script src="js/main.js"></script>
+	
+	<script src="js/sdNet.js"></script>
+	<script src="js/sdSprite.js"></script>
+	
+	<div id="ingame_hud" style="display:none">
+	    
+	    <!-- Crosshair -->
+	    <img src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -8px;margin-top: -8px;top: 50%;">
+
+	    <!-- Healthbar -->
+	    <span class="r_conteiner" style="position:fixed;left:50%;width:40vh;margin-left:-20vh;bottom:0.5vh;padding:0.25vh;border-radius:1.5vh;background-color:rgba(0,0,0,0.5);">
+		<span class="r_conteiner" style="width:100%;display:inline-block;padding:0px;border-radius:1vh;">
+		    <span id="hp_bar" class="r_conteiner" style="width:50%;background-color:rgba(100,255,100,0.9);padding:0.1vh;text-align:center;border-radius:1vh;color:#ffffff;font-size:1vh;line-height:0vh;text-shadow: 0px 0px 1vh rgba(0,0,0,4);"></span>
+		</span>
+	    </span>
+
+	    <!-- Leaderboard -->
+	    <div id="leader_board" style="display:none">
+	    <span class="r_conteiner" style="position:fixed;left:50%;width:100vh;margin-left:-50vh;top:50%;margin-top:-25vh;">
+		<span class="r_conteiner" style="width:100%;margin-bottom:1vh;">Leaderboard</span>
+		<span class="r_conteiner" style="width:100%;">-
+		    <!-- table caption -->
+		    <table>
+			<tr><th>Status</th><th>Player</th><th>Team</th><th>Score</th><th>Kills</th><th>Deaths</th><th>Ping</th></tr>
+			<tr class="red"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Red team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="red"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Red team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="red"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Red team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+		    </table>
+		</span>
+	    </span>
+	    </div>
+
+	    <!-- Team score -->
+	    <span id="score_keeper" class="r_conteiner" style="position:fixed;left:50%;width:26vh;margin-left:-13vh;top:0vh;border-radius:0 0 9vh 9vh;padding:0.5vh;text-align:center;background-color:rgba(0,0,0,0.3)">
+		<span class="team_score" style="">23</span>
+		<span class="team_score" style="">41</span>
+		<span class="team_score" style="">23</span>
+		<span class="team_score" style="">41</span>
+	    </span>
+	    <span id="clocks" style="position:fixed;left:50%;top:5vh;width:10vh;margin-left:-5vh;vertical-align: middle;text-align:center;color:rgba(0,0,0,0.4)">1:41</span>
+	    
+	    <!-- Chat -->
+	    <span id="chat_box" class="r_conteiner" style="position:fixed;left:1vh;width:26vh;bottom:5vh;background-color:rgba(0,0,0,0.6);padding:0;">
+	    </span>
+	    <input type="text" id="chat_input_box" class="r_conteiner clickable" style="position:fixed;left:1vh;width:26vh;bottom:1vh;background-color:rgba(0,0,0,0.3);display:none;" contenteditable="true">
+		
+	    </input>
+	
+	    <span id="menu" class="r_conteiner clickable" style="position:fixed;left:50%;width:50vh;margin-left:-25vh;top:60%;margin-top:-25vh;background-color: rgba(0,0,0,0.5);">
+		<a href="javascript:document.getElementById('menu').style.display='none';main.GoFullscreen();" class="r_conteiner" style="margin-bottom:1vh">Continue</a>
+		<!--<a href="javascript:1" class="r_conteiner" style="margin-bottom:1vh">Settings</a>-->
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Sensitivity:</span><input id="sensitivity" style="width:80%;display:inline-block;" type="number" min="0" max="1" onchange="localStorage.setItem('stardefenders_sensitivity', this.value ); main.sensitivity = Number( this.value );"></div>
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Turn method:</span><select id="turn_method" style="width:80%;display:inline-block;" onchange="localStorage.setItem('stardefenders_turn_method', this.value ); main.turn_method = Number( this.value );">
+		    <option value="0">Freely</option>
+		    <option value="1">2-Axis</option>
+		</select></div>
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Quality:</span><input id="quality" style="width:80%;display:inline-block;" type="number" min="0" max="1" onchange="main.SetPixelRatio( this.value );"></div>
+		
+		<a href="javascript:sdNet.EndGame();" class="r_conteiner" style="margin-bottom:2vh">Leave match</a>
+	    </span>
+	</div>
+	
+	<div id="lobby_ui" style="background-color:#677a77;width:100%;height:100%;position:fixed;left:0px;top:0px;display:inherit;" >
+
+	    <!-- some beta UI -->
+	    <span class="r_conteiner clickable" style="position:fixed;left:1vh;top:1vh;"><!--
+		--><a href="javascript:sdNet.OfflineTraining();" class="r_conteiner" style="display:inline-block;margin-right:3vh;">Offline Training</a><!--
+		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_FFA );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Quick Play FFA</a><!--
+		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_TEAM_VS_TEAM );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Quick Play TvT</a><!--
+		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_AS_ONE );" class="r_conteiner" style="display:inline-block;margin-right:3vh;">Quick Play As One</a><!--
+		--><span id='status_field' class="r_conteiner" style="display:inline-block;background-color:#000;color:#666;min-width:20vh">status</span><!--
+	    --></span>
+
+	    <span class="r_conteiner clickable" style="position:fixed;left:1vh;top:8vh;width:20vh;height:80vh;">
+		<span class="r_conteiner" style="width:100%;margin-bottom:1vh;">Players in lobby now</span>
+		<div id="online_players" class="clickable" style="height:calc(100% - 5vh);">
+		    Loading...
+		</div>
+	    </span>
+
+	    <span class="r_conteiner clickable" style="position:fixed;left:22vh;top:8vh;width:20vh;height:80vh;display:none;">
+		<span class="r_conteiner" style="width:100%;margin-bottom:1vh;">Your group</span>
+		<div id="group_players" class="clickable" style="height:calc(100% - 5vh);">
+		    Loading...
+		</div>
+	    </span>
+
+	    <span class="r_conteiner clickable" style="position:fixed;left:43vh;top:8vh;width:20vh;height:80vh;display:none;">
+		<span class="r_conteiner" style="width:100%;margin-bottom:1vh;">Your opponent group</span>
+		<div id="enemy_group_players" class="clickable" style="height:calc(100% - 5vh);">
+		    Loading...
+		</div>
+	    </span>
+
+	    <span class="r_conteiner clickable" style="position:fixed;left:64vh;top:8vh;width:65vh;height:80vh;color:rgba(230,255,230,0.4)">
+		Hi!<br>
+		<br>
+		I made this game just to see how my custom camera movement algorithm can work and feel.<br>
+		Also I was testing P2P multiplayer and some other stuff. Should work best in Chrome web browser.<br>
+		<br>
+		It intentionally keeps no identification nor other personal info just in case if you'd like to stay incognito when connecting directly to other people (it is easy to discover connected player's IP address).<br>
+		There are few game modes:<br>
+		> Free for all - you are against everyone else;<br>
+		> Team vs Team - your team against enemy team;<br>
+		> As One - multiple teams that contain only 2 players.<br>
+		<br>
+		All game modes are endless, have timer and 2 weapons:<br>
+		> Rifle - shoots team-colored lasers on primary fire, shotgun pellets on alternate fire;<br>
+		> Rocket Launcher - shoots rockets on primary fire, sniper shots on alternate fire.<br>
+		<br>
+		Weapons have different stats such as knockback, self-knockback, damage, speed, count and spread which are, to be honest, are very easy to change. Would not wonder if somebody will start playing with them.<br>
+		<br>
+		This game/website has no lobby chat because I feel like I've already spend more time than I was hoping to dedicate to it. So you might use <a href='https://www.plazmaburst2.com/chat2'>Plazma Burst 2 chat</a> since there is no lobby chat.<br>
+		<br>
+		Anyway this game was built in ~6 days using Star Defender assets from my long-ago-never-released game which you probably already heard about by now (if you're happened to check <a href='https://www.plazmaburst2.com'>Plazma Burst 2</a> website from time to time).<br>
+		<br>
+		So that is pretty much it - I'm <a href='http://www.gevanni.com'>Eric Gurt</a> and this is a test project. I don't think I'm ever going to continue work on it, if you want to - you can even continue it.<br>
+		<br>
+		Other than that - feel free to check it out, maybe you'll find some of it's mechanics cool and must have for today's gaming in general (such as this very important mechanic easily described as motion sickness for example. It's intention was to make a rare case of vertical combats into somewhat more intuitive. Actually would probably never be able to test how it works without project like this).<br>
+		<br>
+		Don't expect there to be much improvements, ban lists or anti-hack detections - it most probably will stay as is. Have fun, even if you'll need some cheating for that.<br>
+		<br>
+		Might require special network/firewall/ISP configuration in order to be able to connect with other players (it is peer-to-peer and there is no TURN server). In else case it should give you an error message, through I have never been able to catch this yet.<br>
+		<br>
+		Also it might take some time while it is building world and quick play has no indication of server making match. FFA is quickest one once at least 2 players are looking for match with this mode.<br>
+		<br>
+		Also make sure that it will search forever if you'll add players to your group while searching in mode that has no teammates like FFA, or if you have more temmates than allowed (usually 4 in TvT and 2 in As One).<br>
+		<br>
+		Keys: W, S, A, D, 1, 2, Left Mouse Button, Right Mouse Button, Space, Ctrl, Esc, Enter and Tab.<br>
+		<br>
+		It does use <a href='https://threejs.org'>three.js</a>, <a href='https://peerjs.com'>peer.js</a>, <a href='https://www.bfxr.net/'>bfxr.net</a>, <a href='http://pieroxy.net/blog/pages/lz-string/index.html'>lz-string.js</a> and <a href='https://github.com/ftlabs/ftscroller'>ftscroller.js</a>.
+	    </span>
+	
+	    <div id="floating_user_info_bg" style="position:fixed;left:0px;top:0px;width:100%;height:100%;background-color: transparent;display:none" class="r_conteiner clickable" onmousedown="if (event.target===this)sdNet.CloseUserMenu();">
+		<div id="floating_user_info" style="position:fixed;left:0px;top:0px;background-color: rgba(0,0,0,0.8)" class="r_conteiner clickable">
+
+		</div>
+	    </div>
+	</div>
+	
+	<script type="text/javascript">
+	    
+	    let scroll = new FTScroller( document.getElementById('online_players'), { scrollbars: true, scrollingX: false, scrollingY: true, bouncing: false });
+	    scroll = new FTScroller( document.getElementById('group_players'), { scrollbars: true, scrollingX: false, scrollingY: true, bouncing: false });
+	    scroll = new FTScroller( document.getElementById('enemy_group_players'), { scrollbars: true, scrollingX: false, scrollingY: true, bouncing: false });
+	    
+	    let first_upd = setInterval( function()
+	    {
+		sdNet.QuickPlaySeeker();
+		
+		if ( !document.hasFocus() )
+		return;
+		    
+		if ( sdNet.pass_plus_key === null )
+		return;
+	    
+		if ( document.getElementById('lobby_ui').style.display === 'inherit' )
+		{
+		    sdNet.UpdateOnlinePlayers();
+		    sdNet.UpdateGroupPlayers();
+		    sdNet.UpdateEnemyGroupPlayers();
+		}
+	    }, 1000 );
+	    
+	    document.addEventListener('mousedown', function( e )
+	    {
+		//if ( e.srcElement.nodeName === 'A' )
+		if ( e.currentTarget.nodeName === 'A' )
+		sdSound.PlayInterfaceSound({ sound: lib.ui_down, volume: 1 });
+		
+		return false;
+		
+	    }, false);
+	    
+	    setInterval( clocks, 100 );
+	    function clocks()
+	    {
+		var dateFuture = new Date();
+
+		var seconds = Math.floor((dateFuture - (main.date_match_started))/1000);
+		var minutes = Math.floor(seconds/60);
+		var hours = Math.floor(minutes/60);
+		var days = Math.floor(hours/24);
+
+		hours = hours-(days*24);
+		minutes = minutes-(days*24*60)-(hours*60);
+		seconds = seconds-(days*24*60*60)-(hours*60*60)-(minutes*60);
+
+		if ( hours > 0  || true)
+		{
+			if ( hours < 10 )
+			hours = '0'+hours;
+
+			if ( minutes < 10 )
+			minutes = '0'+minutes;
+
+			if ( seconds < 10 )
+			seconds = '0'+seconds;
+
+			document.getElementById('clocks').innerHTML = hours+':'+minutes+':'+seconds;
+		}
+		else
+		document.getElementById('clocks').innerHTML = minutes+':'+seconds;
+
+
+		var pos = document.getElementById('score_keeper').getBoundingClientRect();
+		document.getElementById('clocks').style.top = ( pos.top + pos.height ) + 'px';
+	    }
+	    
+	</script>
+    </body>
+</html>
