@@ -596,6 +596,7 @@ class sdNet
 				new_dataConnection.visible_chunks = [];
 				new_dataConnection.reports_direct_visiblity = false;
 				new_dataConnection.user_uid = ~~params.uid;
+				new_dataConnection.sd_connected = true;
 			}
 		}
 		

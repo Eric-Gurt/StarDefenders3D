@@ -13,6 +13,8 @@ class sdSync
 		sdSync.update_timer = 0;
 		
 		
+		sdSync.keep_and_send_data_for_disconnected_players = false;
+		
 		var codes = [];
 		function UniqueTest( c )
 		{
@@ -44,12 +46,13 @@ class sdSync
 	{
 		for ( var i = 0; i < sdNet.match_dataConnections.length; i++ )
 		if ( sdNet.match_dataConnections[ i ] !== null )
+		if ( sdSync.keep_and_send_data_for_disconnected_players || sdNet.match_dataConnections[ i ].open )
 		sdNet.match_dataConnections[ i ].byte_shifter.AddEvent( command, ... args );
 	}
 	
 	static SendMyCommands()
 	{
-		// Some update data send there
+		// Some update data send there. In this game's case it is for character state and bullet state
 		if ( main.my_character !== null )
 		if ( main.my_character.hea > 0 )
 		sdSync.MP_SendEvent( sdSync.COMMAND_CHARACTER_STATE );
@@ -59,6 +62,18 @@ class sdSync
 			var b = sdBullet.bullets[ i ];
 			if ( b.owner === main.my_character )
 			sdSync.MP_SendEvent( sdSync.COMMAND_I_MOVE_BULLET, b );
+		}
+		
+		// Some "Player # has left the match" logic
+		for ( var i = 0; i < sdNet.match_dataConnections.length; i++ )
+		if ( sdNet.match_dataConnections[ i ] !== null )
+		{
+			if ( !sdNet.match_dataConnections[ i ].open )
+			if ( sdNet.match_dataConnections[ i ].sd_connected )
+			{
+				sdNet.match_dataConnections[ i ].sd_connected = false;
+				main.onChatMessage( '', ('Player #'+sdNet.match_dataConnections[ i ].user_uid + ' has left the match').split('<').join('&lt;').split('>').join('&gt;'), null );
+			}
 		}
 	}
 	
@@ -74,6 +89,7 @@ class sdSync
 		
 			for ( var i = 0; i < sdNet.match_dataConnections.length; i++ )
 			if ( sdNet.match_dataConnections[ i ] !== null )
+			if ( sdSync.keep_and_send_data_for_disconnected_players || sdNet.match_dataConnections[ i ].open )
 			sdNet.match_dataConnections[ i ].byte_shifter.SendData( GSPEED );
 		}
 	}
