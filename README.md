@@ -1,7 +1,7 @@
 # StarDefenders3D
 Free-to-play peer-to-peer game based around idead of destructible world, relative projectile velocities and "freely" camera rotation.
 
-Demo is here and current version will usually appear here:
+Current version will usually appear here:
 http://www.gevanni.com/projects/StarDefenders3D
 
 I made this game just to see how my custom camera movement algorithm can work and feel.
