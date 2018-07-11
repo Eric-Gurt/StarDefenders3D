@@ -1,3 +1,19 @@
+/*
+
+	Works in pair wiht sdByteShifter.js
+
+	Sends commands for all sdByteShifers (they are objects used to send/receive/encode/decode data from/to peers).
+
+	sdSync.update_delay is interesting one const, for fast stable connections and fast clients it can be 0.5, but 
+	usually it will make a lot of data stacked up and shuffled (as a result enemy will be in "slow-motion" while 
+	teleporting between ~3 random positions in which player have been).
+
+	When bullets stuck in holes and are not getting removed - it is usually a symptom of data being stacked up for 
+	at least 2 seconds (after that time, game depending on sdByteShifter.js command settings, might give up on resending
+	such important messages).
+
+*/
+
 /* global sdNet, main, sdBullet */
 
 class sdSync

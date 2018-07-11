@@ -1,4 +1,10 @@
+/*
 
+	For some idea I thought this class will be suitable for majority of HTTP interactions with main server.
+
+	It generates uid + pass, then requests key from server, and after than uses these uid + md5(pass+key) in order to request specific user-related info or pushing quick play requests.
+
+*/
 /* global main, sdCharacter, sdAtom, lib, sdSound */
 
 class sdNet

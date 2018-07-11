@@ -1,4 +1,8 @@
+/*
 
+	Assigned to each peer-to-peer connection. Works in pair with sdSync.js
+	
+*/
 /* global main, sdSync, sdBullet, sdCharacter, sdSprite, sdAtom, LZString, lib, sdSound, THREE */
 
 class sdByteShifter
