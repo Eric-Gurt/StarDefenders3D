@@ -100,7 +100,7 @@ class main
 			
 			if ( main.chat_off_timer > 0 )
 			{
-				main.chat_off_timer -= 0.04;
+				main.chat_off_timer -= 0.02;
 				
 				if ( main.chat_off_timer <= 0 )
 				main.chat_messages = [];
