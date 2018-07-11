@@ -1,7 +1,20 @@
+# dev: TODO
+
+- Randomly generated stars of various brightness. I'd pick them from spread algorithm shotgun is using, probably put them into separate mesh that is always visible. Since it is better to exclude transparency (unless it is done with some dither visibility shader), they are better to have additive blending (three.js supports it).
+- If there will be signs of game becoming popular - few more classes for weaponry should be added: sdGunClass.js and sdGun.js. 1st keeps info like gun names, slot, spread, default stats etc and sdGun.js should be more like gun instances in shared pool. In addition to that sdCharacter could use some array like inventory_guns elements of which will point towards sdGun instances. They also might be inventory_guns2 if we will be going the route of PB2.5/3 where players can dual wield.
+- Real 3D physics for each limb instead of atoms+chains system which I actually don't like for bad performance and disability to remove them from their pools here. These are at sdAtom.js file.
+- Improve network connection quality. At least it should be more obvious why some players will have problems with connection establish. Maybe once it will be getting more popular - server should be aware of these limits and keep information on connection problems across players?
+- More gameplay elements needs to be added in future if this will be getting more of a serious turn.
+- Network side cheat/hack/abusement fixes should be probable delayed to the latest stage, they might slow down other updates in my opinion.
+
+# dev: Short feature/class description FAQ
+
+- sdAtom.js - class that solves simple physics (yet expensive, replace physics solving with bullet-physics-like implementation) and renders "Atoms" with bullets using same point cloud object.
+
 # StarDefenders3D
 Free-to-play peer-to-peer game based around idead of destructible world, relative projectile velocities and "freely" camera rotation.
 
-Current version will usually appear here:
+Current stable release version will usually appear here:
 http://www.gevanni.com/projects/StarDefenders3D
 
 I made this game just to see how my custom camera movement algorithm can work and feel.
