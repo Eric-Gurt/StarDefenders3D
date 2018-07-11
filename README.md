@@ -17,6 +17,9 @@ Free-to-play peer-to-peer game based around idead of destructible world, relativ
 Current stable release version will usually appear here:
 http://www.gevanni.com/projects/StarDefenders3D
 
+Current beta version should insteantly appear here:
+https://eric-gurt.github.io/StarDefenders3D/
+
 I made this game just to see how my custom camera movement algorithm can work and feel.
 Also I was testing P2P multiplayer and some other stuff. Should work best in Chrome web browser.
 
