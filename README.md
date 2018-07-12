@@ -7,6 +7,8 @@
 - More gameplay elements needs to be added in future if this will be getting more of a serious turn.
 - Network side cheat/hack/abusement fixes should be probably delayed to the latest stage, they might slow down other updates in my opinion.
 - Storymode could take in place and as a side-effect also bring more people to multiplayer. But it is better to make sure core mechanics such as multiplayer do work and work in stable way. Maybe even switch to server-oriented mode where players can host their own customizable servers.
+- In future more entity types should be supported. Perhaps Starship Troopers-like mode? Something like "team vs horde of aliens". Originally I've seen this game as team of players in cooperative mode that is trying to capture randomly generated planet with randomized creatures (to some extent) that have randomized attacks, properties etc. Not sure how it will work with destructible physics, but seems possible once stable model destruction, shape rebuilding into smaller bodies and their physics are working well together.
+- Level Editor needs to be done at some point. Would be best to let it have random-based conditional world generation as well.
 
 # dev: Short feature/class description FAQ
 
