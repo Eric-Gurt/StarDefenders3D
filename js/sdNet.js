@@ -465,6 +465,8 @@ class sdNet
 	}
 	static QuickPlay( mode )
 	{
+		sdNet.EndGame();
+					
 		if ( sdNet.pass_plus_key === null )
 		{
 			document.getElementById('status_field').innerHTML = 'Error: Pass plus key is not ready yet';
@@ -668,8 +670,6 @@ class sdNet
 		for ( var i = 0; i < sdNet.match_queued_dataConnections.length; i++ )
 		sdNet.GotNewDataConnectionAfterStart( sdNet.match_queued_dataConnections[ i ] );
 		sdNet.match_queued_dataConnections = null;
-		
-		main.flush_fps();
 	    
 	}
 	static StartOnceGotAllConnections()
@@ -677,6 +677,8 @@ class sdNet
 		document.getElementById('status_field').innerHTML = 'Everyone is connected. Starting...';
 		main.MP_mode = true;
 	    main.run();
+		
+		main.flush_fps();
 	}
 	static GotNewDataConnectionAfterStart( d )
 	{
