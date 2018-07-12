@@ -164,17 +164,23 @@ class sdByteShifter
 	
 	TryEncode( s, voc )
 	{
-		var voc_min = Math.max( 0, voc.length - 3 ); // There is no real need to look behind last packet but just in case
+		//var voc_min = Math.max( 0, voc.length - 3 ); // There is no real need to look behind last packet but just in case
 		
 		if ( voc.length > 5 )
 		for ( var w = s.length; w > 7; w -= 2 ) // Probably won't be shorter than 7 symbols. Step size isn't critical aswell
 		for ( var x = 0; x < s.length - w; x++ )
 		{
 			var part = s.substr( x, w );
-			for ( var i = voc.length-1; i >= voc_min; i-- )
+			
+			var real_messages_until_break = 3;
+			for ( var i = voc.length-1; i >= 0; i-- )
 			if ( voc[ i ].is_sent )
 			if ( !voc[ i ].self_sent )
 			{
+				real_messages_until_break--;
+				if ( real_messages_until_break < 0 )
+				break;
+				
 				var offset = voc[ i ].message.indexOf( part );
 				
 				if ( offset !== -1 )
