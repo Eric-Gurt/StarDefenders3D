@@ -1086,7 +1086,10 @@ class sdCharacter
 				dir.y *= 0.3 * GSPEED * ( 1 - c.sit * 0.666 );
 			
 				if ( c.act_jump )
-				c.toy = 1.3;
+				{
+					c.toy = 1.3;
+					sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 0.5 });
+				}
 			
 				if ( c.act_sprint && c.sit === 0 )
 				{
@@ -1315,6 +1318,11 @@ class sdCharacter
 				
 				var last_direction = new THREE.Vector3( trace_line_direction_normal.x, trace_line_direction_normal.y, trace_line_direction_normal.z );
 				
+				
+				if ( last_direction.y === 1 )
+				if ( c.toy < -1.1 )
+				sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 2 + Math.min( 8, Math.abs( c.toy * 0.5 ) ) });
+				
 				var dot_product = last_direction.x * c.tox + last_direction.y * c.toy + last_direction.z * c.toz;
 				if ( dot_product < 0 )
 				{
@@ -1325,8 +1333,11 @@ class sdCharacter
 						}
 						else
 						{
+							// walljump
 							dot_product -= 0.7;
 							c.toy += 0.7;
+							
+							sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 0.5 });
 						}
 					}
 					c.tox = c.tox - dot_product * last_direction.x;

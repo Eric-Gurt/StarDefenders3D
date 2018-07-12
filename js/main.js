@@ -66,7 +66,9 @@ class main
 		else
 		main.turn_method = Number( main.turn_method );
 	
-		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.25 );
+		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.35 );
+	
+		main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 1.5 );
 	
 		setTimeout( function()
 		{
@@ -79,6 +81,10 @@ class main
 		setTimeout( function()
 		{
 			document.getElementById('quality').value = main.pixel_ratio;
+		}, 1000 );
+		setTimeout( function()
+		{
+			document.getElementById('lod').value = main.lod_ratio;
 		}, 1000 );
 		
 		main.ang = 0;
@@ -960,18 +966,37 @@ class main
 		sdRandomPattern.SetSeed( seed ); // 43223
 		
 		
-		main.fog_color = 0xf6d08f;//0xffdd94;
-		main.fog_color = new pb2HighRangeColor().rand_pattern()._uint;
+		//main.fog_color = 0xf6d08f;//0xffdd94;
+		var c = new pb2HighRangeColor().rand_pattern();
+		while ( c.g * 0.5 > c.r + c.b )
+		{
+			c.g -= 0.05;
+			c.r += 0.1;
+			c.b += 0.1;
+		}
+		while ( c.r * 0.45 > c.g + c.b )
+		{
+			c.r -= 0.05;
+			c.g += 0.1;
+			c.b += 0.1;
+		}
+		while ( c.b * 0.35 > c.r + c.g )
+		{
+			c.b -= 0.05;
+			c.r += 0.075;
+			c.g += 0.075;
+		}
+		main.fog_color = c._uint;
 		var terrain_color = new pb2HighRangeColor().rand_pattern();
 		main.renderer.setClearColor( main.fog_color );
-		
 		for ( var i = 0; i < 4; i++ )
 		{
+			if ( main.material_lod.length === i )
 			main.material_lod[ i ] = sdShaderMaterial.CreateMaterial( texture, 'particle' );
+		
 			main.material_lod[ i ].uniforms.fog.value = new THREE.Color( main.fog_color );
 			main.material_lod[ i ].uniforms.dot_scale.value = Math.pow( 2, i * 0.75 );
 		}
-		
 		sdAtom.init(); // updates fog
 		
 		
@@ -1011,9 +1036,37 @@ class main
 				solved[ x * size_y * size_z + y * size_z + z ] = true;
 			}
 		}
-		sdRandomPattern.RestoreSeed();
 
 		// Making some cut
+		
+		var cut_ops = [];
+		var cut_ops_y = 20;
+		var cluster_size = 17; // 15
+		for ( var i = 0; i < 200; i++ )
+		{
+			var max_size = 60;
+			var min_size = 2;
+			
+			if ( i % 2 === 0 )
+			{
+				max_size = 120;
+				min_size = cluster_size;
+			}
+			
+			var x2 = ( min_size+ Math.min( max_size, ~~(sdRandomPattern.random() * size_x/cluster_size)*cluster_size ) );
+			var x1 = ~~(sdRandomPattern.random()*(size_x-x1)/cluster_size)*cluster_size;
+			
+			var y2 = ( min_size+ Math.min( max_size, ~~(sdRandomPattern.random() * size_y/cluster_size)*cluster_size ) );
+			var y1 = ~~(sdRandomPattern.random()*(size_y-y1)/cluster_size)*cluster_size + cut_ops_y;
+			
+			var z2 = ( min_size+ Math.min( max_size, ~~(sdRandomPattern.random() * size_z/cluster_size)*cluster_size ) );
+			var z1 = ~~(sdRandomPattern.random()*(size_z-z1)/cluster_size)*cluster_size;
+			
+			cut_ops.push({ op:i%2, x1:x1, y1:y1, z1:z1, x2:x1+x2, y2:y1+y2, z2:z1+z2 });
+		}
+		
+		sdRandomPattern.RestoreSeed();
+		
 		var c = 0;
 		for ( x = 0; x < size_x; x++ )
 		for ( y = 0; y < size_y; y++ )
@@ -1056,7 +1109,7 @@ class main
 				world_rgb[ c++ ] = terrain_color.b * 255;
 				continue;
 			}
-			
+			/*
 			var quad_radius = Math.max( Math.abs( x - size_x / 2 ), Math.abs( z - size_z / 2 ) );
 			
 			if ( y > 15 &&
@@ -1071,6 +1124,7 @@ class main
 					( quad_radius > size_x / 6 + 20 && quad_radius < size_x / 3 - 20 && Math.abs( x - size_x / 2 ) > size_x / 6 + 20 && Math.abs( z - size_z / 2 ) > size_z / 6 + 20 )
 					) )
 			{
+				//fill[ i ] = edge_density - 0.1;
 				fill[ i ] = 0;
 				
 				c += 3;
@@ -1098,6 +1152,37 @@ class main
 					world_rgb[ c++ ] = terrain_color.b * 255;
 				}
 			}
+			*/
+			world_rgb[ c   ] = terrain_color.r * 255;
+			world_rgb[ c+1 ] = terrain_color.g * 255;
+			world_rgb[ c+2 ] = terrain_color.b * 255;
+
+			for ( var op = 0; op < cut_ops.length; op++ )
+			{
+				if ( x >= cut_ops[ op ].x1 )
+				if ( x < cut_ops[ op ].x2 )
+				if ( z >= cut_ops[ op ].z1 )
+				if ( z < cut_ops[ op ].z2 )
+				if ( y >= cut_ops[ op ].y1 )
+				if ( y < cut_ops[ op ].y2 )
+				{
+					if ( cut_ops[ op ].op === 0 )
+					{
+						//fill[ i ] -= 0.05 * Math.min( y / 20, 1 );
+						fill[ i ] -= 0.03 * Math.min( y / 20, 1 );
+					}
+					else
+					{
+						//fill[ i ] = 1;
+						fill[ i ] += 0.08;
+
+						world_rgb[ c   ] = 241 * 1;
+						world_rgb[ c+1 ] = 241 * 1;
+						world_rgb[ c+2 ] = 241 * 1;
+					}
+				}
+			}
+			c += 3;
 		}
 		
 		
@@ -1490,6 +1575,11 @@ class main
 		    var radius_int_x_min = Math.max( 0, av_x - radius_int ) - av_x;
 		    var radius_int_y_min = Math.max( 0, av_y - radius_int ) - av_y;
 		    var radius_int_z_min = Math.max( 0, av_z - radius_int ) - av_z;
+			
+			if ( chunk_yy === 0 )
+			{
+				radius_int_y_min = Math.max( 1, radius_int_y_min + av_y ) - av_y; // Disallows holes at the bottom of terrain.
+			}
 			
 		    var radius_int_x_max = Math.min( chunk_size, av_x + radius_int ) - av_x;
 		    var radius_int_y_max = Math.min( chunk_size, av_y + radius_int ) - av_y;
@@ -2469,7 +2559,7 @@ class main
 										( chunk.zz + 0.5 ) * main.chunk_size,
 										main.main_camera.position.x,
 										main.main_camera.position.y,
-										main.main_camera.position.z ) / ( 32 * 6 );
+										main.main_camera.position.z ) / ( 32 * 6 * main.lod_ratio );
 				
 				di = Math.pow( di, 1.5 );
 				
