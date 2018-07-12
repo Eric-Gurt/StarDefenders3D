@@ -19,7 +19,7 @@
 			
 			for ( var i = 0; i < _len; i++ )
 			{
-				this.values[ i ] = Math.random();
+				this.values[ i ] = sdRandomPattern.random();
 			}
 		}
 		

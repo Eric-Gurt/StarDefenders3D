@@ -706,9 +706,11 @@ class main
 			brightness[ i ] = 0;
 		}
 		
+		var size_z_mul_size_y = size_z * size_y;
 		function Coord( x, y, z )
 		{
-			return ( x * size_z * size_y + y * size_z + z );
+			//return ( x * size_z * size_y + y * size_z + z );
+			return ( x * size_z_mul_size_y + y * size_z + z );
 		}
 		
 		function FromCoord( x,y,z )
@@ -730,13 +732,21 @@ class main
 		}
 		function SolveCube( x1, y1, z1, x2, y2, z2 )
 		{
-			x1 = ~~x1;
+			/*x1 = ~~x1;
 			y1 = ~~y1;
 			z1 = ~~z1;
 
 			x2 = ~~x2;
 			y2 = ~~y2;
 			z2 = ~~z2;
+			if ( x1 !== ~~x1 ||
+				 y1 !== ~~y1 ||
+				 z1 !== ~~z1 ||
+				 x2 !== ~~x2 ||
+				 y2 !== ~~y2 ||
+				 z2 !== ~~z2 )
+			throw new Error();
+			*/
 
 			var left_top_close = Coord( x1,y1,z1 );
 			var left_top_far = Coord( x1,y1,z2 );
@@ -780,8 +790,14 @@ class main
 			var right_middle_close = FromCoord( x2, mid_y, z1 );
 			var right_middle_far = FromCoord( x2, mid_y, z2 );
 			// 
+			
+			// Fast check
+			if ( x2 - x1 <= 1 )
+			if ( y2 - y1 <= 1 )
+			if ( z2 - z1 <= 1 )
+			return;
 
-			// Check if any action is actually needed:
+			// Check if any action is actually needed (slow check):
 			// 0-sides
 			if ( solved[ middle.coord ] )
 			// 1-sides
@@ -872,7 +888,8 @@ class main
 			var sum = 0;
 			var noise = 0;
 
-			for ( var k = arr.length - 1; k >= 0; k-- )
+			//for ( var k = arr.length - 1; k >= 0; k-- ) Usually can be slower in Chrome
+			for ( var k = 0; k < arr.length; k++ )
 			{
 				sum += fill[ arr[ k ] ];
 				noise += noise_tex[ arr[ k ] ];
@@ -1155,6 +1172,7 @@ class main
 		{
 			var i = Coord( x,y,z );
 			if ( brightness[ i ] !== -1 )
+			if ( fill[ i ] > edge_density )
 			{
 				var orig_beam_power = main.lightmap_beam_power;
 				
