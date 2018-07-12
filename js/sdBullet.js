@@ -260,6 +260,9 @@ class sdBullet
 		
 			var steps = Math.max( di_path_bullet, di_path_atom ) / impact_radius * 8; // 4 is not enough
 			
+			if ( steps > 100 )
+			steps = 100;
+			
 			for ( var i2 = 0; i2 <= steps; i2++ )
 			{
 				var morph = i2 / steps;

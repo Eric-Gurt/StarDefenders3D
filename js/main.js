@@ -2142,6 +2142,9 @@ class main
 		
 		if ( steps < 1 )
 		steps = 1;
+	
+		if ( steps > 1000 )
+		steps = 1000;
 
 		for ( var s = offset * step_scale; s < steps + 1; s++ )
 		{
