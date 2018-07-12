@@ -30,7 +30,11 @@ class sdNet
 		SpawnPeer();
 		function SpawnPeer()
 		{
-			sdNet.peer = new Peer( undefined, { debug:2 });
+			sdNet.peer = new Peer( undefined, { debug:2, config:{ 'iceServers': [
+						//{ 'url': 'stun:stun.l.google.com:19302' },
+						{ 'url': 'stun:stun.l.google.com:19302?transport=udp' },
+						{ 'url': 'stun:stun.services.mozilla.com' }
+					] } });
 
 			sdNet.peer.on('connection', 
 				function( dataConnection )
