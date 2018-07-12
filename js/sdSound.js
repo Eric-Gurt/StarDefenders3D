@@ -221,7 +221,8 @@ class sdSound
 			
 			
 			_sound.setBuffer( params.sound );
-			_sound.setRefDistance( 25 );
+			//_sound.setRefDistance( 25 );
+			_sound.setRefDistance( 100 );
 			
 			
 			_sound.mypitch = params.pitch;

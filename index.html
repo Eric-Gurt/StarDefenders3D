@@ -191,6 +191,7 @@
 	
 	<script src="js/sdNet.js"></script>
 	<script src="js/sdSprite.js"></script>
+	<script src="js/sdAI.js"></script>
 	
 	<div id="ingame_hud" style="display:none">
 	    
@@ -262,7 +263,8 @@
 
 	    <!-- some beta UI -->
 	    <span class="r_conteiner clickable" style="position:fixed;left:1vh;top:1vh;"><!--
-		--><a href="javascript:sdNet.OfflineTraining();" class="r_conteiner" style="display:inline-block;margin-right:3vh;">Offline Training</a><!--
+		--><a href="javascript:sdNet.OfflineTraining( 1 );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Offline Training</a><!--
+		--><a href="javascript:sdNet.OfflineTraining( 0 );" class="r_conteiner" style="display:inline-block;margin-right:3vh;">Offline Training without enemies</a><!--
 		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_FFA );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Quick Play FFA <span style="color:rgba(255,255,255,0.3)">(2 players min)</span></a><!--
 		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_TEAM_VS_TEAM );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Quick Play TvT <span style="color:rgba(255,255,255,0.3)">(2 players min)</span></a><!--
 		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_AS_ONE );" class="r_conteiner" style="display:inline-block;">Quick Play As One <span style="color:rgba(255,255,255,0.3)">(4 players min)</span></a><br><!--

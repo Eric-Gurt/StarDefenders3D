@@ -439,7 +439,7 @@ class sdNet
 		console.warn( t );
 		//alert( t );
 	}
-	static OfflineTraining()
+	static OfflineTraining( enemies )
 	{
 		sdNet.match_queued_dataConnections = [];
 		
@@ -447,9 +447,9 @@ class sdNet
 		
 		sdNet.StartMatch({
 			
-			max_players: 8,
+			max_players: enemies ? 8 : 1,
 			
-			max_teams: 8,
+			max_teams: 2,
 			
 			world_seed: Math.floor( Math.random()*10000000 ),
 			

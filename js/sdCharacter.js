@@ -1,7 +1,7 @@
 
 
 
-/* global THREE, main, sdAtom, sdChain, sdBullet, sdSync, lib, sdSound, sdNet */
+/* global THREE, main, sdAtom, sdChain, sdBullet, sdSync, lib, sdSound, sdNet, sdAI */
 
 class sdCharacter
 {
@@ -226,9 +226,18 @@ class sdCharacter
 	}
 	remove( respawn=true )
 	{
-		var was_me = false;
+		let was_me = false;
 		if ( main.my_character === this )
 		{
+			if ( !main.MP_mode )
+			{
+				main.GAME_FPS = 15;
+			}
+			
+			main.main_camera.position.x += this.look_direction.x * 10;
+			main.main_camera.position.y += this.look_direction.y * 10;
+			main.main_camera.position.z += this.look_direction.z * 10;
+		
 			was_me = true;
 			main.SetActiveCharacter( null );
 		}
@@ -305,8 +314,13 @@ class sdCharacter
 					for ( var i = 0; i < ragdoll_chains.length; i++ )
 					ragdoll_chains[ i ].remove();
 
+					if ( was_me )
+					if ( !main.MP_mode )
+					main.GAME_FPS = 30;
+
 					if ( was_me || !main.MP_mode )
 					{
+		
 						old_char.Ressurect( was_me );
 						
 						if ( main.MP_mode )
@@ -339,6 +353,8 @@ class sdCharacter
 		this.x = params.x;
 		this.y = params.y;
 		this.z = params.z;
+		
+		this.ai = ( main.MP_mode ? null : new sdAI( this ) );
 		
 		this.last_valid_x = this.x;
 		this.last_valid_y = this.y;
@@ -958,9 +974,9 @@ class sdCharacter
 		else
 		{
 			if ( curwea === 0 )
-			sdSound.PlaySound({ sound: lib.rifle_fire, volume: 0.25 });
+			sdSound.PlaySound({ sound: lib.rifle_fire, parent_mesh:c.body, volume: 0.25 });
 			else
-			sdSound.PlaySound({ sound: lib.rocket_fire, volume: 0.25 });
+			sdSound.PlaySound({ sound: lib.rocket_fire, parent_mesh:c.body, volume: 0.25 });
 		}
 	}
 
@@ -1270,9 +1286,14 @@ class sdCharacter
 			return ( main.TraceLine( c.x, c.y + sdCharacter.shoot_offset_y, c.z, c.x - c.look_direction.x * 8, c.y + sdCharacter.shoot_offset_y + 2 - c.look_direction.y * 8, c.z - c.look_direction.z * 8, null, 1, 0 ) === 1 &&
 					 main.TraceLine( c.x, c.y + sdCharacter.shoot_offset_y, c.z, c.x - c.look_direction.x * 8, c.y + sdCharacter.shoot_offset_y - 8 - c.look_direction.y * 8, c.z - c.look_direction.z * 8, null, 1, 0 ) < 1 );
 		}
+		
 		for ( var i = 0; i < sdCharacter.characters.length; i++ )
 		{
 			var c = sdCharacter.characters[ i ];
+			
+			if ( c.ai !== null )
+			if ( c !== main.my_character )
+			c.ai.ApplyLogic( GSPEED );
 			
 			if ( c.y < -200 )
 			if ( !main.MP_mode || c === main.my_character )
