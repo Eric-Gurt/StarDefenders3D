@@ -29,7 +29,8 @@ class sdSync
 		sdSync.update_timer = 0;
 		
 		
-		sdSync.keep_and_send_data_for_disconnected_players = false;
+		//sdSync.keep_and_send_data_for_disconnected_players = false;
+		sdSync.keep_and_send_data_for_disconnected_players_duration = 15 * 30;
 		
 		var codes = [];
 		function UniqueTest( c )
@@ -62,11 +63,11 @@ class sdSync
 	{
 		for ( var i = 0; i < sdNet.match_dataConnections.length; i++ )
 		if ( sdNet.match_dataConnections[ i ] !== null )
-		if ( sdSync.keep_and_send_data_for_disconnected_players || sdNet.match_dataConnections[ i ].open )
+		if ( sdNet.match_dataConnections[ i ].sd_connected_timeout_timer < sdSync.keep_and_send_data_for_disconnected_players_duration || sdNet.match_dataConnections[ i ].open )
 		sdNet.match_dataConnections[ i ].byte_shifter.AddEvent( command, ... args );
 	}
 	
-	static SendMyCommands()
+	static SendMyCommands( GSPEED )
 	{
 		// Some update data send there. In this game's case it is for character state and bullet state
 		if ( main.my_character !== null )
@@ -85,10 +86,28 @@ class sdSync
 		if ( sdNet.match_dataConnections[ i ] !== null )
 		{
 			if ( !sdNet.match_dataConnections[ i ].open )
-			if ( sdNet.match_dataConnections[ i ].sd_connected )
 			{
-				sdNet.match_dataConnections[ i ].sd_connected = false;
-				main.onChatMessage( '', ('Player #'+sdNet.match_dataConnections[ i ].user_uid + ' has left the match').split('<').join('&lt;').split('>').join('&gt;'), null );
+				if ( sdNet.match_dataConnections[ i ].sd_connected )
+				{
+					sdNet.match_dataConnections[ i ].sd_connected_timeout_timer += GSPEED;
+					if ( sdNet.match_dataConnections[ i ].sd_connected_timeout_timer < 60 )
+					{
+					}
+					else
+					{
+						sdNet.match_dataConnections[ i ].sd_connected = false;
+						main.onChatMessage( '', ('Player #'+sdNet.match_dataConnections[ i ].user_uid + ' has left the match').split('<').join('&lt;').split('>').join('&gt;'), null );
+					}
+				}
+			}
+			else
+			{
+				sdNet.match_dataConnections[ i ].sd_connected_timeout_timer = 0;
+				if ( !sdNet.match_dataConnections[ i ].sd_connected )
+				{
+					sdNet.match_dataConnections[ i ].sd_connected = true;
+					main.onChatMessage( '', ('Player #'+sdNet.match_dataConnections[ i ].user_uid + ' has been reconnected').split('<').join('&lt;').split('>').join('&gt;'), null );
+				}
 			}
 		}
 	}
@@ -100,12 +119,15 @@ class sdSync
 		if ( sdSync.update_timer <= 0 )
 		{
 			sdSync.update_timer = sdSync.update_delay;
+			
+			if ( sdSync.update_delay > GSPEED )
+			GSPEED *= sdSync.update_delay;
 		
-			sdSync.SendMyCommands();
+			sdSync.SendMyCommands( GSPEED );
 		
 			for ( var i = 0; i < sdNet.match_dataConnections.length; i++ )
 			if ( sdNet.match_dataConnections[ i ] !== null )
-			if ( sdSync.keep_and_send_data_for_disconnected_players || sdNet.match_dataConnections[ i ].open )
+			if ( sdNet.match_dataConnections[ i ].sd_connected_timeout_timer < sdSync.keep_and_send_data_for_disconnected_players_duration || sdNet.match_dataConnections[ i ].open )
 			sdNet.match_dataConnections[ i ].byte_shifter.SendData( GSPEED );
 		}
 	}
