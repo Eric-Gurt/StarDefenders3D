@@ -103,7 +103,7 @@ class sdAI
 
 			var targ = best_targ;
 
-			if ( targ > Math.PI * 0.666 )
+			if ( best_an > Math.PI * 0.666 )
 			c.look_direction.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.999, GSPEED ) );
 			else
 			{
