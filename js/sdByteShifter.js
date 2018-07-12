@@ -173,6 +173,7 @@ class sdByteShifter
 			var part = s.substr( x, w );
 			for ( var i = voc.length-1; i >= voc_min; i-- )
 			if ( voc[ i ].is_sent )
+			if ( !voc[ i ].self_sent )
 			{
 				var offset = voc[ i ].message.indexOf( part );
 				
@@ -242,11 +243,15 @@ class sdByteShifter
 			{
 				arr[ i ].self_sent_in -= GSPEED;
 				if ( arr[ i ].self_sent_in <= 0 )
-				arr[ i ].is_sent = true;
+				{
+					arr[ i ].is_sent = true;
+					arr[ i ].self_sent = true;
+				}
 			}
 			else
 			{
 				arr[ i ].is_sent = true;
+				arr[ i ].self_sent = true;
 			}
 			data += i + sdByteShifter.message_id_delimeter + this.TryEncode( arr[ i ].message, arr ) + sdByteShifter.message_delimeter;
 			
@@ -289,6 +294,7 @@ class sdByteShifter
 						throw new Error('rcvs value sent by peer makes no sense');
 
 						this.stack_any[ id ].is_sent = true;
+						this.stack_any[ id ].self_sent = false;
 					}
 				}
 			}
@@ -759,6 +765,7 @@ class Packet
 		this.is_sent = false;
 		this.condition = condition;
 		this.self_sent_in = -1; // Retry duration. Negative value will make messages non-resendable.
+		this.self_sent = false; // When true, packet can't be used for decoding.
 	}
 }
 class ReceivedID
