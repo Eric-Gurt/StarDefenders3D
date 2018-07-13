@@ -621,6 +621,8 @@ class sdCharacter
 			a.r_initial = a.r;
 			a.g_initial = a.g;
 			a.b_initial = a.b;
+			
+			a.my_chains_initial_length = a.my_chains.length;
 		}
 		
 		function Occlusion( all )
@@ -663,8 +665,6 @@ class sdCharacter
 				a.r_initial = a.r = a.r * 1.25;
 				a.g_initial = a.g = a.g * 1.25;
 				a.b_initial = a.b = a.b * 1.25;
-				
-				a.my_chains_initial_length = a.my_chains.length;
 			}
 		}
 
@@ -676,6 +676,8 @@ class sdCharacter
 		Occlusion( leg1b );
 		Occlusion( leg2b );
 		Occlusion( head );
+		
+		
 		
 		sdCharacter.atoms_per_player = sdAtom.atoms.length - context_atoms_from;
 		
