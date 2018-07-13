@@ -119,6 +119,8 @@ class sdCharacter
 			old_char.atoms[ g ][ i ].g = old_char.atoms[ g ][ i ].g_initial;
 			old_char.atoms[ g ][ i ].b = old_char.atoms[ g ][ i ].b_initial;
 
+			old_char.atoms[ g ][ i ].my_chains.length = old_char.atoms[ g ][ i ].my_chains_initial_length; // Do not keep all temporary ones
+
 			for ( var ch = 0; ch < old_char.atoms[ g ][ i ].my_chains.length; ch++ )
 			{
 				old_char.atoms[ g ][ i ].my_chains[ ch ].removed = false;
@@ -246,7 +248,7 @@ class sdCharacter
 		
 		if ( i >= 0 )
 		{
-			var ragdoll_chains = [];
+			let ragdoll_chains = [];
 			
 			main.RemoveElement( sdCharacter.characters, i );
 			
@@ -281,7 +283,8 @@ class sdCharacter
 						
 						if ( di <= 1 )
 						{
-							ragdoll_chains.push( sdChain.CreateChain( a, b, di, false ) );
+							var ch = sdChain.CreateChain( a, b, di, false );
+							ragdoll_chains.push( ch );
 						}
 					}
 				}
@@ -660,6 +663,8 @@ class sdCharacter
 				a.r_initial = a.r = a.r * 1.25;
 				a.g_initial = a.g = a.g * 1.25;
 				a.b_initial = a.b = a.b * 1.25;
+				
+				a.my_chains_initial_length = a.my_chains.length;
 			}
 		}
 

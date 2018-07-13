@@ -67,9 +67,18 @@ class sdNet
 			);
 		}
 		sdNet.uid = localStorage.getItem('stardefenders_uid');
-		var pass = localStorage.getItem('stardefenders_pass');
+		sdNet.pass = localStorage.getItem('stardefenders_pass');
 		sdNet.key = null;
 		sdNet.pass_plus_key = null;
+		
+		sdNet.InitiateLoginOrRegister();
+		
+		sdNet.invited_to_group = false;
+		sdNet.invited_to_enemy_group = false;
+	}
+	
+	static InitiateLoginOrRegister()
+	{
 		
 		if ( sdNet.uid === null )
 		{
@@ -95,18 +104,19 @@ class sdNet
 				return password;
 			}
 
-			pass = password_generator();
+			sdNet.pass = password_generator();
 			
-			sdNet.httpGetContent({ request:'quick_register', pass:pass }, function( v )
+			sdNet.httpGetContent({ request:'quick_register', pass:sdNet.pass }, function( v )
 			{
 				var parts = v.split('|');
 				if ( parts[ 0 ] !== 'done' )
-				throw new Error( v );
+				sdNet.GotServerError( v );
+			
 				sdNet.uid = ~~parts[ 1 ];
 				
 				document.getElementById('status_field').innerHTML = 'Quick register done';
 				localStorage.setItem('stardefenders_uid', sdNet.uid );
-				localStorage.setItem('stardefenders_pass', pass );
+				localStorage.setItem('stardefenders_pass', sdNet.pass );
 				
 				GetKey();
 
@@ -125,7 +135,8 @@ class sdNet
 			{
 				var parts = v.split('|');
 				if ( parts[ 0 ] !== 'done' )
-				throw new Error( v );
+				sdNet.GotServerError( v );
+			
 				sdNet.key = parts[ 1 ];
 				
 				function Salty( pass )
@@ -136,7 +147,7 @@ class sdNet
 				
 				sdNet.ResetConnection();
 		
-				sdNet.pass_plus_key = hex_md5( Salty( pass ) + sdNet.key );
+				sdNet.pass_plus_key = hex_md5( Salty( sdNet.pass ) + sdNet.key );
 				document.getElementById('status_field').innerHTML = 'Pass_plus_key received';
 				
 				sdNet.SendLeaveQuickPlayCommand();
@@ -144,8 +155,6 @@ class sdNet
 			}, true );
 		}
 		
-		sdNet.invited_to_group = false;
-		sdNet.invited_to_enemy_group = false;
 	}
 	
 	static SendLeaveQuickPlayCommand()
@@ -154,7 +163,7 @@ class sdNet
 		{
 			var parts = v.split('|');
 			if ( parts[ 0 ] !== 'done' )
-			throw new Error( v );
+			sdNet.GotServerError( v );
 
 			if ( sdNet.match_uid === -2 )
 			sdNet.match_uid = -1;
@@ -270,7 +279,7 @@ class sdNet
 		{
 			var parts = v.split('|');
 			if ( parts[ 0 ] !== 'done' )
-			throw new Error( v );
+			sdNet.GotServerError( v );
 		}, true );
 	}
 	static InviteAsOpponent( user_uid )
@@ -279,7 +288,7 @@ class sdNet
 		{
 			var parts = v.split('|');
 			if ( parts[ 0 ] !== 'done' )
-			throw new Error( v );
+			sdNet.GotServerError( v );
 		}, true );
 	}
 	static AcceptUsersGroup( user_uid )
@@ -288,7 +297,7 @@ class sdNet
 		{
 			var parts = v.split('|');
 			if ( parts[ 0 ] !== 'done' )
-			throw new Error( v );
+			sdNet.GotServerError( v );
 		}, true );
 	}
 	static UpdateOnlinePlayers()
@@ -297,7 +306,7 @@ class sdNet
 		{
 			var parts = v.split('|');
 			if ( parts[ 0 ] !== 'done' )
-			throw new Error( v );
+			sdNet.GotServerError( v );
 		
 			sdNet.FillWithPlayerList( document.getElementById('online_players'), parts[ 1 ] !== '' ? parts[ 1 ].split(',') : [], false );
 		}, false );
@@ -308,7 +317,7 @@ class sdNet
 		{
 			var parts = v.split('|');
 			if ( parts[ 0 ] !== 'done' )
-			throw new Error( v );
+			sdNet.GotServerError( v );
 		
 			if ( parts[ 1 ].indexOf( '>' ) !== -1 )
 			{
@@ -332,7 +341,7 @@ class sdNet
 		{
 			var parts = v.split('|');
 			if ( parts[ 0 ] !== 'done' )
-			throw new Error( v );
+			sdNet.GotServerError( v );
 		
 			if ( parts[ 1 ].indexOf( '>' ) !== -1 )
 			{
@@ -483,9 +492,21 @@ class sdNet
 		function( v ) {
 			var parts = v.split('|');
 			if ( parts[ 0 ] !== 'done' )
-			throw new Error( v );
+			sdNet.GotServerError( v );
 		}, true );
 	}
+	
+	static GotServerError( v )
+	{
+		if ( v === 'error|Bad login.' )
+		{
+			sdNet.uid = null;
+			sdNet.InitiateLoginOrRegister();
+		}
+		else
+		throw new Error( v );
+	}
+	
 	static QuickPlaySeeker()
 	{
 		if ( sdNet.pass_plus_key === null )
@@ -508,7 +529,8 @@ class sdNet
 				if ( parts[ 0 ] !== 'done' && parts[ 0 ] !== 'wait' )
 				{
 					document.getElementById('status_field').innerHTML = 'Server responds message: '+v;
-					throw new Error( v );
+					
+					sdNet.GotServerError( v );
 				}
 
 				if ( parts[ 0 ] === 'wait' )
@@ -541,7 +563,7 @@ class sdNet
 									let parts = v.split('|');
 
 									if ( parts[ 0 ] !== 'done' )
-									throw new Error( v );
+									sdNet.GotServerError( v );
 
 									function MakingSurePeerIsConnectedToSocketServerThenEval()
 									{
@@ -648,6 +670,8 @@ class sdNet
 	   
 		main.BuildLevel( Number( params.world_seed ) );
 		
+		sdChain.enable_reuse = false;
+		
 		var max_players = ~~params.max_players;
 		var max_teams = ~~params.max_teams;
 		
@@ -664,6 +688,9 @@ class sdNet
 			var c = sdCharacter.CreateCharacter({ x:5, y:main.level_chunks_y*main.chunk_size + 20, z:5, bmp:sdAtom.character_bitmap, team:i%max_teams });
 			c.Respawn();
 		}
+		
+		sdChain.enable_reuse = true;
+		sdChain.initial_length = sdChain.chains.length;
 		
 		main.SetActiveCharacter( sdCharacter.characters[ sdNet.match_my_uid ] );
 		main.mp_character = sdCharacter.characters[ sdNet.match_my_uid ];

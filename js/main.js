@@ -615,6 +615,8 @@ class main
 	}
 	static BuildLevel( seed )
 	{
+		main.GAME_FPS = 30;
+		
 		main.pb3driver = new THREE.Object3D();
 		main.pb3driver.position.x = 10000;
 		main.pb3driver.position.y = 10000;

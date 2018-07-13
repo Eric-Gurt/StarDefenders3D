@@ -57,14 +57,24 @@ class sdBullet
 			this.b = 0;
 
 			sdCharacter.ApplyTeamColorToObject( this, this.owner.team );
+			var color = new pb2HighRangeColor().setRGB( this.r + 0.25, this.g + 0.25, this.b + 0.25 );
 			
-			this.r *= 0.5;
-			this.g *= 0.5;
-			this.b *= 0.5;
+			color.NormalizeAndGetMultiplier();
 			
-			this.r += 0.5;
-			this.g += 0.5;
-			this.b += 0.5;
+			color.multiply( 1.5 );
+			
+			this.r = color.r;
+			this.g = color.g;
+			this.b = color.b;
+			
+			/*
+			this.r *= 0.75;
+			this.g *= 0.75;
+			this.b *= 0.75;
+			this.r += 0.2;
+			this.g += 0.2;
+			this.b += 0.2;
+			*/
 		}
 		this.is_rocket = params.is_rocket || false;
 		

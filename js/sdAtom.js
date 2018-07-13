@@ -10,9 +10,27 @@ class sdChain
 	static init_class()
 	{
 		sdChain.chains = [];
+		
+		sdChain.initial_length = 0;
+		sdChain.enable_reuse = false;
 	}
 	static CreateChain( a, b, def, in_limb )
 	{
+		if ( sdChain.enable_reuse )
+		{
+			// try to reuse slot in order to prevent array from growing
+			var min_i = sdChain.initial_length;
+			for ( var i = min_i; i < sdChain.chains.length; i++ )
+			{
+				if ( sdChain.chains[ i ].removed )
+				{
+					var c = new sdChain( a, b, def, in_limb );
+					c.uid = i;
+					sdChain.chains[ i ] = c;
+					return c;
+				}
+			}
+		}
 		var c = new sdChain( a, b, def, in_limb );
 		c.uid = sdChain.chains.length;
 		sdChain.chains.push( c );
@@ -31,10 +49,14 @@ class sdChain
 		
 		this.a.my_chains.push( this );
 		this.b.my_chains.push( this );
+		
+		this.removed = false;
+		
+		this.stack = sdShaderMaterial.getStackTrace();
 	}
 	remove()
 	{
-		if ( sdChain.chains[ this.uid ] === this )
+		//if ( sdChain.chains[ this.uid ] === this )
 		{
 			this.removed = true;
 		}
@@ -141,6 +163,7 @@ class sdAtom
 		this.temp_grav_disable_tim = 0;
 		
 		this.my_chains = [];
+		this.my_chains_initial_length = 0;
 	}
 	
 	remove()
