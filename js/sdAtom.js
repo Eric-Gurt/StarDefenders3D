@@ -52,7 +52,7 @@ class sdChain
 		
 		this.removed = false;
 		
-		this.stack = sdShaderMaterial.getStackTrace();
+		//this.stack = sdShaderMaterial.getStackTrace();
 	}
 	remove()
 	{

@@ -1300,6 +1300,7 @@ class sdCharacter
 			
 			if ( c.ai !== null )
 			if ( c !== main.my_character )
+			if ( !main.MP_mode )
 			c.ai.ApplyLogic( GSPEED );
 			
 			if ( c.y < -200 )
