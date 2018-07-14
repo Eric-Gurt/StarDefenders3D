@@ -20,6 +20,10 @@ class sdChain
 		{
 			// try to reuse slot in order to prevent array from growing
 			var min_i = sdChain.initial_length;
+			
+			if ( sdChain.chains.length < min_i )
+			throw new Error('Where all the starter chains gone? They should exist at this moment.');
+			
 			for ( var i = min_i; i < sdChain.chains.length; i++ )
 			{
 				if ( sdChain.chains[ i ].removed )

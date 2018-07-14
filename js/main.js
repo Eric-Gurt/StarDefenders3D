@@ -280,10 +280,13 @@ class main
 			{
 				document.getElementById('chat_input_box').style.display = 'none';
 				
-				if ( main.MP_mode )
-				sdSync.MP_SendEvent( sdSync.COMMAND_I_SAY, document.getElementById('chat_input_box').value );
-				
-				main.onChatMessage( 'Player #'+sdNet.uid + ' (you)', document.getElementById('chat_input_box').value, main.my_character );
+				if ( document.getElementById('chat_input_box').value.length > 0 )
+				{
+					if ( main.MP_mode )
+					sdSync.MP_SendEvent( sdSync.COMMAND_I_SAY, document.getElementById('chat_input_box').value );
+
+					main.onChatMessage( 'Player #'+sdNet.uid + ' (you)', document.getElementById('chat_input_box').value, main.my_character );
+				}
 			}
 			return true;
 		}
