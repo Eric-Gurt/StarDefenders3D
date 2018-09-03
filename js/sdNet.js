@@ -498,7 +498,7 @@ class sdNet
 	
 	static GotServerError( v )
 	{
-		if ( v === 'error|Bad login.' )
+		if ( v === 'error|Bad login.' || v === 'error|Outdated hash' )
 		{
 			sdNet.uid = null;
 			sdNet.InitiateLoginOrRegister();

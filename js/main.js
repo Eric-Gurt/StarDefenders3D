@@ -127,6 +127,15 @@ class main
 		main.pb3driver = null;
 		main.pb3driver_channel = null;
 		
+		var crashed = false;
+		window.onerror = function( message, url, lineNumber ) {
+			if ( !crashed )
+			{
+				alert("Application error!\n\nFor more info - check browser's console logs. In else case it should be best to reload page.\n\n" + "Message: " + message + "\n(" + url + ":" + lineNumber + ")");
+				crashed = true;
+			}
+		};
+		
 		main.DestroyLevel();
 	}
 	static ScoreForTeam( team_id, delta )
