@@ -76,6 +76,11 @@ class sdBullet
 			this.b += 0.2;
 			*/
 		}
+		
+		this.r = 255 / 255 * 1.5;
+		this.g = 251 / 255 * 1.5;
+		this.b = 192 / 255 * 1.5;
+		
 		this.is_rocket = params.is_rocket || false;
 		
 		this.trail_spawn = 0;
@@ -475,34 +480,42 @@ class sdBullet
 					var power = explosion_intens / di * ( 1 - Math.pow( di / hit_radius, 2 ) ); 
 					
 					a.WakeUp();
-
-					a.tox += dx * 25 * power;
-					a.toy += dy * 25 * power;
-					a.toz += dz * 25 * power;
-
-					// Copy [ 1 / 2 ]
-					a.parent.tox += dx * 25 * power / sdCharacter.atoms_per_player;
-					a.parent.toy += dy * 25 * power / sdCharacter.atoms_per_player;
-					a.parent.toz += dz * 25 * power / sdCharacter.atoms_per_player;
 					
+					var knock_power = 35; // 25
+
 					if ( !main.MP_mode || b.owner === main.my_character )
-					if ( a.material === sdAtom.MATERIAL_ALIVE_PLAYER || a.material === sdAtom.MATERIAL_ALIVE_PLAYER_HEAD )
 					{
-						var dmg = hp_damage * 100 * power / sdCharacter.atoms_per_player;
-						
-						if ( dmg > 0 )
+						a.tox += dx * knock_power * power;
+						a.toy += dy * knock_power * power;
+						a.toz += dz * knock_power * power;
+
+						// Copy [ 1 / 2 ]
+						a.parent.tox += dx * knock_power * power / sdCharacter.atoms_per_player;
+						a.parent.toy += dy * knock_power * power / sdCharacter.atoms_per_player;
+						a.parent.toz += dz * knock_power * power / sdCharacter.atoms_per_player;
+
+						if ( a.material === sdAtom.MATERIAL_ALIVE_PLAYER || a.material === sdAtom.MATERIAL_ALIVE_PLAYER_HEAD )
 						{
-							var cloud_i = owner_cloud.indexOf( a.parent );
-							owner_cloud_damage[ cloud_i ] += dmg;
-							owner_cloud_tox[ cloud_i ] += dx * 25 * power / sdCharacter.atoms_per_player; // Copy [ 2 / 2 ]
-							owner_cloud_toy[ cloud_i ] += dy * 25 * power / sdCharacter.atoms_per_player;
-							owner_cloud_toz[ cloud_i ] += dz * 25 * power / sdCharacter.atoms_per_player;
+							var dmg = hp_damage * 100 * power / sdCharacter.atoms_per_player;
+
+							if ( dmg > 0 )
+							{
+								var cloud_i = owner_cloud.indexOf( a.parent );
+
+								if ( b.owner !== a.parent ) // Could be more fun if no self-damage
+								owner_cloud_damage[ cloud_i ] += dmg;
+
+								owner_cloud_tox[ cloud_i ] += dx * knock_power * power / sdCharacter.atoms_per_player; // Copy [ 2 / 2 ]
+								owner_cloud_toy[ cloud_i ] += dy * knock_power * power / sdCharacter.atoms_per_player;
+								owner_cloud_toz[ cloud_i ] += dz * knock_power * power / sdCharacter.atoms_per_player;
+							}
 						}
 					}
 				}
 				
 				if ( a.material !== sdAtom.MATERIAL_GIB_GUN )
 				if ( a.material !== sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
+				if ( b.owner !== a.parent ) // Not a self-damage
 				{
 					a.r = Math.max( 0, a.r * ( 1 - morph * 0.75 ) );
 					a.g = Math.max( 0, a.g * ( 1 - morph * 2 ) );

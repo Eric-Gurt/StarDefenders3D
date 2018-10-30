@@ -35,15 +35,21 @@ class sdCharacter
 		sdCharacter.arm_cross_right = 0.0; // how much arms are rotated towards each other
 		
 		// [ rifle, rocket, alt-rifle, alt-rocket ]
-		sdCharacter.weapon_reload_times = [ 2, 30, 25, 60 ];
+		//sdCharacter.weapon_reload_times = [ 2, 30, 25, 60 ];
+		sdCharacter.weapon_reload_times = [ 2, 25, 30 * 0.2, 25 ];
 		sdCharacter.weapon_self_knockbacks = [ 0.1, 0.5, 0.1, 0.5 ];
 		sdCharacter.weapon_is_rocket = [ false, true, false, false ];
-		sdCharacter.weapon_speed = [ 20, 2, 15, 40 ];
-		sdCharacter.weapon_knock_power = [ 0.02, 0.1, 0.015, 0.04 ];
-		sdCharacter.weapon_hp_damage = [ 15, 100, 10, 45 ];
-		sdCharacter.weapon_hp_damage_head = [ 34, 100, 20, 100 ];
+		//sdCharacter.weapon_speed = [ 20, 2, 15, 40 ];
+		//sdCharacter.weapon_speed = [ 40, 2, 30, 60 ];
+		sdCharacter.weapon_speed = [ 40, 4, 30, 60 ];
+		sdCharacter.weapon_knock_power = [ 0.02, 0.1, 0.0075, 0.04 ];
+		//sdCharacter.weapon_hp_damage = [ 15, 100, 10, 45 ];
+		sdCharacter.weapon_hp_damage = [ 30, 100, 10, 90 ];
+		//sdCharacter.weapon_hp_damage_head = [ 34, 100, 20, 100 ];
+		sdCharacter.weapon_hp_damage_head = [ 60, 100, 20, 180 ];
 		sdCharacter.weapon_knock_count = [ 1, 1, 15, 1 ];
-		sdCharacter.weapon_knock_spread = [ 0.5, 0, 3.5, 0.5 ];
+		//sdCharacter.weapon_knock_spread = [ 0.5, 0, 3.5, 0.5 ];
+		sdCharacter.weapon_knock_spread = [ 1.5, 0, 5, 0.5 ];
 		sdCharacter.weapon_switch_time = 15;
 		
 		sdCharacter.collision_dots = [];
@@ -170,17 +176,29 @@ class sdCharacter
 			
 			var color = '255,255,255,0.25';
 			
-			if ( this.team !== main.mp_character.team )
+			if ( from === main.my_character )
 			{
-				if ( from === main.my_character )
+				if ( this.team !== main.mp_character.team )
 				{
 					color = '100,255,100,1';
 					
+					main.HitPulse( d );
+					
 					if ( this.hea <= 0 )
-					setTimeout( function()
 					{
-						sdSound.PlayInterfaceSound({ sound: lib.frag_report, volume: 1 });
-					}, 200 );
+						main.HitPulse( 100 );
+					
+						setTimeout( function()
+						{
+							sdSound.PlayInterfaceSound({ sound: lib.frag_report, volume: 1 });
+						}, 200 );
+					}
+				}
+				else
+				{
+					main.HitPulse( -d );
+					if ( this.hea <= 0 )
+					main.HitPulse( -100 );
 				}
 			}
 			
@@ -231,11 +249,12 @@ class sdCharacter
 		let was_me = false;
 		if ( main.my_character === this )
 		{
+			/*
 			if ( !main.MP_mode )
 			{
 				main.GAME_FPS = 15;
 			}
-			
+			*/
 			main.main_camera.position.x += this.look_direction.x * 10;
 			main.main_camera.position.y += this.look_direction.y * 10;
 			main.main_camera.position.z += this.look_direction.z * 10;
@@ -316,11 +335,11 @@ class sdCharacter
 				{
 					for ( var i = 0; i < ragdoll_chains.length; i++ )
 					ragdoll_chains[ i ].remove();
-
+					/*
 					if ( was_me )
 					if ( !main.MP_mode )
 					main.GAME_FPS = 30;
-
+					*/
 					if ( was_me || !main.MP_mode )
 					{
 		
@@ -330,7 +349,8 @@ class sdCharacter
 						sdSync.MP_SendEvent( sdSync.COMMAND_I_RESSURECT );
 					}
 					
-				}, 2000 );
+				//}, 2000 );
+				}, ( !main.MP_mode && was_me ) ? 500 : 2000 );
 			}
 		}
 	}
@@ -346,7 +366,15 @@ class sdCharacter
 			return this.dataConnection.user_uid;
 		}
 	}
+	/*
+	get tox() { return this._tox; }
+	get toy() { return this._toy; }
+	get toz() { return this._toz; }
 	
+	set tox( v ) { if ( Math.abs( v - this._tox ) > 5 ) throw new Error('Too rapid velocity change?'); this._tox = v; }
+	set toy( v ) { if ( Math.abs( v - this._toy ) > 300 ) throw new Error('Too rapid velocity change?'); this._toy = v; }
+	set toz( v ) { if ( Math.abs( v - this._toz ) > 5 ) throw new Error('Too rapid velocity change?'); this._toz = v; }
+	*/
 	constructor( params )
 	{
 		this.uid = sdCharacter.characters.length; // keeps original uid so peers can reference this user using it
@@ -363,6 +391,11 @@ class sdCharacter
 		this.last_valid_y = this.y;
 		this.last_valid_z = this.z;
 		this.last_valid_sit = 0;
+		/*
+		this._tox = 0;
+		this._toy = 0;
+		this._toz = 0;
+		*/
 		
 		this.tox = 0;
 		this.toy = 0;
@@ -1301,7 +1334,11 @@ class sdCharacter
 			if ( c.ai !== null )
 			if ( c !== main.my_character )
 			if ( !main.MP_mode )
-			c.ai.ApplyLogic( GSPEED );
+			{
+				c.ai.ApplyLogic( GSPEED );
+				//if ( c.look_direction.length() > 1.1 )
+				//throw new Error('How?');
+			}
 			
 			if ( c.y < -200 )
 			if ( !main.MP_mode || c === main.my_character )

@@ -397,6 +397,8 @@ Object.getOwnPropertyNames( Array.prototype ).filter(
 		if ( p !== 'forEach' ) // THREE.JS
 		if ( p !== 'concat' ) // THREE.JS
 		if ( p !== 'constructor' ) // peer.js
+		if ( p !== 'map' ) // peer.js
+		if ( p !== 'some' ) // peer.js
 		{
 			delete Array.prototype[ p ];
 		}

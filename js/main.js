@@ -47,6 +47,8 @@ class main
 		main.max_players = 0;
 		main.max_teams = 0;
 		
+		main.hit_pulse = 1; // 1...2 Increases when hit or frag
+		
 		main.action_weapon = main.WEAPON_RIFLE; // Sets "must-pick" weapon on keypress. Never changes after that but should influence what weapon is being switched to
 		
 		main.my_character = null;
@@ -56,7 +58,7 @@ class main
 		
 		main.sensitivity = localStorage.getItem('stardefenders_sensitivity');
 		if ( main.sensitivity === null )
-		main.sensitivity = 0.0015;
+		main.sensitivity = 0.002; // 0.0015
 		else
 		main.sensitivity = Number( main.sensitivity );
 		
@@ -66,10 +68,13 @@ class main
 		else
 		main.turn_method = Number( main.turn_method );
 	
-		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.35 );
+		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.5 );
 	
-		main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 1.5 );
+		//main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 1.5 );
+		main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 3 );
 	
+		main.fov = Number( localStorage.getItem( 'stardefenders_fov' ) || 110 ); // 90
+		
 		setTimeout( function()
 		{
 			document.getElementById('sensitivity').value = main.sensitivity;
@@ -86,6 +91,12 @@ class main
 		{
 			document.getElementById('lod').value = main.lod_ratio;
 		}, 1000 );
+		setTimeout( function()
+		{
+			document.getElementById('fov').value = main.fov;
+		}, 1000 );
+		
+		
 		
 		main.ang = 0;
 		main.ang2 = 0;
@@ -387,6 +398,14 @@ class main
 			document.getElementById('menu').style.display = 'none';
 		}
 		
+		if ( e.keyCode === 90 ) // Z
+		{
+			if ( !main.MP_mode )
+			{
+				main.GAME_FPS = ( main.GAME_FPS === 15 ) ? 30 : 15;
+			}
+		}
+		
 		if ( e.keyCode === 82 && e.ctrlKey ) // Allow Ctrl+R
 		{
 		}
@@ -609,6 +628,7 @@ class main
 		for ( var i = 0; i < sdAtom.atoms.length; i++ )
 		sdAtom.atoms[ i ].remove();
 		for ( var i = 0; i < sdChain.chains.length; i++ )
+		if ( sdChain.chains[ i ] !== undefined ) // Not sure why it happens but it does.
 		sdChain.chains[ i ].remove();
 	
 		sdCharacter.characters.length = 0;
@@ -2261,6 +2281,13 @@ class main
 		}
 		
 	}
+	static HitPulse( v )
+	{
+		if ( v > 0 )
+		main.hit_pulse = Math.min( 4, main.hit_pulse + v / 100 * 0.75 );
+		else
+		main.hit_pulse = Math.max( 0.5, main.hit_pulse + v / 100 * 0.75 );
+	}
 	static onEnterFrame()
 	{
 		var GSPEED = main.GSPEED;
@@ -2270,6 +2297,20 @@ class main
 		var xx = main.hold_d - main.hold_a;
 		var zz = main.hold_s - main.hold_w;
 		var yy = main.hold_space - main.hold_ctrl;
+		
+		if ( main.hit_pulse > 1 )
+		main.hit_pulse = Math.max( 1, main.hit_pulse - GSPEED * 0.05 );
+		else
+		if ( main.hit_pulse < 1 )
+		main.hit_pulse = Math.min( 1, main.hit_pulse + GSPEED * 0.01 );
+	
+		main.composer.renderer.domElement.style.filter = "brightness(" + Math.round( Math.min( 2, main.hit_pulse ) * 100 ) + "%)";
+		
+		if ( main.fov !== main.main_camera.fov )
+		{
+			main.main_camera.fov = main.fov;
+			main.main_camera.updateProjectionMatrix();
+		}
 		
 		if ( main.my_character === null )
 		{

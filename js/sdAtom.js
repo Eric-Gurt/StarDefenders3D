@@ -528,7 +528,7 @@ class sdAtom
 				dy = b.toy;
 				dz = b.toz;
 				
-				length = 6;
+				length = 10; // 6
 			}
 			
 			var di = Math.sqrt( main.Dist3D_Vector_pow2( dx, dy, dz ) ) / length;
@@ -552,9 +552,9 @@ class sdAtom
 				{
 					if ( i2 < 1 )
 					{
-						rgba[ point * 4     ] = 1;
-						rgba[ point * 4 + 1 ] = 1;
-						rgba[ point * 4 + 2 ] = 1;
+						rgba[ point * 4     ] = 255 / 255 * 1.5;
+						rgba[ point * 4 + 1 ] = 251 / 255 * 1.5;
+						rgba[ point * 4 + 2 ] = 192 / 255 * 1.5;
 						uvs2[ point ] = 1;
 						
 						if ( i2 === 0 )
@@ -565,9 +565,9 @@ class sdAtom
 					else
 					if ( i2 === 1 )
 					{
-						rgba[ point * 4     ] = 1;
-						rgba[ point * 4 + 1 ] = 1;
-						rgba[ point * 4 + 2 ] = 1;
+						rgba[ point * 4     ] = 255 / 255 * 1.5;
+						rgba[ point * 4 + 1 ] = 251 / 255 * 1.5;
+						rgba[ point * 4 + 2 ] = 192 / 255 * 1.5;
 						uvs2[ point ] = 1;
 						
 						rgba[ point * 4 + 3 ] = 0.75; // Scale

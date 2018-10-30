@@ -230,7 +230,7 @@ class sdShaderMaterial
 				
 					gl_FragDepthEXT = pre_calc.x - pre_calc.y * pow( 0.25 - di_pow2, 0.5 );
 					
-					
+					/*
 					if ( 0.4 * 0.4 < di_pow2 )
 					{
 						gl_FragColor.r += 0.1;
@@ -238,7 +238,7 @@ class sdShaderMaterial
 						gl_FragColor.b += 0.1;
 				
 						gl_FragDepthEXT += 2.0 / 1024.0 + gl_FragDepthEXT * 0.1;
-					}
+					}*/
 				}
 				`
 			});

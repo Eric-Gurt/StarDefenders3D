@@ -21,9 +21,12 @@ class sdAI
 		this.control_change_tim = 0;
 		
 		this.fire_probability = 0;
+		this.fire_wish = 0;
+		
+		this.look_vector = new THREE.Vector3();
 	}
 	
-	ApplyLogic( GSPEED )
+	ApplyLogic( GSPEED ) // Never return early, because .look_direction must be normalized (or else shots will throw AI into sky)
 	{
 		var c = this.ai;
 		
@@ -52,6 +55,20 @@ class sdAI
 		var best_targ = null;
 		
 		var any_enemy = null;
+
+		function SetAsRandom3D( v )
+		{
+			var omega = Math.random() * Math.PI * 2;
+			var z = Math.random() * 2 - 1;
+
+			var one_minus_sqr_z = Math.sqrt(1-z*z);
+
+			v.x = one_minus_sqr_z * Math.cos(omega);
+			v.y = one_minus_sqr_z * Math.sin(omega);
+			v.z = z;
+
+			return v;
+		}
 		
 		for ( var i = 0; i < sdCharacter.characters.length; i++ )
 		{
@@ -72,7 +89,14 @@ class sdAI
 					targ.y += ( c2.toy - c.toy ) / sdCharacter.weapon_speed[ this.fav_gun + ( this.fav_fire_mode - 1 ) * 2 ];
 					targ.z += ( c2.toz - c.toz ) / sdCharacter.weapon_speed[ this.fav_gun + ( this.fav_fire_mode - 1 ) * 2 ];
 					
-					var an = c.look_direction.angleTo( targ );
+					var di = main.Dist3D( targ.x, targ.y, targ.z, 0, 0, 0 );
+					var spread = { x:0, y:0, z:0 };
+					SetAsRandom3D( spread );
+					targ.x += spread.x * di * 0.3;
+					targ.y += spread.y * di * 0.3;
+					targ.z += spread.z * di * 0.3;
+					
+					var an = this.look_vector.angleTo( targ );
 					
 					if ( an < best_an )
 					{
@@ -92,7 +116,8 @@ class sdAI
 			{
 				var targ = new THREE.Vector3( c.x-any_enemy.x, c.y-any_enemy.y, c.z-any_enemy.z );
 			
-				c.look_direction.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.995, GSPEED ) );
+				//this.look_vector.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.995, GSPEED ) );
+				this.look_vector.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.7, GSPEED ) );
 				
 				fire_prepare = true;
 				force_rocket = true;
@@ -104,33 +129,39 @@ class sdAI
 			var targ = best_targ;
 
 			if ( best_an > Math.PI * 0.666 )
-			c.look_direction.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.999, GSPEED ) );
+			//this.look_vector.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.999, GSPEED ) );
+			this.look_vector.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.9, GSPEED ) );
 			else
 			{
-				c.look_direction.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.995, GSPEED ) );
+				//this.look_vector.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.995, GSPEED ) );
+				this.look_vector.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.7, GSPEED ) );
 				
 				fire_prepare = true;
 			}
-			
-			c.look_direction.normalize();
 
-			c.walk_vector_xz.x = c.look_direction.x;
-			c.walk_vector_xz.y = c.look_direction.z;
+			c.walk_vector_xz.x = this.look_vector.x;
+			c.walk_vector_xz.y = this.look_vector.z;
 			c.walk_vector_xz.normalize();
 		}
 		
 		if ( fire_prepare && !force_rocket )
 		{
-			this.fire_probability = Math.min( 1, this.fire_probability + GSPEED * 0.01 );
+			this.fire_probability = Math.min( 1, this.fire_probability + GSPEED * 0.001 ); // 0.0025
 		}
 		else
 		{
-			this.fire_probability = Math.max( 0, this.fire_probability - GSPEED * 0.02 );
+			this.fire_probability = Math.max( 0, this.fire_probability - GSPEED * 0.1 );
 		}
 		//console.log( this.fire_probability );
 		
-		if ( force_rocket || ( fire_prepare && this.fire_probability >= Math.random() ) )
+		if ( fire_prepare && !force_rocket )
+		this.fire_wish += this.fire_probability * GSPEED;
+	
+		//if ( force_rocket || ( fire_prepare && this.fire_probability >= Math.random() ) )
+		if ( force_rocket || ( fire_prepare && this.fire_wish >= 1 ) )
 		{
+			this.fire_wish = 0;
+			
 			if ( force_rocket )
 			{
 				c.act_weapon = 1;
@@ -143,6 +174,11 @@ class sdAI
 		{
 			c.act_fire = 0;
 		}
+		
+		c.look_direction.x = this.look_vector.x;
+		c.look_direction.y = this.look_vector.y;
+		c.look_direction.z = this.look_vector.z;
+		c.look_direction.normalize();
 	}
 	
 	static ThinkNow( GSPEED )

@@ -32,8 +32,9 @@ class sdNet
 		{
 			sdNet.peer = new Peer( undefined, { debug:2, config:{ 'iceServers': [
 						//{ 'url': 'stun:stun.l.google.com:19302' },
-						{ 'url': 'stun:stun.l.google.com:19302?transport=udp' },
-						{ 'url': 'stun:stun.services.mozilla.com' }
+						{ url: 'stun:stun.l.google.com:19302?transport=udp' },
+						{ url: 'stun:stun.services.mozilla.com' },
+						{ url: 'turn:turn.bistri.com:80', username: 'homeo', credential: 'homeo' }
 					] } });
 
 			sdNet.peer.on('connection', 
@@ -456,7 +457,7 @@ class sdNet
 		
 		sdNet.StartMatch({
 			
-			max_players: enemies ? 8 : 1,
+			max_players: enemies ? 6 : 1,
 			
 			max_teams: 2,
 			
@@ -466,11 +467,14 @@ class sdNet
 			
 			mode: sdNet.MODE_FFA
 			
-		});
+		}, then );
 		
-		main.MP_mode = false;
-		
-		main.run();
+		function then()
+		{
+			main.MP_mode = false;
+
+			main.run();
+		}
 	}
 	static QuickPlay( mode )
 	{
@@ -509,6 +513,12 @@ class sdNet
 	
 	static QuickPlaySeeker()
 	{
+		if ( sdNet.uid === null )
+		{
+			document.getElementById('status_field').innerHTML = 'Awaiting uid to be not null...';
+			return;
+		}
+		
 		if ( sdNet.pass_plus_key === null )
 		{
 			document.getElementById('status_field').innerHTML = 'Awaiting pass_plus_key...';
@@ -651,7 +661,7 @@ class sdNet
 		if ( sdNet.peer_counter <= 1 )
 		throw new Error('Why there is only '+sdNet.peer_counter+' peers?');
 	}
-	static StartMatch( params )
+	static StartMatch( params, then=null )
 	{
 		/*
 		
@@ -667,37 +677,48 @@ class sdNet
 		
 	   
 		main.DestroyLevel();
-	   
-		main.BuildLevel( Number( params.world_seed ) );
 		
-		sdChain.enable_reuse = false;
+		document.getElementById('loading_screen').style.display = 'inherit';
 		
-		var max_players = ~~params.max_players;
-		var max_teams = ~~params.max_teams;
-		
-		main.team_scores = [];
-		for ( var i = 0; i < max_teams; i++ )
-		main.team_scores[ i ] = 0;
-		main.ScoreForTeam( 0, 0 ); // just update
-		
-		main.max_players = max_players;
-		main.max_teams = max_teams;
-		
-		for ( var i = 0; i < max_players; i++ )
+		setTimeout( function()
 		{
-			var c = sdCharacter.CreateCharacter({ x:5, y:main.level_chunks_y*main.chunk_size + 20, z:5, bmp:sdAtom.character_bitmap, team:i%max_teams });
-			c.Respawn();
-		}
+			main.BuildLevel( Number( params.world_seed ) );
+			
+			document.getElementById('loading_screen').style.display = 'none';
+
+			sdChain.enable_reuse = false;
+
+			var max_players = ~~params.max_players;
+			var max_teams = ~~params.max_teams;
+
+			main.team_scores = [];
+			for ( var i = 0; i < max_teams; i++ )
+			main.team_scores[ i ] = 0;
+			main.ScoreForTeam( 0, 0 ); // just update
+
+			main.max_players = max_players;
+			main.max_teams = max_teams;
+
+			for ( var i = 0; i < max_players; i++ )
+			{
+				var c = sdCharacter.CreateCharacter({ x:5, y:main.level_chunks_y*main.chunk_size + 20, z:5, bmp:sdAtom.character_bitmap, team:i%max_teams });
+				c.Respawn();
+			}
+
+			sdChain.enable_reuse = true;
+			sdChain.initial_length = sdChain.chains.length;
+
+			main.SetActiveCharacter( sdCharacter.characters[ sdNet.match_my_uid ] );
+			main.mp_character = sdCharacter.characters[ sdNet.match_my_uid ];
+
+			for ( var i = 0; i < sdNet.match_queued_dataConnections.length; i++ )
+			sdNet.GotNewDataConnectionAfterStart( sdNet.match_queued_dataConnections[ i ] );
+			sdNet.match_queued_dataConnections = null;
+			
+			if ( then !== null )
+			then();
 		
-		sdChain.enable_reuse = true;
-		sdChain.initial_length = sdChain.chains.length;
-		
-		main.SetActiveCharacter( sdCharacter.characters[ sdNet.match_my_uid ] );
-		main.mp_character = sdCharacter.characters[ sdNet.match_my_uid ];
-		
-		for ( var i = 0; i < sdNet.match_queued_dataConnections.length; i++ )
-		sdNet.GotNewDataConnectionAfterStart( sdNet.match_queued_dataConnections[ i ] );
-		sdNet.match_queued_dataConnections = null;
+		}, 50 );
 	    
 	}
 	static StartOnceGotAllConnections()

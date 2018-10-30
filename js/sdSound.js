@@ -141,7 +141,10 @@ class sdSound
 		static PlaySound( params )
 		{
 			if ( params.sound === undefined )
-			throw new Error( params.sound );
+			{
+				console.warn( 'Sound is not loaded yet: '+ params.sound );
+				return;
+			}
 			
 			if ( params.volume === undefined )
 			params.volume = 1;

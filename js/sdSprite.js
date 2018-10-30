@@ -68,7 +68,7 @@ class sdSprite
 		
 		var geom = sdSprite.GEOM_PLANE;
 		
-		var is_glowing = false;
+		this.is_glowing = false;
 		
 		this.gore_painter = false;
 			
@@ -86,7 +86,7 @@ class sdSprite
 			effect_id = 1;
 			this.frame_time = 4;
 			
-			is_glowing = true;
+			this.is_glowing = true;
 		}
 		else
 		if ( params.type === sdSprite.TYPE_SMOKE )
@@ -133,7 +133,7 @@ class sdSprite
 			m = sdShaderMaterial.CreateMaterial( sdSprite.texture_blood, 'sprite' );
 			
 			m.uniforms.fog.value = new THREE.Color( main.fog_color );
-			m.uniforms.fog_intensity.value = is_glowing ? 0 : 1;
+			m.uniforms.fog_intensity.value = this.is_glowing ? 0 : 1;
 		}
 		else
 		{
@@ -236,6 +236,9 @@ class sdSprite
 		this.mesh.scale.y += this.scale_speed * GSPEED;
 		this.mesh.scale.z += this.scale_speed * GSPEED;
 		
+		if ( this.is_glowing )
+		this.mesh.material.uniforms.brightness.value = 1;
+		else
 		this.mesh.material.uniforms.brightness.value = main.GetEntityBrightness( this.mesh.position.x, this.mesh.position.y, this.mesh.position.z );
 		
 		this.toy -= this.gravity * GSPEED;
