@@ -139,7 +139,7 @@ class sdBullet
 		var ty = this.y + this.toy * GSPEED;
 		var tz = this.z + this.toz * GSPEED;
 		
-		var morph = main.TraceLine( this.x, this.y, this.z, tx, ty, tz, null, 1, 0 );
+		var morph = main.TraceLine( this.x, this.y, this.z, tx, ty, tz, null, 0.5, 0 );
 		
 		if ( morph === 1 )
 		{
@@ -305,18 +305,21 @@ class sdBullet
 		
 		if ( best_hit !== null )
 		{
+			// Send this before damage applied, so sdCharacter.hea > 0 and thus damage sent and not ignored
+			if ( main.MP_mode )
+			if ( best_hit.parent.hea > 0 ) // Almost Copy [ 1 / 2 ] Do not hit dead players or else damage may happen after respawn
+			{
+				sdSync.MP_SendEvent( 
+					sdSync.COMMAND_I_DIRECT_HIT_ATOM, 
+					best_hit_i, 
+					this.tox * this.knock_power, 
+					this.toy * this.knock_power, 
+					this.toz * this.knock_power,
+					this.local_peer_uid
+				);
+			}
 			
 			sdBullet.DrawPlayerDamageAround( best_hit, this.tox * this.knock_power, this.toy * this.knock_power, this.toz * this.knock_power, this );
-			
-			if ( main.MP_mode )
-			sdSync.MP_SendEvent( 
-				sdSync.COMMAND_I_DIRECT_HIT_ATOM, 
-				best_hit_i, 
-				this.tox * this.knock_power, 
-				this.toy * this.knock_power, 
-				this.toz * this.knock_power,
-				this.local_peer_uid
-			);
 			
 			return true; // detonation
 		}
@@ -373,10 +376,6 @@ class sdBullet
 			
 			if ( di_pow2 < hit_radius_pow2 )
 			{
-				var di = Math.sqrt( di_pow2 );
-				
-				var morph = Math.pow( 1 - di / hit_radius, 2 );
-				
 				a.WakeUp();
 				a.tox += tox * sdBullet.ragdoll_knock_scale;
 				a.toy += toy * sdBullet.ragdoll_knock_scale;
@@ -384,13 +383,17 @@ class sdBullet
 		
 				if ( a.material !== sdAtom.MATERIAL_GIB_GUN )
 				{
+					var di = Math.sqrt( di_pow2 );
+
+					var morph = Math.pow( 1 - di / hit_radius, 1 ); // 2
+
 					a.r = Math.max( 0, a.r * ( 1 - morph * 0.75 ) );
 					a.g = Math.max( 0, a.g * ( 1 - morph * 2 ) );
 					a.b = Math.max( 0, a.b * ( 1 - morph * 2 ) );
 
-					if ( a.r <= 0.02 )
-					if ( a.g <= 0.02 )
-					if ( a.b <= 0.02 )
+					if ( a.r <= 0.25 ) // 0.02
+					if ( a.g <= 0.25 )
+					if ( a.b <= 0.25 )
 					{
 						a.remove( i );
 						i--;
@@ -420,9 +423,9 @@ class sdBullet
 			a.g = Math.max( 0, a.g * ( 1 - morph * 2 ) );
 			a.b = Math.max( 0, a.b * ( 1 - morph * 2 ) );
 			
-			if ( a.r <= 0.02 )
-			if ( a.g <= 0.02 )
-			if ( a.b <= 0.02 )
+			if ( a.r <= 0.25 ) // 0.02
+			if ( a.g <= 0.25 )
+			if ( a.b <= 0.25 )
 			{
 				a.remove();
 			}
@@ -521,9 +524,9 @@ class sdBullet
 					a.g = Math.max( 0, a.g * ( 1 - morph * 2 ) );
 					a.b = Math.max( 0, a.b * ( 1 - morph * 2 ) );
 
-					if ( a.r <= 0.02 )
-					if ( a.g <= 0.02 )
-					if ( a.b <= 0.02 )
+					if ( a.r <= 0.25 )
+					if ( a.g <= 0.25 )
+					if ( a.b <= 0.25 )
 					{
 						a.remove( i );
 						i--;
@@ -538,15 +541,17 @@ class sdBullet
 		{
 			owner_cloud_damage[ i ] = sdByteShifter.approx( owner_cloud_damage[ i ] );
 
-			owner_cloud[ i ].DealDamage( owner_cloud_damage[ i ], b.owner );
-
+			// Send earlier as well
 			if ( main.MP_mode )
+			if ( owner_cloud[ i ].hea > 0 ) // Almost Copy [ 2 / 2 ] Do not hit dead players or else damage may happen after respawn
 			sdSync.MP_SendEvent( sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER, 
 				owner_cloud[ i ], 
 				owner_cloud_damage[ i ],
 				owner_cloud_tox[ i ],
 				owner_cloud_toy[ i ],
 				owner_cloud_toz[ i ] );
+				
+			owner_cloud[ i ].DealDamage( owner_cloud_damage[ i ], b.owner );
 		}
 
 	}

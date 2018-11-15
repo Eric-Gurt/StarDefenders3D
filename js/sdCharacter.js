@@ -136,6 +136,8 @@ class sdCharacter
 
 		if ( was_me )
 		main.SetActiveCharacter( old_char );
+	
+		old_char.UpdateCharacter( 0, true ); // So atoms are moved to their new positions and ragdoll attacker can't damage player at the moment of respawn
 	}
 	Respawn( pos=true ) // pos also means it is "me"
 	{
@@ -166,6 +168,8 @@ class sdCharacter
 		this.tox = 0;
 		this.toy = 0;
 		this.toz = 0;
+		
+		this.hurt_timeout = 0;
 	}
 	
 	DealDamage( d, from=null )
@@ -218,7 +222,11 @@ class sdCharacter
 			}
 			else
 			{
-				sdSound.PlaySound({ sound: lib.player_hit, parent_mesh: this.mesh, volume: 1 });
+				if ( this.hurt_timeout <= 0 )
+				{
+					sdSound.PlaySound({ sound: lib.player_hit, parent_mesh: this.mesh, volume: 1 });
+					this.hurt_timeout = 5;
+				}
 			}
 			
 			this._UpdateHealthBarIfNeeded();
@@ -271,64 +279,63 @@ class sdCharacter
 			
 			main.RemoveElement( sdCharacter.characters, i );
 			
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_BODY   ], sdAtom.MATERIAL_GIB );
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_HEAD   ], sdAtom.MATERIAL_GIB );
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_ARM1   ], sdAtom.MATERIAL_GIB );
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_ARM2   ], sdAtom.MATERIAL_GIB );
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_LEG1A  ], sdAtom.MATERIAL_GIB );
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_LEG2A  ], sdAtom.MATERIAL_GIB );
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_LEG1B  ], sdAtom.MATERIAL_GIB );
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_LEG2B  ], sdAtom.MATERIAL_GIB );
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_RIFLE  ], sdAtom.MATERIAL_GIB_GUN );
-			this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_ROCKET ], sdAtom.MATERIAL_GIB_GUN );
-			
-			function ConnectAToBAtBOriginAt( all, all2, x, y, z )
+			if ( respawn )
 			{
-				for ( var i = 0; i < all.length; i++ )
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_BODY   ], sdAtom.MATERIAL_GIB );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_HEAD   ], sdAtom.MATERIAL_GIB );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_ARM1   ], sdAtom.MATERIAL_GIB );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_ARM2   ], sdAtom.MATERIAL_GIB );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_LEG1A  ], sdAtom.MATERIAL_GIB );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_LEG2A  ], sdAtom.MATERIAL_GIB );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_LEG1B  ], sdAtom.MATERIAL_GIB );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_LEG2B  ], sdAtom.MATERIAL_GIB );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_RIFLE  ], sdAtom.MATERIAL_GIB_GUN );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_ROCKET ], sdAtom.MATERIAL_GIB_GUN );
+
+				function ConnectAToBAtBOriginAt( all, all2, x, y, z )
 				{
-					var a = all[ i ];
-
-					if ( a.removed )
-					continue;
-
-					for ( var i2 = 0; i2 < all2.length; i2++ )
+					for ( var i = 0; i < all.length; i++ )
 					{
-						var b = all2[ i2 ];
+						var a = all[ i ];
 
-						if ( b.removed )
+						if ( a.removed )
 						continue;
 
-						var di = main.Dist3D( a.x, a.y, a.z, b.x, b.y, b.z );
-						
-						if ( di <= 1 )
+						for ( var i2 = 0; i2 < all2.length; i2++ )
 						{
-							var ch = sdChain.CreateChain( a, b, di, false );
-							ragdoll_chains.push( ch );
+							var b = all2[ i2 ];
+
+							if ( b.removed )
+							continue;
+
+							var di = main.Dist3D( a.x, a.y, a.z, b.x, b.y, b.z );
+
+							if ( di <= 1 )
+							{
+								var ch = sdChain.CreateChain( a, b, di, false );
+								ragdoll_chains.push( ch );
+							}
 						}
 					}
 				}
-			}
+				var body = this.atoms[ sdCharacter.ATOMS_BODY ];
+				var head = this.atoms[ sdCharacter.ATOMS_HEAD ];
+				var arm1 = this.atoms[ sdCharacter.ATOMS_ARM1 ];
+				var arm2 = this.atoms[ sdCharacter.ATOMS_ARM2 ];
+				var leg1a = this.atoms[ sdCharacter.ATOMS_LEG1A ];
+				var leg2a = this.atoms[ sdCharacter.ATOMS_LEG2A ];
+				var leg1b = this.atoms[ sdCharacter.ATOMS_LEG1B ];
+				var leg2b = this.atoms[ sdCharacter.ATOMS_LEG2B ];
 
-			var body = this.atoms[ sdCharacter.ATOMS_BODY ];
-			var head = this.atoms[ sdCharacter.ATOMS_HEAD ];
-			var arm1 = this.atoms[ sdCharacter.ATOMS_ARM1 ];
-			var arm2 = this.atoms[ sdCharacter.ATOMS_ARM2 ];
-			var leg1a = this.atoms[ sdCharacter.ATOMS_LEG1A ];
-			var leg2a = this.atoms[ sdCharacter.ATOMS_LEG2A ];
-			var leg1b = this.atoms[ sdCharacter.ATOMS_LEG1B ];
-			var leg2b = this.atoms[ sdCharacter.ATOMS_LEG2B ];
+				ConnectAToBAtBOriginAt( body, head, this.head.position.x, this.head.position.y-2, 0 );
+				ConnectAToBAtBOriginAt( body, arm1, this.arm1.position.x, this.arm1.position.y, this.arm1.position.z );
+				ConnectAToBAtBOriginAt( body, arm2, this.arm2.position.x, this.arm2.position.y, this.arm2.position.z );
+				ConnectAToBAtBOriginAt( body, leg1a, this.leg1a.position.x, this.leg1a.position.y, this.leg1a.position.z );
+				ConnectAToBAtBOriginAt( body, leg2a, this.leg2a.position.x, this.leg2a.position.y, this.leg2a.position.z );
 
-			ConnectAToBAtBOriginAt( body, head, this.head.position.x, this.head.position.y-2, 0 );
-			ConnectAToBAtBOriginAt( body, arm1, this.arm1.position.x, this.arm1.position.y, this.arm1.position.z );
-			ConnectAToBAtBOriginAt( body, arm2, this.arm2.position.x, this.arm2.position.y, this.arm2.position.z );
-			ConnectAToBAtBOriginAt( body, leg1a, this.leg1a.position.x, this.leg1a.position.y, this.leg1a.position.z );
-			ConnectAToBAtBOriginAt( body, leg2a, this.leg2a.position.x, this.leg2a.position.y, this.leg2a.position.z );
-			
-			ConnectAToBAtBOriginAt( leg1a, leg1b, this.leg1b.position.x, this.leg1b.position.y, this.leg1b.position.z );
-			ConnectAToBAtBOriginAt( leg2a, leg2b, this.leg2b.position.x, this.leg2b.position.y, this.leg2b.position.z );
+				ConnectAToBAtBOriginAt( leg1a, leg1b, this.leg1b.position.x, this.leg1b.position.y, this.leg1b.position.z );
+				ConnectAToBAtBOriginAt( leg2a, leg2b, this.leg2b.position.x, this.leg2b.position.y, this.leg2b.position.z );
 
-			if ( respawn )
-			{
 				var old_char = this;
 				
 				setTimeout( function()
@@ -1019,8 +1026,8 @@ class sdCharacter
 			sdSound.PlaySound({ sound: lib.rocket_fire, parent_mesh:c.body, volume: 0.25 });
 		}
 	}
-
-	static ThinkNow( GSPEED )
+	
+	UpdateCharacter( GSPEED, teleport_limb_mode )
 	{
 		function MoveLimbTo( atoms_group, mesh, c )
 		{
@@ -1037,6 +1044,13 @@ class sdCharacter
 				a.x = v.x;
 				a.y = v.y;
 				a.z = v.z;
+				
+				if ( teleport_limb_mode )
+				{
+					a.lx = a.x
+					a.ly = a.y;
+					a.lz = a.z;
+				}
 				
 				a.tox = main.MorphWithTimeScale( a.tox, c.tox, 0.9, GSPEED );
 				a.toy = main.MorphWithTimeScale( a.toy, c.toy, 0.9, GSPEED );
@@ -1327,429 +1341,435 @@ class sdCharacter
 					 main.TraceLine( c.x, c.y + sdCharacter.shoot_offset_y, c.z, c.x - c.look_direction.x * 8, c.y + sdCharacter.shoot_offset_y - 8 - c.look_direction.y * 8, c.z - c.look_direction.z * 8, null, 1, 0 ) < 1 );
 		}
 		
-		for ( var i = 0; i < sdCharacter.characters.length; i++ )
+		var c = this;
+		
+		if ( c.ai !== null )
+		if ( c !== main.my_character )
+		if ( !main.MP_mode )
 		{
-			var c = sdCharacter.characters[ i ];
-			
-			if ( c.ai !== null )
-			if ( c !== main.my_character )
-			if ( !main.MP_mode )
-			{
-				c.ai.ApplyLogic( GSPEED );
-				//if ( c.look_direction.length() > 1.1 )
-				//throw new Error('How?');
-			}
-			
-			if ( c.y < -200 )
-			if ( !main.MP_mode || c === main.my_character )
-			{
-				c.DealDamage( 1000 );
-				
-				sdSync.MP_SendEvent( sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER, c, 1000, 0, 0, 0 );
-			}
-			
-			correct_mesh_rotation_ang = 0;
-			
-			var correct_mesh_rotation = false;
-			
-			c.toy -= 0.1 * GSPEED;
-			
-			var tx = c.tox * GSPEED;
-			var ty = c.toy * GSPEED;
-			var tz = c.toz * GSPEED;
+			c.ai.ApplyLogic( GSPEED );
+			//if ( c.look_direction.length() > 1.1 )
+			//throw new Error('How?');
+		}
+		
+		if ( c.hurt_timeout > 0 )
+		c.hurt_timeout -= GSPEED;
 
-			var morph = TraceLineAllDirection( c.x, c.y, c.z, tx, ty, tz, 1, c.sit );
-			
-			var last_trace_line_percentage = trace_line_percentage;
-			
-			if ( c.act_jump )
-			if ( CanClimb( c ) )
-			{
-				c.toy = main.MorphWithTimeScale( c.toy, 1, 0.7, GSPEED );
-				c.tox = main.MorphWithTimeScale( c.tox, 0, 0.7, GSPEED );
-				c.toz = main.MorphWithTimeScale( c.toz, 0, 0.7, GSPEED );
-			}
+		if ( c.y < -200 )
+		if ( !main.MP_mode || c === main.my_character )
+		{
+			c.DealDamage( 1000 );
 
-			if ( morph === 1 )
+			sdSync.MP_SendEvent( sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER, c, 1000, 0, 0, 0 );
+		}
+
+		correct_mesh_rotation_ang = 0;
+
+		var correct_mesh_rotation = false;
+
+		c.toy -= 0.1 * GSPEED;
+
+		var tx = c.tox * GSPEED;
+		var ty = c.toy * GSPEED;
+		var tz = c.toz * GSPEED;
+
+		var morph = TraceLineAllDirection( c.x, c.y, c.z, tx, ty, tz, 1, c.sit );
+
+		var last_trace_line_percentage = trace_line_percentage;
+
+		if ( c.act_jump )
+		if ( CanClimb( c ) )
+		{
+			c.toy = main.MorphWithTimeScale( c.toy, 1, 0.7, GSPEED );
+			c.tox = main.MorphWithTimeScale( c.tox, 0, 0.7, GSPEED );
+			c.toz = main.MorphWithTimeScale( c.toz, 0, 0.7, GSPEED );
+		}
+
+		if ( morph === 1 )
+		{
+			c.x += tx;
+			c.y += ty;
+			c.z += tz;
+
+			Movement( c, false, GSPEED );
+		}
+		else
+		{
+			trace_line_direction_normal.normalize();
+
+			var last_direction = new THREE.Vector3( trace_line_direction_normal.x, trace_line_direction_normal.y, trace_line_direction_normal.z );
+
+
+			if ( last_direction.y === 1 )
+			if ( c.toy < -1.1 )
+			sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 2 + Math.min( 8, Math.abs( c.toy * 0.5 ) ) });
+
+			var dot_product = last_direction.x * c.tox + last_direction.y * c.toy + last_direction.z * c.toz;
+			if ( dot_product < 0 )
 			{
-				c.x += tx;
-				c.y += ty;
-				c.z += tz;
-				
-				Movement( c, false, GSPEED );
-			}
-			else
-			{
-				trace_line_direction_normal.normalize();
-				
-				var last_direction = new THREE.Vector3( trace_line_direction_normal.x, trace_line_direction_normal.y, trace_line_direction_normal.z );
-				
-				
-				if ( last_direction.y === 1 )
-				if ( c.toy < -1.1 )
-				sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 2 + Math.min( 8, Math.abs( c.toy * 0.5 ) ) });
-				
-				var dot_product = last_direction.x * c.tox + last_direction.y * c.toy + last_direction.z * c.toz;
-				if ( dot_product < 0 )
+				if ( c.act_jump )
 				{
-					if ( c.act_jump )
+					if ( CanClimb( c ) )
 					{
-						if ( CanClimb( c ) )
-						{
-						}
-						else
-						{
-							// walljump
-							dot_product -= 0.7;
-							c.toy += 0.7;
-							
-							sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 0.5 });
-						}
 					}
-					c.tox = c.tox - dot_product * last_direction.x;
-					c.toy = c.toy - dot_product * last_direction.y;
-					c.toz = c.toz - dot_product * last_direction.z;
-				}
-				
-				var GSPEED2 = ( 1 - morph ) * GSPEED;
-				
-				c.x += c.tox * GSPEED2;
-				c.y += c.toy * GSPEED2;
-				c.z += c.toz * GSPEED2;
-			   
-			    var step_up_size = 4;
-				while ( step_up_size > 0 )
-				{
-					var morph2 = TraceLineAllDirection( 
-							c.x + last_direction.x * step_up_size, 
-							c.y + last_direction.y * step_up_size, 
-							c.z + last_direction.z * step_up_size, 
-						-last_direction.x * step_up_size, 
-						-last_direction.y * step_up_size, 
-						-last_direction.z * step_up_size, 0.1, c.sit );
-					if ( morph2 < 1 )
-					if ( morph2 > 0 )
+					else
 					{
-						c.x += last_direction.x * ( 1 - morph2 ) * step_up_size * 1;
-						c.y += last_direction.y * ( 1 - morph2 ) * step_up_size * 1;
-						c.z += last_direction.z * ( 1 - morph2 ) * step_up_size * 1;
-						break;
+						// walljump
+						dot_product -= 0.7;
+						c.toy += 0.7;
+
+						sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 0.5 });
 					}
-					step_up_size--;
 				}
-
-				if ( Movement( c, last_direction.y > 0.5, GSPEED ) )
-				correct_mesh_rotation = true;
-				
-				var friction = 0.85;
-				
-				c.tox = main.MorphWithTimeScale( c.tox, 0, friction, GSPEED );
-				c.toy = main.MorphWithTimeScale( c.toy, 0, friction, GSPEED );
-				c.toz = main.MorphWithTimeScale( c.toz, 0, friction, GSPEED );
+				c.tox = c.tox - dot_product * last_direction.x;
+				c.toy = c.toy - dot_product * last_direction.y;
+				c.toz = c.toz - dot_product * last_direction.z;
 			}
-			
-			var c_high = c.y + sdCharacter.player_half_height;
-			var c_low = c.y + ( -sdCharacter.player_half_height * ( 1 - c.sit * 0.333 ) + sdCharacter.player_half_height * ( c.sit * 0.333 ) );
-			for ( var i2 = 0; i2 < sdCharacter.characters.length; i2++ )
+
+			var GSPEED2 = ( 1 - morph ) * GSPEED;
+
+			c.x += c.tox * GSPEED2;
+			c.y += c.toy * GSPEED2;
+			c.z += c.toz * GSPEED2;
+
+			var step_up_size = 4;
+			while ( step_up_size > 0 )
 			{
-				var c2 = sdCharacter.characters[ i2 ];
-				var c2_high = c2.y + sdCharacter.player_half_height;
-				var c2_low = c2.y + ( -sdCharacter.player_half_height * ( 1 - c2.sit * 0.333 ) + sdCharacter.player_half_height * ( c2.sit * 0.333 ) );
-				
-				if ( c.x + sdCharacter.player_half_width > c2.x - sdCharacter.player_half_width )
-				if ( c.x - sdCharacter.player_half_width < c2.x + sdCharacter.player_half_width )
-				if ( c.z + sdCharacter.player_half_width > c2.z - sdCharacter.player_half_width )
-				if ( c.z - sdCharacter.player_half_width < c2.z + sdCharacter.player_half_width )
-				if ( c_high > c2_low )
-				if ( c_low < c2_high )
+				var morph2 = TraceLineAllDirection( 
+						c.x + last_direction.x * step_up_size, 
+						c.y + last_direction.y * step_up_size, 
+						c.z + last_direction.z * step_up_size, 
+					-last_direction.x * step_up_size, 
+					-last_direction.y * step_up_size, 
+					-last_direction.z * step_up_size, 0.1, c.sit );
+				if ( morph2 < 1 )
+				if ( morph2 > 0 )
 				{
-					var di = Math.sqrt( Math.pow( c.x - c2.x, 2 ) + Math.pow( c.z - c2.z, 2 ) );
-					
-					if ( di < sdCharacter.player_half_width * 2 )
+					c.x += last_direction.x * ( 1 - morph2 ) * step_up_size * 1;
+					c.y += last_direction.y * ( 1 - morph2 ) * step_up_size * 1;
+					c.z += last_direction.z * ( 1 - morph2 ) * step_up_size * 1;
+					break;
+				}
+				step_up_size--;
+			}
+
+			if ( Movement( c, last_direction.y > 0.5, GSPEED ) )
+			correct_mesh_rotation = true;
+
+			var friction = 0.85;
+
+			c.tox = main.MorphWithTimeScale( c.tox, 0, friction, GSPEED );
+			c.toy = main.MorphWithTimeScale( c.toy, 0, friction, GSPEED );
+			c.toz = main.MorphWithTimeScale( c.toz, 0, friction, GSPEED );
+		}
+
+		var c_high = c.y + sdCharacter.player_half_height;
+		var c_low = c.y + ( -sdCharacter.player_half_height * ( 1 - c.sit * 0.333 ) + sdCharacter.player_half_height * ( c.sit * 0.333 ) );
+		for ( var i2 = 0; i2 < sdCharacter.characters.length; i2++ )
+		{
+			var c2 = sdCharacter.characters[ i2 ];
+			var c2_high = c2.y + sdCharacter.player_half_height;
+			var c2_low = c2.y + ( -sdCharacter.player_half_height * ( 1 - c2.sit * 0.333 ) + sdCharacter.player_half_height * ( c2.sit * 0.333 ) );
+
+			if ( c.x + sdCharacter.player_half_width > c2.x - sdCharacter.player_half_width )
+			if ( c.x - sdCharacter.player_half_width < c2.x + sdCharacter.player_half_width )
+			if ( c.z + sdCharacter.player_half_width > c2.z - sdCharacter.player_half_width )
+			if ( c.z - sdCharacter.player_half_width < c2.z + sdCharacter.player_half_width )
+			if ( c_high > c2_low )
+			if ( c_low < c2_high )
+			{
+				var di = Math.sqrt( Math.pow( c.x - c2.x, 2 ) + Math.pow( c.z - c2.z, 2 ) );
+
+				if ( di < sdCharacter.player_half_width * 2 )
+				{
+					var y_di = Math.abs( c.y - c2.y );
+
+					if ( y_di * sdCharacter.player_half_width / sdCharacter.player_half_height * 2 > di )
 					{
-						var y_di = Math.abs( c.y - c2.y );
-						
-						if ( y_di * sdCharacter.player_half_width / sdCharacter.player_half_height * 2 > di )
+						var av_toy = ( c.toy + c2.toy ) / 2;
+
+						if ( c.y > c2.y )
 						{
-							var av_toy = ( c.toy + c2.toy ) / 2;
-							
-							if ( c.y > c2.y )
-							{
-								var yy = ( c_low + c2_high ) / 2;
-								
-								if ( c2.stand )
-								yy = c2_high;
-								
-								c.y += yy - c_low;
-								c2.y += yy - c2_high;
-								
-								c.toy = av_toy;
-								c2.toy = av_toy;
-								
-								if ( !c.stand )
-								{
-									if ( Movement( c, true, GSPEED ) )
-									correct_mesh_rotation = true;
+							var yy = ( c_low + c2_high ) / 2;
 
-									var friction = 0.85;
+							if ( c2.stand )
+							yy = c2_high;
 
-									c.tox = main.MorphWithTimeScale( c.tox, 0, friction, GSPEED );
-									c.toy = main.MorphWithTimeScale( c.toy, 0, friction, GSPEED );
-									c.toz = main.MorphWithTimeScale( c.toz, 0, friction, GSPEED );
-								}
-							}
-							else
+							c.y += yy - c_low;
+							c2.y += yy - c2_high;
+
+							c.toy = av_toy;
+							c2.toy = av_toy;
+
+							if ( !c.stand )
 							{
-								var yy = ( c2_low + c_high ) / 2;
-								
-								if ( c.stand )
-								yy = c_high;
-								
-								c.y += yy - c_high;
-								c2.y += yy - c2_low;
-								
-								c.toy = av_toy;
-								c2.toy = av_toy;
+								if ( Movement( c, true, GSPEED ) )
+								correct_mesh_rotation = true;
+
+								var friction = 0.85;
+
+								c.tox = main.MorphWithTimeScale( c.tox, 0, friction, GSPEED );
+								c.toy = main.MorphWithTimeScale( c.toy, 0, friction, GSPEED );
+								c.toz = main.MorphWithTimeScale( c.toz, 0, friction, GSPEED );
 							}
 						}
 						else
-						if ( di > 1 )
 						{
-							var av_x = ( c.x + c2.x ) / 2;
-							var av_z = ( c.z + c2.z ) / 2;
-							
-							//var av_tox = ( c.tox + c2.tox ) / 2;
-							//var av_toz = ( c.toz + c2.toz ) / 2;
-							
-							var xx = ( c2.x - c.x ) / di;
-							var zz = ( c2.z - c.z ) / di;
-							
-							c.x = av_x - xx * sdCharacter.player_half_width;
-							c.z = av_z - zz * sdCharacter.player_half_width;
-							
-							c2.x = av_x + xx * sdCharacter.player_half_width;
-							c2.z = av_z + zz * sdCharacter.player_half_width;
+							var yy = ( c2_low + c_high ) / 2;
+
+							if ( c.stand )
+							yy = c_high;
+
+							c.y += yy - c_high;
+							c2.y += yy - c2_low;
+
+							c.toy = av_toy;
+							c2.toy = av_toy;
 						}
 					}
+					else
+					if ( di > 1 )
+					{
+						var av_x = ( c.x + c2.x ) / 2;
+						var av_z = ( c.z + c2.z ) / 2;
+
+						//var av_tox = ( c.tox + c2.tox ) / 2;
+						//var av_toz = ( c.toz + c2.toz ) / 2;
+
+						var xx = ( c2.x - c.x ) / di;
+						var zz = ( c2.z - c.z ) / di;
+
+						c.x = av_x - xx * sdCharacter.player_half_width;
+						c.z = av_z - zz * sdCharacter.player_half_width;
+
+						c2.x = av_x + xx * sdCharacter.player_half_width;
+						c2.z = av_z + zz * sdCharacter.player_half_width;
+					}
 				}
-				
-				//sdCharacter.player_half_height
 			}
-				
-			if ( last_trace_line_percentage > 0.35 )
-			{
-				c.x = c.last_valid_x;
-				c.y = c.last_valid_y;
-				c.z = c.last_valid_z;
 
-				c.sit = c.last_valid_sit;
-				
-				c.tox = 0;
-				c.toy = 0;
-				c.toz = 0;
-			}
-			
-			if ( last_trace_line_percentage < 0.15 )
-			{
-				c.last_valid_x = c.x;
-				c.last_valid_y = c.y;
-				c.last_valid_z = c.z;
-				
-				c.last_valid_sit = c.sit;
-			}
-			
-			var active_weapon = ( c.curwea === 0 ) ? c.rifle : c.rocket;
-			var passive_weapon = ( c.curwea !== 0 ) ? c.rifle : c.rocket;
-			
-			WeaponLogic( c, GSPEED, active_weapon );
-			
+			//sdCharacter.player_half_height
+		}
 
-			if ( active_weapon.parent !== c.arm2 )
+		if ( last_trace_line_percentage > 0.35 )
+		{
+			c.x = c.last_valid_x;
+			c.y = c.last_valid_y;
+			c.z = c.last_valid_z;
+
+			c.sit = c.last_valid_sit;
+
+			c.tox = 0;
+			c.toy = 0;
+			c.toz = 0;
+		}
+
+		if ( last_trace_line_percentage < 0.15 )
+		{
+			c.last_valid_x = c.x;
+			c.last_valid_y = c.y;
+			c.last_valid_z = c.z;
+
+			c.last_valid_sit = c.sit;
+		}
+
+		var active_weapon = ( c.curwea === 0 ) ? c.rifle : c.rocket;
+		var passive_weapon = ( c.curwea !== 0 ) ? c.rifle : c.rocket;
+
+		WeaponLogic( c, GSPEED, active_weapon );
+
+
+		if ( active_weapon.parent !== c.arm2 )
+		{
+			active_weapon.parent.remove( active_weapon );
+			c.arm2.add( active_weapon );
+		}
+		if ( passive_weapon.parent !== c.body )
+		{
+			passive_weapon.parent.remove( passive_weapon );
+			c.body.add( passive_weapon );
+		}
+
+
+
+		active_weapon.position.x = -10;
+		active_weapon.position.y = 0;
+		active_weapon.position.z = 0 - c.recoil;
+
+		active_weapon.rotation.x = 0;
+		active_weapon.rotation.y = -sdCharacter.arm_cross_right;
+		active_weapon.rotation.z = 0;
+
+		passive_weapon.position.x = 5;
+		passive_weapon.position.y = 6;
+		passive_weapon.position.z = 0;
+
+		passive_weapon.rotation.y = Math.PI / 2;
+		passive_weapon.rotation.x = Math.PI / 2;
+		passive_weapon.rotation.z = 0;
+
+
+
+
+
+
+		var look_direction = c.look_direction;
+
+		if ( c === main.my_character )
+		{
+
+			var front_vector = new THREE.Vector3( 0, 0, 1 );
+			main.main_camera.updateMatrixWorld();
+			front_vector.transformDirection( main.main_camera.matrixWorld );
+
+
+			// fps
+			main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x, 0.7, GSPEED );
+			main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + sdCharacter.shoot_offset_y, 0.7, GSPEED );
+			main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z, 0.7, GSPEED );
+			// fps
+			/*main.main_camera.position.x = c.x;
+			main.main_camera.position.y = c.y + sdCharacter.shoot_offset_y;
+			main.main_camera.position.z = c.z;*/
+			/*
+			main.main_camera.position.x = c.x + front_vector.x * 25;
+			main.main_camera.position.y = c.y + front_vector.y * 25 + sdCharacter.shoot_offset_y;
+			main.main_camera.position.z = c.z + front_vector.z * 25;
+			*/
+			/*
+			main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x + front_vector.x * 25, 0.9, GSPEED );
+			main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + front_vector.y * 25 + sdCharacter.shoot_offset_y, 0.9, GSPEED );
+			main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z + front_vector.z * 25, 0.9, GSPEED );*/
+
+
+			main.speed.x = c.tox;
+			main.speed.y = c.toy;
+			main.speed.z = c.toz;
+
+			look_direction.set( front_vector.x, front_vector.y, front_vector.z );
+
+			if ( active_weapon.parent !== main.main_camera )
 			{
 				active_weapon.parent.remove( active_weapon );
-				c.arm2.add( active_weapon );
+				main.main_camera.add( active_weapon );
 			}
-			if ( passive_weapon.parent !== c.body )
-			{
-				passive_weapon.parent.remove( passive_weapon );
-				c.body.add( passive_weapon );
-			}
-			
-			
-			
-			active_weapon.position.x = -10;
-			active_weapon.position.y = 0;
-			active_weapon.position.z = 0 - c.recoil;
-			
-			active_weapon.rotation.x = 0;
-			active_weapon.rotation.y = -sdCharacter.arm_cross_right;
-			active_weapon.rotation.z = 0;
-			
-			passive_weapon.position.x = 5;
-			passive_weapon.position.y = 6;
-			passive_weapon.position.z = 0;
-			
-			passive_weapon.rotation.y = Math.PI / 2;
-			passive_weapon.rotation.x = Math.PI / 2;
-			passive_weapon.rotation.z = 0;
-			
-			
-			
-			
-			
-			
-			var look_direction = c.look_direction;
-			
-			if ( c === main.my_character )
-			{
 
-				var front_vector = new THREE.Vector3( 0, 0, 1 );
-				main.main_camera.updateMatrixWorld();
-				front_vector.transformDirection( main.main_camera.matrixWorld );
-				
-				
-				// fps
-				main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x, 0.7, GSPEED );
-				main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + sdCharacter.shoot_offset_y, 0.7, GSPEED );
-				main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z, 0.7, GSPEED );
-				// fps
-				/*main.main_camera.position.x = c.x;
-				main.main_camera.position.y = c.y + sdCharacter.shoot_offset_y;
-				main.main_camera.position.z = c.z;*/
-				/*
-				main.main_camera.position.x = c.x + front_vector.x * 25;
-				main.main_camera.position.y = c.y + front_vector.y * 25 + sdCharacter.shoot_offset_y;
-				main.main_camera.position.z = c.z + front_vector.z * 25;
-				*/
-				/*
-				main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x + front_vector.x * 25, 0.9, GSPEED );
-				main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + front_vector.y * 25 + sdCharacter.shoot_offset_y, 0.9, GSPEED );
-				main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z + front_vector.z * 25, 0.9, GSPEED );*/
-				
-				
-				main.speed.x = c.tox;
-				main.speed.y = c.toy;
-				main.speed.z = c.toz;
-				
-				look_direction.set( front_vector.x, front_vector.y, front_vector.z );
-				
-				if ( active_weapon.parent !== main.main_camera )
-				{
-					active_weapon.parent.remove( active_weapon );
-					main.main_camera.add( active_weapon );
-				}
-					
-				active_weapon.position.set( 2.5, -6.5, -5 + c.recoil * 5 );
-				active_weapon.rotation.set( 0, -Math.PI * 0.5, 0 - c.recoil * 0.1 );
-			}
-			
-			c.recoil = main.MorphWithTimeScale( c.recoil, 0, 0.9, GSPEED );
-			
-			c.mesh.position.set( c.x, c.y, c.z );
-			
-			
-			var look_at_m = new THREE.Matrix4();
-			var front_vector_local = new THREE.Vector3();
+			active_weapon.position.set( 2.5, -6.5, -5 + c.recoil * 5 );
+			active_weapon.rotation.set( 0, -Math.PI * 0.5, 0 - c.recoil * 0.1 );
+		}
+
+		c.recoil = main.MorphWithTimeScale( c.recoil, 0, 0.9, GSPEED );
+
+		c.mesh.position.set( c.x, c.y, c.z );
+
+
+		var look_at_m = new THREE.Matrix4();
+		var front_vector_local = new THREE.Vector3();
+		front_vector_local.copy( look_direction );
+		front_vector_local.applyAxisAngle( new THREE.Vector3( 0, -1, 0 ), c.mesh.rotation.y );
+
+		var front_vector_projection_xz = new THREE.Vector2( look_direction.x, look_direction.z );
+		front_vector_projection_xz.normalize();
+		if ( correct_mesh_rotation_ang !== 0 )
+		front_vector_projection_xz.rotateAround( new THREE.Vector2(), correct_mesh_rotation_ang );
+
+		var current_vector_projection_xz = new THREE.Vector2( Math.cos( -c.mesh.rotation.y ), Math.sin( -c.mesh.rotation.y ) );
+
+		var di = Math.pow( front_vector_projection_xz.x - current_vector_projection_xz.x, 2 ) + Math.pow( front_vector_projection_xz.y - current_vector_projection_xz.y, 2 );
+		if ( di > Math.pow( 1, 2 ) )
+		{
+			c.mesh.rotation.y = Math.atan2( front_vector_projection_xz.x, front_vector_projection_xz.y ) - Math.PI * 0.5;
+
 			front_vector_local.copy( look_direction );
 			front_vector_local.applyAxisAngle( new THREE.Vector3( 0, -1, 0 ), c.mesh.rotation.y );
-			
-			var front_vector_projection_xz = new THREE.Vector2( look_direction.x, look_direction.z );
-			front_vector_projection_xz.normalize();
-			if ( correct_mesh_rotation_ang !== 0 )
-			front_vector_projection_xz.rotateAround( new THREE.Vector2(), correct_mesh_rotation_ang );
-		
-			var current_vector_projection_xz = new THREE.Vector2( Math.cos( -c.mesh.rotation.y ), Math.sin( -c.mesh.rotation.y ) );
-			
-			var di = Math.pow( front_vector_projection_xz.x - current_vector_projection_xz.x, 2 ) + Math.pow( front_vector_projection_xz.y - current_vector_projection_xz.y, 2 );
-			if ( di > Math.pow( 1, 2 ) )
-			{
-				c.mesh.rotation.y = Math.atan2( front_vector_projection_xz.x, front_vector_projection_xz.y ) - Math.PI * 0.5;
-				
-				front_vector_local.copy( look_direction );
-				front_vector_local.applyAxisAngle( new THREE.Vector3( 0, -1, 0 ), c.mesh.rotation.y );
-			}
-			else
-			if ( di > Math.pow( 0.75, 2 ) )
-			correct_mesh_rotation = true;
-	
-			if ( correct_mesh_rotation )
-			{
-				var morph = Math.min( 1, 0.3 * GSPEED );
-				current_vector_projection_xz.x = front_vector_projection_xz.x * morph + current_vector_projection_xz.x * ( 1 - morph );
-				current_vector_projection_xz.y = front_vector_projection_xz.y * morph + current_vector_projection_xz.y * ( 1 - morph );
-				
-				c.mesh.rotation.y = Math.atan2( current_vector_projection_xz.x, current_vector_projection_xz.y ) - Math.PI * 0.5;
-				
-				front_vector_local.copy( look_direction );
-				front_vector_local.applyAxisAngle( new THREE.Vector3( 0, -1, 0 ), c.mesh.rotation.y );
-			}
-			
-			
-			look_at_m.lookAt( front_vector_local, new THREE.Vector3(), new THREE.Vector3( 0, 1, 0 ) );
-			
-			// Main rotation
-			c.head.quaternion.setFromRotationMatrix( look_at_m );
-			
-			
-			// Decrease head rotation by 2 (as it given to all parent objects of head)
-			var rot = new THREE.Quaternion();
-			rot.setFromEuler( new THREE.Euler( 0, Math.PI * 0.5, 0 ) );
-			c.head.quaternion.slerp( rot, 0.5 ); // decrease head transform by 2
-			
-			
-			// Body
-			c.body.quaternion.copy( c.head.quaternion );
-			var rot = new THREE.Quaternion();
-			rot.setFromEuler( new THREE.Euler( 0, -Math.PI * 0.5, 0 ) );
-			c.body.quaternion.multiply( rot );
-			
-			
-			
-			
-			
-			
-			var rot = new THREE.Quaternion();
-			rot.setFromEuler( new THREE.Euler( 0, -Math.PI * 0.5, 0 ) );
-			c.head.quaternion.multiply( rot );
-			
-			c.arm1.quaternion.copy( c.head.quaternion );
-			c.arm2.quaternion.copy( c.head.quaternion );
-			
-			var rot = new THREE.Quaternion();
-			rot.setFromEuler( new THREE.Euler( 0, -sdCharacter.arm_cross_left, 0 ) );
-			c.arm1.quaternion.premultiply( rot );
-			var rot = new THREE.Quaternion();
-			rot.setFromEuler( new THREE.Euler( 0, sdCharacter.arm_cross_right, 0 ) );
-			c.arm2.quaternion.premultiply( rot );
-			
-			c.leg1a.rotation.z = Math.PI * 0.5 + Math.sin( c.walk_phase ) * 0.5;
-			c.leg2a.rotation.z = Math.PI * 0.5 - Math.sin( c.walk_phase ) * 0.5;
-			c.leg1b.rotation.z = 0;
-			c.leg2b.rotation.z = 0;
-			
-			if ( c.sit > 0 )
-			{
-				var morph = c.sit;
-				
-				c.leg1a.rotation.z = ( Math.PI * 0.5 + Math.sin( c.walk_phase ) * 0.2 - 2 ) * morph + c.leg1a.rotation.z * ( 1 - morph );
-				c.leg2a.rotation.z = ( Math.PI * 0.5 - Math.sin( c.walk_phase ) * 0.2 - 2 ) * morph + c.leg2a.rotation.z * ( 1 - morph );
-				
-				c.leg1b.rotation.z = (   Math.sin( c.walk_phase ) * 0.2 + 3 ) * morph + c.leg1b.rotation.z * ( 1 - morph );
-				c.leg2b.rotation.z = ( - Math.sin( c.walk_phase ) * 0.2 + 3 ) * morph + c.leg2b.rotation.z * ( 1 - morph );
-			}
-			
-			c.mesh.updateMatrixWorld();
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_BODY ], c.body, c );
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_HEAD ], c.head, c );
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_ARM1 ], c.arm1, c );
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_ARM2 ], c.arm2, c );
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_LEG1A ], c.leg1a, c );
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_LEG2A ], c.leg2a, c );
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_LEG1B ], c.leg1b, c );
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_LEG2B ], c.leg2b, c );
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_ROCKET ], c.rocket, c );
-			MoveLimbTo( c.atoms[ sdCharacter.ATOMS_RIFLE ], c.rifle, c );
 		}
+		else
+		if ( di > Math.pow( 0.75, 2 ) )
+		correct_mesh_rotation = true;
+
+		if ( correct_mesh_rotation )
+		{
+			var morph = Math.min( 1, 0.3 * GSPEED );
+			current_vector_projection_xz.x = front_vector_projection_xz.x * morph + current_vector_projection_xz.x * ( 1 - morph );
+			current_vector_projection_xz.y = front_vector_projection_xz.y * morph + current_vector_projection_xz.y * ( 1 - morph );
+
+			c.mesh.rotation.y = Math.atan2( current_vector_projection_xz.x, current_vector_projection_xz.y ) - Math.PI * 0.5;
+
+			front_vector_local.copy( look_direction );
+			front_vector_local.applyAxisAngle( new THREE.Vector3( 0, -1, 0 ), c.mesh.rotation.y );
+		}
+
+
+		look_at_m.lookAt( front_vector_local, new THREE.Vector3(), new THREE.Vector3( 0, 1, 0 ) );
+
+		// Main rotation
+		c.head.quaternion.setFromRotationMatrix( look_at_m );
+
+
+		// Decrease head rotation by 2 (as it given to all parent objects of head)
+		var rot = new THREE.Quaternion();
+		rot.setFromEuler( new THREE.Euler( 0, Math.PI * 0.5, 0 ) );
+		c.head.quaternion.slerp( rot, 0.5 ); // decrease head transform by 2
+
+
+		// Body
+		c.body.quaternion.copy( c.head.quaternion );
+		var rot = new THREE.Quaternion();
+		rot.setFromEuler( new THREE.Euler( 0, -Math.PI * 0.5, 0 ) );
+		c.body.quaternion.multiply( rot );
+
+
+
+
+
+
+		var rot = new THREE.Quaternion();
+		rot.setFromEuler( new THREE.Euler( 0, -Math.PI * 0.5, 0 ) );
+		c.head.quaternion.multiply( rot );
+
+		c.arm1.quaternion.copy( c.head.quaternion );
+		c.arm2.quaternion.copy( c.head.quaternion );
+
+		var rot = new THREE.Quaternion();
+		rot.setFromEuler( new THREE.Euler( 0, -sdCharacter.arm_cross_left, 0 ) );
+		c.arm1.quaternion.premultiply( rot );
+		var rot = new THREE.Quaternion();
+		rot.setFromEuler( new THREE.Euler( 0, sdCharacter.arm_cross_right, 0 ) );
+		c.arm2.quaternion.premultiply( rot );
+
+		c.leg1a.rotation.z = Math.PI * 0.5 + Math.sin( c.walk_phase ) * 0.5;
+		c.leg2a.rotation.z = Math.PI * 0.5 - Math.sin( c.walk_phase ) * 0.5;
+		c.leg1b.rotation.z = 0;
+		c.leg2b.rotation.z = 0;
+
+		if ( c.sit > 0 )
+		{
+			var morph = c.sit;
+
+			c.leg1a.rotation.z = ( Math.PI * 0.5 + Math.sin( c.walk_phase ) * 0.2 - 2 ) * morph + c.leg1a.rotation.z * ( 1 - morph );
+			c.leg2a.rotation.z = ( Math.PI * 0.5 - Math.sin( c.walk_phase ) * 0.2 - 2 ) * morph + c.leg2a.rotation.z * ( 1 - morph );
+
+			c.leg1b.rotation.z = (   Math.sin( c.walk_phase ) * 0.2 + 3 ) * morph + c.leg1b.rotation.z * ( 1 - morph );
+			c.leg2b.rotation.z = ( - Math.sin( c.walk_phase ) * 0.2 + 3 ) * morph + c.leg2b.rotation.z * ( 1 - morph );
+		}
+
+		c.mesh.updateMatrixWorld();
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_BODY ], c.body, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_HEAD ], c.head, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_ARM1 ], c.arm1, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_ARM2 ], c.arm2, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_LEG1A ], c.leg1a, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_LEG2A ], c.leg2a, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_LEG1B ], c.leg1b, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_LEG2B ], c.leg2b, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_ROCKET ], c.rocket, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_RIFLE ], c.rifle, c );
+	}
+
+	static ThinkNow( GSPEED )
+	{
+		for ( var i = 0; i < sdCharacter.characters.length; i++ )
+		sdCharacter.characters[ i ].UpdateCharacter( GSPEED, false );
 	}
 }
 sdCharacter.init_class();

@@ -555,7 +555,7 @@ function Peer(id, options) {
     if (options.secure === undefined && options.host !== util.CLOUD_HOST) {
         options.secure = util.isSecure();
     }
-    else if (options.host == util.CLOUD_HOST) {
+	else if (options.host == util.CLOUD_HOST) {
         options.secure = true;
     }
     if (options.logFunction) {
@@ -670,6 +670,9 @@ Peer.prototype._handleMessage = function (message) {
             this._cleanupPeer(peer);
             break;
         case "EXPIRE":
+			
+			document.getElementById('status_field').innerHTML = 'Connection error happened (other player is still loading, or two players\' browsers do not match. Should work in Chrome). Will retry shortly...'; // Custom
+			
             this.emitError("peer-unavailable", "Could not connect to peer " + peer);
             break;
         case "OFFER":

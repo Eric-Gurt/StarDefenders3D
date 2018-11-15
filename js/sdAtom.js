@@ -505,7 +505,8 @@ class sdAtom
 				by = by * ( 1 - b.visual_intens ) + b.visual_y * ( b.visual_intens );
 				bz = bz * ( 1 - b.visual_intens ) + b.visual_z * ( b.visual_intens );
 				
-				b.visual_intens -= GSPEED * 0.5 * b.visual_intens;
+				//b.visual_intens -= GSPEED * 0.5 * b.visual_intens;
+				b.visual_intens -= GSPEED * b.visual_intens * Math.min( 1, main.Dist3D( b.x, b.y, b.z, b.owner.x, b.owner.y, b.owner.z ) / 10 );
 			}
 			
 			var dx = 0;

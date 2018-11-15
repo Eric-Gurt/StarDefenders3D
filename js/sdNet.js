@@ -33,8 +33,10 @@ class sdNet
 			sdNet.peer = new Peer( undefined, { debug:2, config:{ 'iceServers': [
 						//{ 'url': 'stun:stun.l.google.com:19302' },
 						{ url: 'stun:stun.l.google.com:19302?transport=udp' },
-						{ url: 'stun:stun.services.mozilla.com' },
-						{ url: 'turn:turn.bistri.com:80', username: 'homeo', credential: 'homeo' }
+						//{ url: 'stun:stun.services.mozilla.com' }, // Removed because Firefox says "Using five or more STUN/TURN servers causes problems"? Strange.
+						{ url: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }, // Apparently they state their service is free
+						{ url: 'turn:turn.bistri.com:80', username: 'homeo', credential: 'homeo' }, // Was enough to work during 1st test
+						{ url: "turn:13.250.13.83:3478?transport=udp", username: "YzYNCouZM1mhqhmseWk6", credential: "YzYNCouZM1mhqhmseWk6" } // Asia
 					] } });
 
 			sdNet.peer.on('connection', 
@@ -502,7 +504,7 @@ class sdNet
 	
 	static GotServerError( v )
 	{
-		if ( v === 'error|Bad login.' || v === 'error|Outdated hash' )
+		if ( v === 'error|Bad login.' || v === 'error|Outdated hash' || v === 'error|Outdated key.' )
 		{
 			sdNet.uid = null;
 			sdNet.InitiateLoginOrRegister();
@@ -541,6 +543,7 @@ class sdNet
 					document.getElementById('status_field').innerHTML = 'Server responds message: '+v;
 					
 					sdNet.GotServerError( v );
+					return;
 				}
 
 				if ( parts[ 0 ] === 'wait' )
@@ -549,6 +552,11 @@ class sdNet
 					{
 						console.log('waiting... ' + parts[ 1 ] );
 						document.getElementById('status_field').innerHTML = 'Waiting on quickplay resolve [ '+parts[ 1 ]+' ]';
+					}
+					else
+					{
+						// No quick play task found on server
+						document.getElementById('status_field').innerHTML = 'Doing literally nothing.';
 					}
 				}
 				else
@@ -573,7 +581,10 @@ class sdNet
 									let parts = v.split('|');
 
 									if ( parts[ 0 ] !== 'done' )
-									sdNet.GotServerError( v );
+									{
+										sdNet.GotServerError( v );
+										return;
+									}
 
 									function MakingSurePeerIsConnectedToSocketServerThenEval()
 									{
@@ -593,11 +604,12 @@ class sdNet
 					}
 					else
 					{
+						if ( document.getElementById('status_field').innerHTML.indexOf( 'error' ) === -1 )
 						document.getElementById('status_field').innerHTML = 'Idle or waiting for other players to load match';
 					}
 				}
 			},
-		true );
+		false );
 
 	}
 
@@ -680,8 +692,27 @@ class sdNet
 		
 		document.getElementById('loading_screen').style.display = 'inherit';
 		
-		setTimeout( function()
+		let retries = 0;
+		
+		setTimeout( Retry_function, 50 );
+		
+		function Retry_function()
 		{
+			if ( sdNet.match_queued_dataConnections === null )
+			{
+				if ( retries < 3 )
+				{
+					retries++;
+					setTimeout( Retry_function, 500 );
+					document.getElementById('status_field').innerHTML = 'Trying to start match, but there are no signs of sdNet.match_queued_dataConnections found. Previous match start failed and then this one initiated? Retying...';
+				}
+				else
+				{
+					document.getElementById('status_field').innerHTML = 'Trying to start match, but there are no signs of sdNet.match_queued_dataConnections found. Previous match start failed and then this one initiated? Stopped trying.';
+				}
+				return;
+			}
+			
 			main.BuildLevel( Number( params.world_seed ) );
 			
 			document.getElementById('loading_screen').style.display = 'none';
@@ -718,7 +749,7 @@ class sdNet
 			if ( then !== null )
 			then();
 		
-		}, 50 );
+		}
 	    
 	}
 	static StartOnceGotAllConnections()

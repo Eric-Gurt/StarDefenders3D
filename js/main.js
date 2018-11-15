@@ -8,6 +8,29 @@
 
 class main
 {
+	static ShowSliderNumber( t, mode ) // 0 - onchange, 1 - start drag, 2 - stop drag
+	{
+		var el = t.parentElement.childNodes[ t.parentElement.childNodes.length - 1 ];
+		
+		if ( mode === 0 )
+		{
+			el.value = t.value;
+
+			el.onchange = function(){ t.value = el.value; t.onchange(); };
+		}
+		
+		if ( mode === 1 )
+		{
+			trace('+');
+			t.myTimer = setInterval( function() { main.ShowSliderNumber( t, 0 ) }, 50 );
+		}
+		
+		if ( mode === 2 )
+		{
+			trace('-');
+			clearInterval( t.myTimer );
+		}
+	}
 	static init_class()
 	{
 		main.base_resolution_x = 1920;
@@ -58,7 +81,7 @@ class main
 		
 		main.sensitivity = localStorage.getItem('stardefenders_sensitivity');
 		if ( main.sensitivity === null )
-		main.sensitivity = 0.002; // 0.0015
+		main.sensitivity = 0.0016; // 0.0015
 		else
 		main.sensitivity = Number( main.sensitivity );
 		
@@ -71,9 +94,9 @@ class main
 		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.5 );
 	
 		//main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 1.5 );
-		main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 3 );
+		main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 2.26 );
 	
-		main.fov = Number( localStorage.getItem( 'stardefenders_fov' ) || 110 ); // 90
+		main.fov = Number( localStorage.getItem( 'stardefenders_fov' ) || 103 ); // 90
 		
 		setTimeout( function()
 		{
@@ -393,7 +416,19 @@ class main
 		if ( e.keyCode === 27 ) // Esc
 		{
 			if ( document.getElementById('menu').style.display !== 'inherit' )
-			document.getElementById('menu').style.display = 'inherit';
+			{
+				document.getElementById('menu').style.display = 'inherit';
+
+				function Fractally( e )
+				{
+					if ( e.type === 'range' )
+					main.ShowSliderNumber( e, 0 );
+					
+					for ( var i = 0; i < e.childNodes.length; i++ )
+					Fractally( e.childNodes[ i ] );
+				}
+				Fractally( document.getElementById('menu') );
+			}
 			else
 			document.getElementById('menu').style.display = 'none';
 		}
@@ -474,6 +509,11 @@ class main
 	}
 	static onMouseMove( e )
 	{
+		if ( main.Dist3D( e.movementX, e.movementY, 0, 0,0,0) > 400 ) // Chrome MouseLock bug (cursor thrown in random direction when cursor leaves browser window
+		{
+			return;
+		}
+
 		var xx = e.movementX * main.sensitivity;
 		var yy = e.movementY * main.sensitivity;
 		
@@ -503,13 +543,78 @@ class main
 		}
 		else
 		{
+			main.main_camera.updateMatrixWorld();
+
+			var orbital_intens = 0.777; // Because orbital feels faster
+
 			var q1 = new THREE.Quaternion();
-			q1.setFromAxisAngle( new THREE.Vector3( 0, -1, 0 ), xx );
+			q1.setFromAxisAngle( new THREE.Vector3( 0, -1, 0 ), xx * orbital_intens );
 			main.main_camera.quaternion.multiply( q1 );
 
 			var q1 = new THREE.Quaternion();
-			q1.setFromAxisAngle( new THREE.Vector3( -1, 0, 0 ), yy );
+			q1.setFromAxisAngle( new THREE.Vector3( -1, 0, 0 ), yy * orbital_intens );
 			main.main_camera.quaternion.multiply( q1 );
+
+			/*xx /= 32;
+			yy /= 32;
+
+			// Small restore
+			for ( var step = 0; step < 32; step++ )
+			{
+				main.main_camera.updateMatrixWorld();
+
+				var front_vector = new THREE.Vector3( 0, 0, 1 );
+				front_vector.transformDirection( main.main_camera.matrixWorld );
+
+				var up_vector = new THREE.Vector3( 0, 1, 0 );
+				up_vector.transformDirection( main.main_camera.matrixWorld );
+
+
+
+				//var XY_intens = Math.pow( 1 - Math.abs( front_vector.y ), 2 );
+				//var XY_intens = 1 - Math.pow( front_vector.y, 2 );
+				var XY_intens = 1 - Math.abs( front_vector.y );
+
+				//x
+				var q1 = new THREE.Quaternion();
+				q1.setFromAxisAngle( new THREE.Vector3( 0, -1, 0 ), xx * XY_intens );
+				main.main_camera.quaternion.premultiply( q1 );
+
+				//y
+				var q1 = new THREE.Quaternion();
+				q1.setFromAxisAngle( new THREE.Vector3( -1, 0, 0 ).applyQuaternion( main.main_camera.quaternion ), yy * XY_intens );
+				main.main_camera.quaternion.premultiply( q1 );
+
+				//z
+				main.main_camera.updateMatrixWorld();
+
+				front_vector = new THREE.Vector3( 0, 0, 1 );
+				front_vector.transformDirection( main.main_camera.matrixWorld );
+
+				var look_at_m = new THREE.Matrix4();
+				look_at_m.lookAt( front_vector, new THREE.Vector3(), new THREE.Vector3( 0, 1, 0 ) );
+
+				var old_quaternion = new THREE.Quaternion();
+				old_quaternion.setFromRotationMatrix( look_at_m );
+
+				var di = main.Dist3D( xx, yy, 0, 0,0,0 );
+				main.main_camera.quaternion.slerp( old_quaternion, di * 3 * XY_intens ); // 1 // 3 // 5 // 10
+
+				// orbital
+				main.main_camera.updateMatrixWorld();
+
+				var orbital_intens = 1 - XY_intens;
+				
+				orbital_intens = orbital_intens * 0.777; // Because orbital feels faster
+				
+				var q1 = new THREE.Quaternion();
+				q1.setFromAxisAngle( new THREE.Vector3( 0, -1, 0 ), xx * orbital_intens );
+				main.main_camera.quaternion.multiply( q1 );
+
+				var q1 = new THREE.Quaternion();
+				q1.setFromAxisAngle( new THREE.Vector3( -1, 0, 0 ), yy * orbital_intens );
+				main.main_camera.quaternion.multiply( q1 );
+			}*/
 		}
 		
 	}
@@ -2358,7 +2463,7 @@ class main
 		main.main_camera.position.z += main.speed.z * GSPEED;
 	
 	
-	
+		// Passive restore
 		main.main_camera.updateMatrixWorld();
 		
 		var front_vector = new THREE.Vector3( 0, 0, 1 );
@@ -2374,7 +2479,10 @@ class main
 		var old_quaternion = new THREE.Quaternion();
 		old_quaternion.setFromRotationMatrix( look_at_m );
 		
-		main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.07 * GSPEED );
+		//main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.07 * GSPEED );
+		//main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.01 * GSPEED );
+		//main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.01 * GSPEED );
+		main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.06 * GSPEED );
 		
 		
 		
@@ -2409,8 +2517,10 @@ class main
 			}
 			else
 			{
-				main.walk_vector_xz.x = -front_vector.x;
-				main.walk_vector_xz.y = -front_vector.z;
+				//main.walk_vector_xz.x = -front_vector.x;
+				//main.walk_vector_xz.y = -front_vector.z;
+				main.walk_vector_xz.x = -Math.sin( main.ang );
+				main.walk_vector_xz.y = -Math.cos( main.ang );
 			}
 			main.walk_vector_xz.normalize();
 		}
