@@ -20,6 +20,12 @@ class sdCharacter
 		
 		sdCharacter.characters = [];
 		
+		sdCharacter.player_speed = 0.425; // 0.3
+		sdCharacter.player_air_speed = 0.04; // 0.02
+		sdCharacter.player_max_air_speed = 0; // when decrease starts
+		sdCharacter.player_air_stop_factor = 0;
+		sdCharacter.walk_friction = 0.82; // 0.85
+		
 		sdCharacter.atoms_per_player = -1; // Decided on first spawn
 		
 		var player_half_height = 7.5;
@@ -35,20 +41,16 @@ class sdCharacter
 		sdCharacter.arm_cross_right = 0.0; // how much arms are rotated towards each other
 		
 		// [ rifle, rocket, alt-rifle, alt-rocket ]
-		//sdCharacter.weapon_reload_times = [ 2, 30, 25, 60 ];
 		sdCharacter.weapon_reload_times = [ 2, 25, 30 * 0.2, 25 ];
 		sdCharacter.weapon_self_knockbacks = [ 0.1, 0.5, 0.1, 0.5 ];
 		sdCharacter.weapon_is_rocket = [ false, true, false, false ];
-		//sdCharacter.weapon_speed = [ 20, 2, 15, 40 ];
-		//sdCharacter.weapon_speed = [ 40, 2, 30, 60 ];
+		sdCharacter.weapon_is_sniper = [ false, false, false, true ];
+
 		sdCharacter.weapon_speed = [ 40, 4, 30, 60 ];
 		sdCharacter.weapon_knock_power = [ 0.02, 0.1, 0.0075, 0.04 ];
-		//sdCharacter.weapon_hp_damage = [ 15, 100, 10, 45 ];
-		sdCharacter.weapon_hp_damage = [ 30, 100, 10, 90 ];
-		//sdCharacter.weapon_hp_damage_head = [ 34, 100, 20, 100 ];
-		sdCharacter.weapon_hp_damage_head = [ 60, 100, 20, 180 ];
+		sdCharacter.weapon_hp_damage = [ 30, 115, 10, 90 ];
+		sdCharacter.weapon_hp_damage_head = [ 60, 115, 20, 180 ];
 		sdCharacter.weapon_knock_count = [ 1, 1, 15, 1 ];
-		//sdCharacter.weapon_knock_spread = [ 0.5, 0, 3.5, 0.5 ];
 		sdCharacter.weapon_knock_spread = [ 1.5, 0, 5, 0.5 ];
 		sdCharacter.weapon_switch_time = 15;
 		
@@ -1151,9 +1153,9 @@ class sdCharacter
 			dir.normalize();
 			
 			if ( stand )
-			{
-				dir.x *= 0.3 * GSPEED * ( 1 - c.sit * 0.666 );
-				dir.y *= 0.3 * GSPEED * ( 1 - c.sit * 0.666 );
+			{	
+				dir.x *= sdCharacter.player_speed * GSPEED * ( 1 - c.sit * 0.666 );
+				dir.y *= sdCharacter.player_speed * GSPEED * ( 1 - c.sit * 0.666 );
 			
 				if ( c.act_jump )
 				{
@@ -1169,8 +1171,12 @@ class sdCharacter
 			}
 			else
 			{
-				dir.x *= 0.02 * GSPEED;
-				dir.y *= 0.02 * GSPEED;
+				dir.x *= sdCharacter.player_air_speed * GSPEED;
+				dir.y *= sdCharacter.player_air_speed * GSPEED;
+				
+				var cur_vel = Math.sqrt( c.tox * c.tox + c.toy * c.toy + c.toz * c.toz );
+				if ( cur_vel > sdCharacter.player_max_air_speed )
+				dir.x /= 1 + ( cur_vel - sdCharacter.player_max_air_speed ) * sdCharacter.player_air_stop_factor;
 			}
 			
 			c.tox += c.walk_vector_xz.x * dir.y;
@@ -1275,20 +1281,6 @@ class sdCharacter
 						if ( !main.MP_mode || main.my_character === c )
 						{
 							c.PlayShotSound( curwea );
-						
-							function SetAsRandom3D( v )
-							{
-								var omega = Math.random() * Math.PI * 2;
-								var z = Math.random() * 2 - 1;
-
-								var one_minus_sqr_z = Math.sqrt(1-z*z);
-
-								v.x = one_minus_sqr_z * Math.cos(omega);
-								v.y = one_minus_sqr_z * Math.sin(omega);
-								v.z = z;
-
-								return v;
-							}
 							
 							for ( var p = 0; p < sdCharacter.weapon_knock_count[ curwea ]; p++ )
 							{
@@ -1296,7 +1288,7 @@ class sdCharacter
 
 								if ( sdCharacter.weapon_knock_spread[ curwea ] > 0 )
 								{
-									SetAsRandom3D( spread );
+									main.SetAsRandom3D( spread );
 									var r = Math.random() * sdCharacter.weapon_knock_spread[ curwea ];
 									spread.x *= r;
 									spread.y *= r;
@@ -1320,7 +1312,8 @@ class sdCharacter
 									knock_power: sdCharacter.weapon_knock_power[ curwea ],
 									hp_damage: sdCharacter.weapon_hp_damage[ curwea ],
 									hp_damage_head: sdCharacter.weapon_hp_damage_head[ curwea ],
-									is_rocket: sdCharacter.weapon_is_rocket[ curwea ]
+									is_rocket: sdCharacter.weapon_is_rocket[ curwea ],
+									is_sniper: sdCharacter.weapon_is_sniper[ curwea ]
 								});
 
 								if ( main.MP_mode )
@@ -1456,7 +1449,7 @@ class sdCharacter
 			if ( Movement( c, last_direction.y > 0.5, GSPEED ) )
 			correct_mesh_rotation = true;
 
-			var friction = 0.85;
+			var friction = sdCharacter.walk_friction;
 
 			c.tox = main.MorphWithTimeScale( c.tox, 0, friction, GSPEED );
 			c.toy = main.MorphWithTimeScale( c.toy, 0, friction, GSPEED );
@@ -1624,9 +1617,12 @@ class sdCharacter
 
 
 			// fps
-			main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x, 0.7, GSPEED );
-			main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + sdCharacter.shoot_offset_y, 0.7, GSPEED );
-			main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z, 0.7, GSPEED );
+			//main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x, 0.7, GSPEED );
+			//main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + sdCharacter.shoot_offset_y, 0.7, GSPEED );
+			//main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z, 0.7, GSPEED );
+			main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x, 0, GSPEED );
+			main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + sdCharacter.shoot_offset_y, 0, GSPEED );
+			main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z, 0, GSPEED );
 			// fps
 			/*main.main_camera.position.x = c.x;
 			main.main_camera.position.y = c.y + sdCharacter.shoot_offset_y;

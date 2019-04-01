@@ -104,6 +104,8 @@ class sdAtom
 		sdAtom.rgba = rgba;
 		sdAtom.uvs2 = uvs2;
 		
+		sdAtom.stars = [];
+		
 		sdAtom.last_point = 0; // Index of a point that was last in previous frame
 		
 		sdAtom.mesh = new THREE.Points( sub_geom, sdAtom.material );
@@ -119,6 +121,52 @@ class sdAtom
 
 		};
 		sdAtom.character_bitmap = bmp;
+	}
+	static RandomizeStars()
+	{
+		sdAtom.stars = [];
+		
+		class Star
+		{
+			constructor()
+			{
+				this.x;
+				this.y;
+				this.z;
+				this.time_offset = sdRandomPattern.random() * Math.PI * 2;
+			}
+		}
+		
+		function SetAsRandom3D( v )
+		{
+			var omega = sdRandomPattern.random() * Math.PI * 2;
+			var z = sdRandomPattern.random() * 2 - 1;
+
+			var one_minus_sqr_z = Math.sqrt(1-z*z);
+
+			v.x = one_minus_sqr_z * Math.cos(omega);
+			v.y = one_minus_sqr_z * Math.sin(omega);
+			v.z = z;
+
+			return v;
+		}
+		
+		for ( var i = 0; i < 200; i++ )
+		{
+			var v = new Star();
+			
+			SetAsRandom3D( v );
+			
+			v.y = Math.abs( v.y );
+			
+			var r = 250 + sdRandomPattern.random() * 100;
+			
+			v.x *= r;
+			v.y *= r;
+			v.z *= r;
+			
+			sdAtom.stars.push( v );
+		}
 	}
 	static init()
 	{
@@ -596,6 +644,23 @@ class sdAtom
 			}
 		}
 		
+		for ( var i = 0; i < sdAtom.stars.length; i++ )
+		{
+			sdAtom.stars[ i ].time_offset = ( sdAtom.stars[ i ].time_offset + GSPEED * 0.01 ) % ( Math.PI * 2 );
+			
+			vertices[ point * 3     ] = sdAtom.stars[ i ].x + main.main_camera.position.x;
+			vertices[ point * 3 + 1 ] = sdAtom.stars[ i ].y + main.main_camera.position.y;
+			vertices[ point * 3 + 2 ] = sdAtom.stars[ i ].z + main.main_camera.position.z;
+
+			rgba[ point * 4     ] = main.fog_color_color.r + 0.4 + Math.sin( sdAtom.stars[ i ].time_offset ) * 0.2;
+			rgba[ point * 4 + 1 ] = main.fog_color_color.g + 0.4 + Math.sin( sdAtom.stars[ i ].time_offset ) * 0.2;
+			rgba[ point * 4 + 2 ] = main.fog_color_color.b + 0.4 + Math.sin( sdAtom.stars[ i ].time_offset ) * 0.2;
+			rgba[ point * 4 + 3 ] = 1;
+			uvs2[ point ] = 1;
+			
+			point++;
+		}
+		
 		var point2 = point;
 		while ( point2 < sdAtom.last_point )
 		{
@@ -611,3 +676,5 @@ class sdAtom
 }
 
 sdAtom.init_class();
+
+

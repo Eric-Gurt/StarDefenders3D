@@ -12,15 +12,22 @@ class sdSprite
 		sdSprite.TYPE_SMOKE = 2;
 		sdSprite.TYPE_ROCK = 3;
 		sdSprite.TYPE_EXPLOSION = 4;
+		sdSprite.TYPE_SPARK_EXPLOSION = 5;
+		sdSprite.TYPE_SNIPER_TRAIL = 6;
+		sdSprite.TYPE_SNIPER_HIT = 7;
 		
 		sdSprite.GEOM_PLANE = 0;
 		sdSprite.GEOM_SPHERE = 1;
+		
+		sdSprite.expl_r = 1;
+		sdSprite.expl_g = 0;
+		sdSprite.expl_b = 1;
 		
 		sdSprite.sprites = [];
 		
 		sdSprite.texture_blood = null;
 		
-		var bmp = new BitmapData( 64, 64, true );
+		var bmp = new BitmapData( 64, 128, true );
 		var mini_texture = new Image();
 		mini_texture.src = "assets/hit_marks.png";
 		mini_texture.onload = function() 
@@ -32,7 +39,75 @@ class sdSprite
 			sdSprite.texture_blood.minFilter = THREE.NearestMipMapNearestFilter;
 			sdSprite.texture_blood.flipY = false;
 		};
+		
+		sdSprite.RandomizeGlobalExplosionColor = function()
+		{
+			sdSprite.expl_r = sdRandomPattern.random() + 0.5;
+			sdSprite.expl_g = sdRandomPattern.random() + 0.5;
+			sdSprite.expl_b = sdRandomPattern.random() + 0.5;
+			var m = Math.max( sdSprite.expl_r, sdSprite.expl_g, sdSprite.expl_b );
+			if ( m === 0 )
+			sdSprite.expl_r = sdSprite.expl_g = m = 1;
+			else
+			{
+				sdSprite.expl_r /= m;
+				sdSprite.expl_g /= m;
+				sdSprite.expl_b /= m;
+			}
+			
+			var sniper_color_r = sdRandomPattern.random() + 0.5;
+			var sniper_color_g = sdRandomPattern.random() + 0.5;
+			var sniper_color_b = sdRandomPattern.random() + 0.5;
+			var m = Math.max( sniper_color_r, sniper_color_g, sniper_color_b );
+			if ( m === 0 )
+			sniper_color_g = m = 1;
+			else
+			{
+				sniper_color_r /= m;
+				sniper_color_g /= m;
+				sniper_color_b /= m;
+			}
+			
+			bmp.ctx.clearRect( 0, 0, bmp.width, bmp.height );
+			bmp.ctx.drawImage( mini_texture, 0, 0 );
+			
+			for ( var x = 0; x < bmp.width; x++ )
+			for ( var y = 0; y < bmp.height; y++ )
+			{
+				var c = bmp.getPixel32( x, y );
+				if ( c.g === 255 )
+				{
+					if ( c.r === 255 )
+					if ( c.b === 0 )
+					{
+						// Yellow
+						c.r = sdSprite.expl_r;
+						c.g = sdSprite.expl_g;
+						c.b = sdSprite.expl_b;
+
+						bmp.setPixelC( x, y, c, 255 );
+					}
+					
+					
+					if ( c.r === 0 )
+					if ( c.b === 0 )
+					{
+						// Green
+						c.r = sniper_color_r;
+						c.g = sniper_color_g;
+						c.b = sniper_color_b;
+
+						bmp.setPixelC( x, y, c, 255 );
+					}
+				}
+			}
+			bmp.setPixelsDone();
+			
+			sdSprite.texture_blood.needsUpdate = true;
+			
+		};
 	}
+
 	static CreateSprite( params )
 	{
 		if ( sdSprite.texture_blood === null )
@@ -115,6 +190,34 @@ class sdSprite
 			
 			this.post_destruction = this.SpawnSmoke;
 		}
+		else
+		if ( params.type === sdSprite.TYPE_SPARK_EXPLOSION )
+		{
+			effect_id = 4;
+			this.frame_time = 6; // 4
+			this.frames_to_play = 4;
+			
+			this.gravity = 0.1;
+			
+			this.is_glowing = true;
+		}
+		else
+		if ( params.type === sdSprite.TYPE_SNIPER_TRAIL)
+		{
+			effect_id = 5;
+			this.frame_time = 5; // 10
+			this.frames_to_play = 4;
+			
+			this.is_glowing = true;
+		}
+		else
+		if ( params.type === sdSprite.TYPE_SNIPER_HIT )
+		{
+			effect_id = 6;
+			this.frame_time = 4;
+			
+			this.is_glowing = true;
+		}
 		
 		var rot = new THREE.Quaternion();
 		if ( rand_rot )
@@ -129,7 +232,11 @@ class sdSprite
 		
 		if ( geom === sdSprite.GEOM_PLANE )
 		{
+			if ( params.type === sdSprite.TYPE_BLOOD )
+			g = new THREE.PlaneBufferGeometry( 8 * 1.5, 8 * 1.5 );
+			else
 			g = new THREE.PlaneBufferGeometry( 8, 8 );
+		
 			m = sdShaderMaterial.CreateMaterial( sdSprite.texture_blood, 'sprite' );
 			
 			m.uniforms.fog.value = new THREE.Color( main.fog_color );
@@ -139,6 +246,20 @@ class sdSprite
 		{
 			g = new THREE.SphereBufferGeometry( 1, 16, 16 );
 			m = sdShaderMaterial.CreateMaterial( null, 'explosion' );
+			m.uniforms.r.value = sdSprite.expl_r;
+			m.uniforms.g.value = sdSprite.expl_g;
+			m.uniforms.b.value = sdSprite.expl_b;
+			
+			let v = new THREE.Vector3();
+			for ( var i = 0; i < 50; i++ )
+			{
+				main.SetAsRandom3D( v );
+				let r = ( Math.random() + 1 ) * 1.5;
+				v.x *= r;
+				v.y *= r;
+				v.z *= r;
+				sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK_EXPLOSION, x:params.x, y:params.y, z:params.z, tox:v.x, toy:v.y, toz:v.z });
+			}
 		}
 		
 		
@@ -151,7 +272,7 @@ class sdSprite
 		
 		if ( geom === sdSprite.GEOM_PLANE )
 		{
-			this.SetEffectID( effect_id, 4 );
+			this.SetEffectID( effect_id, 8 );
 			this.SetFrame( 0 );
 		}
 		else

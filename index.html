@@ -222,6 +222,20 @@
 	    {
 		opacity: 1;
 	    }
+	    #message_of_the_day
+	    {
+		opacity:0;
+	    }
+	    #message_of_the_day:before {
+		content: "";
+		position: absolute;
+		top: 100%;
+		width: 0;
+		border-top: 15px solid white;
+		border-left: 10px solid transparent;
+		border-right: 10px solid transparent;
+		right: calc( 50% - 10px );
+	      }
 	</style>
     </head>
     <body style="margin:0px;overflow:hidden" ondragstart="return false;" ondrop="return false;">
@@ -314,7 +328,11 @@
 	
 	<div id="lobby_ui" style="background-color:#677a77;width:100%;height:100%;position:fixed;left:0px;top:0px;display:inherit;" >
 	    
-	    <img id="hakase" src="assets/hakase.gif" class="clickable" style="width:500px;height:275px;position:fixed;right:0px;bottom:0px">
+	    <div style="min-width:500px;position:fixed;right:30px;bottom:300px;display:block;text-align: center"><span id="message_of_the_day" class="clickable" style="padding:15px;display:inline-block;background-color:#FFFFFF;border-radius:15px;color:black;text-align:center;"></span></div>
+	    
+	    <img id="hakase" src="assets/hakase.gif" class="clickable" style="width:500px;height:275px;position:fixed;right:0px;bottom:0px" onclick="Boop()">
+	    
+	    <!--<span id="sd_stats" class="r_conteiner clickable" style="display:block;text-align:right;position:fixed;top:10px;right:10px;width:300px;">Skill points</span>-->
 
 	    <!-- some beta UI -->
 	    <span class="r_conteiner clickable" style="position:fixed;left:1vh;top:1vh;"><!--
@@ -435,6 +453,103 @@
 		return false;
 		
 	    }, false);
+	    
+	    let message_of_the_day = document.getElementById('message_of_the_day');
+	    let message_of_the_day_current_phrase = 'Welcome back!';
+	    setInterval( motd, 15 );
+	    function motd()
+	    {
+		let op = Number( message_of_the_day.style.opacity );
+		
+		if ( message_of_the_day.innerHTML !== message_of_the_day_current_phrase )
+		{
+		    if ( op > 0 )
+		    op -= 0.05;
+		    else
+		    message_of_the_day.innerHTML = message_of_the_day_current_phrase;
+		}
+		else
+		{
+		    if ( op < 1 )
+		    op += 0.05;
+		    else
+		    {
+			boop_active = true;
+		    }
+		}
+		message_of_the_day.style.opacity = op;
+	    }
+	    var boop_array = [ 
+		    'Oh, hello there!',
+		    'Click!',
+		    'Boop',
+		    'How are you today?',
+		    'Stop clicking me and start playing',
+		    'Feeling hungry yet?',
+		    'This is a shark',
+		    'Have you seen Nichijou?',
+		    'I\'m Hakase apparently',
+		    'I wish it was easier to find owner of this GIF',
+		    'Hey, do you want me to share with you?',
+		    'Nom-nom.',
+		    'Today will be a good day',
+		    '16%',
+		    'No need to wait',
+		    'This is my 16th shark today',
+		    'I wonder if somebody would like to continue this game',
+		    'I kind of wish to work on this game but my people need me~',
+		    'Woosh',
+		    'IPv6 are still rare',
+		    'Make it better',
+		    'Have fun!',
+		    'Somebody needs your help',
+		    'I guess I\'ll eat your cursor next',
+		    'I haven\'t finished yet~',
+		    'Beep-boop',
+		    '*sound of bone crunch*',
+		    'I guess we can just chill here for now',
+		    'Can you play any good song?',
+		    'I want to do science once I grow up',
+		    'Would be cool to have own laboratory ond day...',
+		    'Computers are not fast',
+		    'You\'ll not notice difference between 60 and 144 FPS, but some people will',
+		    'People have different FOV IRL',
+		    'You\'ll need friends to play this',
+		    'Sometimes Plazma Burst 2 custom maps amaze me',
+		    'Game Dead Drunk was more popular than Plazma Burst: Forward to the Past',
+		    'What will people do when robots will replace them at each job?',
+		    'Neural Networks can be used to generate art if trained properly',
+		    'Do you know artists who use Neural Networks to speedup their working process?',
+		    'Always remember to save. In fact, you should have image/copy of your hard drive by now~',
+		    'JavaScript should have been typed from the beginning',
+		    'It is fine to keep shooting at everything until only floor left. It is more fun to do it together',
+		    'Why start wars if we can just sit and play free games?~',
+		    'Star Defenders! Game where you defend... Stars?',
+		    'Now with special effects!',
+		    'Here begins your journey!',
+		    '1, 2, 2.5, 2.75, 2.875, 2.9375...',
+		    'You can do it, but what next?',
+		    'Don\'t we all need the same?'
+		];
+	    var current_boop = [];
+	    var boop_active = true;
+	    function Boop()
+	    {
+		if ( !boop_active )
+		return;
+	    
+		boop_active = false;
+		
+		if ( current_boop.length === 0 )
+		{
+		    current_boop = boop_array.slice();
+		}
+	 
+		var i = ~~(Math.random()*current_boop.length);
+		message_of_the_day_current_phrase = current_boop[ i ];
+		
+		current_boop.splice( i, 1 );
+	    }
 	    
 	    setInterval( clocks, 100 );
 	    function clocks()

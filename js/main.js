@@ -161,6 +161,20 @@ class main
 		main.pb3driver = null;
 		main.pb3driver_channel = null;
 		
+		var bmp = new BitmapData( 64, 64 );
+		var mini_texture = new Image();
+		mini_texture.src = "assets/voxel_level.png";
+		mini_texture.onload = function() 
+		{
+			bmp.ctx.drawImage( mini_texture, 0, 0 );
+		};
+		main.level_bitmap = bmp; // wall, floor/ceiling, door, doorPath // Everything is 32 px
+		main.level_bitmap.starDefendersRandomize = function()
+		{
+			bmp.ctx.filter = 'hue-rotate('+(~~(sdRandomPattern.random()*360))+'deg)';
+			bmp.ctx.drawImage( mini_texture, 0, 0 );
+		};
+		
 		var crashed = false;
 		window.onerror = function( message, url, lineNumber ) {
 			if ( !crashed )
@@ -169,6 +183,9 @@ class main
 				crashed = true;
 			}
 		};
+		
+		main.fog_color = 0x000000;
+		main.fog_color_color = null;
 		
 		main.DestroyLevel();
 	}
@@ -509,10 +526,10 @@ class main
 	}
 	static onMouseMove( e )
 	{
-		if ( main.Dist3D( e.movementX, e.movementY, 0, 0,0,0) > 400 ) // Chrome MouseLock bug (cursor thrown in random direction when cursor leaves browser window
+		/*if ( main.Dist3D( e.movementX, e.movementY, 0, 0,0,0) > 400 ) // Chrome MouseLock bug (cursor thrown in random direction when cursor leaves browser window
 		{
 			return;
-		}
+		}*/
 
 		var xx = e.movementX * main.sensitivity;
 		var yy = e.movementY * main.sensitivity;
@@ -752,6 +769,8 @@ class main
 	}
 	static BuildLevel( seed )
 	{
+		sdRandomPattern.SetSeed( seed ); // 43223
+		
 		main.GAME_FPS = 30;
 		
 		main.pb3driver = new THREE.Object3D();
@@ -783,9 +802,46 @@ class main
 		
 		var chunk_size = 32; // 16
 		main.chunk_size = chunk_size;
-		var level_chunks_x = ~~( 2 * 190 / chunk_size );
-		var level_chunks_y = ~~( 2 * 32 / chunk_size ); // 98
-		var level_chunks_z = ~~( 2 * 190 / chunk_size );
+		/*
+		var level_chunks_x = ~~( 8 * 32 / chunk_size ); // 190
+		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 32
+		var level_chunks_z = ~~( 7 * 32 / chunk_size ); // 190
+		*/
+		var level_chunks_x = ~~( 10 * 32 / chunk_size ); // 190
+		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 32
+		var level_chunks_z = ~~( 4 * 32 / chunk_size ); // 190
+		
+		
+		var block_height = 16;
+		
+		function AllowLevelBuildingAt( x, y, z, initial )
+		{
+			var max_x = size_x / 32 - 1;
+			var max_y = size_y / block_height - 1;
+			var max_z = size_z / 32 - 1;
+			
+			if ( y === max_y )
+			return false;
+		
+			if ( x < 4 )
+			return true;
+		
+			if ( x >= level_chunks_x - 1 - 4 )
+			return true;
+		
+			if ( y < max_y - 2 )
+			if ( z > 0 && z < max_z )
+			{
+				return true;
+			}
+		
+			return false;
+			
+			//return ( ( y < max_y ) && ( x === 0 || x === max_x || z === 0 || z === max_z ) );
+		}
+		
+		
+		
 		var add_concrete = true;
 		var add_terrain = true;
 		var test_trace_setup = false;
@@ -798,15 +854,23 @@ class main
 		add_terrain = false;
 		test_trace_setup = true;*/
 		
+		main.level_bitmap.starDefendersRandomize();
+		
+		sdSprite.RandomizeGlobalExplosionColor();
 		
 		main.level_chunks_x = level_chunks_x;
 		main.level_chunks_y = level_chunks_y;
 		main.level_chunks_z = level_chunks_z;
 		
-		var solve_random_factor = 0.75; 
+		//var solve_random_factor = 0.75; 
+		var solve_random_factor = 0.1; 
 		var edge_density = 0.5;
-		var sky_ground_contrast = 0.05;
-		var extra_sky_ground_contrast = 0.025;
+		//var sky_ground_contrast = 0.05;
+		//var extra_sky_ground_contrast = 0.025;
+		var sky_ground_contrast = 0.1;
+		var extra_sky_ground_contrast = 0.1;
+		
+		var horizon_offset = 0.35; // More = lower // 0
 		
 		var size_x = level_chunks_x * chunk_size;
 		var size_y = level_chunks_y * chunk_size;
@@ -864,14 +928,10 @@ class main
 		}
 		function FilledDensityByXYZ( x, y, z ) // new
 		{
+			var morph = y / ( size_y - 1 ) + horizon_offset;
 			
-			var morph = y / ( size_y - 1 );
-			
-			if ( x === 0 || z === 0 || x === size_x-1 || z === size_z-1 )
-			morph = 1;
-
-			var ret = ( edge_density - sdRandomPattern.random() * sky_ground_contrast - extra_sky_ground_contrast ) * ( 1 - morph ) + 
-					  ( edge_density + sdRandomPattern.random() * sky_ground_contrast + extra_sky_ground_contrast ) * morph;
+			var ret = ( edge_density - sdRandomPattern.random() * sky_ground_contrast - extra_sky_ground_contrast ) * morph + 
+					  ( edge_density + sdRandomPattern.random() * sky_ground_contrast + extra_sky_ground_contrast ) * ( 1 - morph );
 
 			return ret;
 		}
@@ -1050,8 +1110,8 @@ class main
 			all_solvable_based_ons_x[ solvable.x ] = 1;
 			else
 			all_solvable_based_ons_x[ solvable.x ]++;
-		
-			if ( solvable.y === 0 || solvable.x === 0 || solvable.x === size_x-1 || solvable.z === 0 || solvable.z === size_z-1 )
+	
+			if ( solvable.y === 0 )
 			{
 				sum = Math.max( edge_density + 0.02, sum );
 			}
@@ -1059,7 +1119,7 @@ class main
 			{
 				sum = Math.min( edge_density - 0.02, sum );
 			}
-		
+			
 			fill[ solvable.coord ] = sum;
 			noise_tex[ solvable.coord ] = noise;
 
@@ -1102,7 +1162,6 @@ class main
 
 		}
 		
-		sdRandomPattern.SetSeed( seed ); // 43223
 		
 		
 		//main.fog_color = 0xf6d08f;//0xffdd94;
@@ -1125,6 +1184,7 @@ class main
 			c.r += 0.075;
 			c.g += 0.075;
 		}
+		main.fog_color_color = c;
 		main.fog_color = c._uint;
 		var terrain_color = new pb2HighRangeColor().rand_pattern();
 		main.renderer.setClearColor( main.fog_color );
@@ -1138,7 +1198,9 @@ class main
 		}
 		sdAtom.init(); // updates fog
 		
+		sdAtom.RandomizeStars();
 		
+		//sdSprite.RandomizeSpriteEffects();
 		
 		var fractal_cube_size = chunk_size * 2;
 		var step_size = ~~( fractal_cube_size );
@@ -1176,33 +1238,415 @@ class main
 			}
 		}
 
-		// Making some cut
+		// Making some level
+		
+		//var concrete_ops = 40;
+		
+		if ( size_x % 32 !== 0 )
+		throw new Error('Size X is not supported by level builder');
+		if ( size_y % block_height !== 0 )
+		throw new Error('Size Y is not supported by level builder');
+		if ( size_z % 32 !== 0 )
+		throw new Error('Size Z is not supported by level builder');
+		
+		
+		class Entry
+		{
+			constructor( v=false )
+			{
+				this.is_wall = v;
+				this.is_stairs = false;
+				this.is_door = false;
+			}
+		}
+		
+		var level_grid = [];
+		for ( var x = 0; x < size_x / 32; x++ )
+		{
+			level_grid[ x ] = [];
+			
+			for ( var y = 0; y < size_y / block_height; y++ )
+			{
+				level_grid[ x ][ y ] = [];
+				level_grid[ x ][ y ].length = size_z / 32;
+				
+				for ( var z = 0; z < level_grid[ x ][ y ].length; z++ )
+				{
+					level_grid[ x ][ y ][ z ] = new Entry( AllowLevelBuildingAt( x, y, z, true ) && ( sdRandomPattern.random() < 0.5 ) ); // No highest blocks
+				}
+			}
+		}
+		
+		// Evolute step
+		for ( var x = 0; x < level_grid.length; x++ )
+		for ( var y = 0; y < level_grid[ x ].length; y++ )
+		for ( var z = 0; z < level_grid[ x ][ y ].length; z++ )
+		{
+			if ( level_grid[ x ][ y ][ z ].is_wall )
+			{
+				// Make corridors higher
+				if ( !WallExists( x, y-1, z ) && WallExists( x, y-2, z ) )
+				if ( sdRandomPattern.random() < 0.5 )
+				level_grid[ x ][ y ][ z ].is_wall = false;
+			}
+			else
+			if ( AllowLevelBuildingAt( x, y, z, false ) ) // No highest level or else borders won't be made
+			{
+				// Prevent some open ceilings
+				if ( !WallExists( x, y-1, z ) && !WallExists( x, y-2, z ) )
+				//if ( sdRandomPattern.random() < 0.5 )
+				level_grid[ x ][ y ][ z ].is_wall = true;
+				else
+				if ( sdRandomPattern.random() < 0.8 )
+				if ( WallExists( x, y+1, z ) )
+				if ( !WallExists( x-1, y, z ) )
+				if ( !WallExists( x+1, y, z ) )
+				if ( !WallExists( x, y, z-1 ) )
+				if ( !WallExists( x, y, z+1 ) )
+				if ( !WallExists( x-1, y, z-1 ) )
+				if ( !WallExists( x+1, y, z-1 ) )
+				if ( !WallExists( x-1, y, z+1 ) )
+				if ( !WallExists( x+1, y, z+1 ) )
+				level_grid[ x ][ y ][ z ].is_wall = true;
+			}
+		}
 		
 		var cut_ops = [];
-		var cut_ops_y = 20;
-		var cluster_size = 17; // 15
-		for ( var i = 0; i < 200; i++ )
+		
+		var MAT_WALL = 0;
+		var MAT_DOOR = 1;
+		var MAT_STAIRS = 2;
+		var MAT_BORDER = 3;
+		
+		function WallExists( x, y, z )
 		{
-			var max_size = 60;
-			var min_size = 2;
-			
-			if ( i % 2 === 0 )
-			{
-				max_size = 120;
-				min_size = cluster_size;
-			}
-			
-			var x2 = ( min_size+ Math.min( max_size, ~~(sdRandomPattern.random() * size_x/cluster_size)*cluster_size ) );
-			var x1 = ~~(sdRandomPattern.random()*(size_x-x1)/cluster_size)*cluster_size;
-			
-			var y2 = ( min_size+ Math.min( max_size, ~~(sdRandomPattern.random() * size_y/cluster_size)*cluster_size ) );
-			var y1 = ~~(sdRandomPattern.random()*(size_y-y1)/cluster_size)*cluster_size + cut_ops_y;
-			
-			var z2 = ( min_size+ Math.min( max_size, ~~(sdRandomPattern.random() * size_z/cluster_size)*cluster_size ) );
-			var z1 = ~~(sdRandomPattern.random()*(size_z-z1)/cluster_size)*cluster_size;
-			
-			cut_ops.push({ op:i%2, x1:x1, y1:y1, z1:z1, x2:x1+x2, y2:y1+y2, z2:z1+z2 });
+			if ( x < 0 )
+			return false;
+			if ( y < 0 )
+			return true; // !
+			if ( z < 0 )
+			return false;
+		
+			if ( x >= level_grid.length )
+			return false;
+			if ( y >= level_grid[ x ].length )
+			return false;
+			if ( z >= level_grid[ x ][ y ].length )
+			return false;
+		
+			return level_grid[ x ][ y ][ z ].is_wall;
 		}
+		
+		function StairsExists( x, y, z )
+		{
+			if ( x < 0 )
+			return false;
+			if ( y < 0 )
+			return false;
+			if ( z < 0 )
+			return false;
+		
+			if ( x >= level_grid.length )
+			return false;
+			if ( y >= level_grid[ x ].length )
+			return false;
+			if ( z >= level_grid[ x ][ y ].length )
+			return false;
+		
+			return level_grid[ x ][ y ][ z ].is_stairs;
+		}
+		function GetStairsAt( x, y, z )
+		{
+			if ( x < 0 )
+			return null;
+			if ( y < 0 )
+			return null;
+			if ( z < 0 )
+			return null;
+		
+			if ( x >= level_grid.length )
+			return null;
+			if ( y >= level_grid[ x ].length )
+			return null;
+			if ( z >= level_grid[ x ][ y ].length )
+			return null;
+		
+			if ( level_grid[ x ][ y ][ z ].is_stairs )
+			return level_grid[ x ][ y ][ z ];
+		
+			return null;
+		}
+		
+		for ( var x = 0; x < level_grid.length; x++ )
+		for ( var y = 0; y < level_grid[ x ].length; y++ )
+		for ( var z = 0; z < level_grid[ x ][ y ].length; z++ )
+		{
+			if ( level_grid[ x ][ y ][ z ].is_wall )
+			{
+				var x1 = x * 32;
+				var x2 = x1 + 32;
+				var y1 = y * block_height;
+				var y2 = y1 + block_height;
+				var z1 = z * 32;
+				var z2 = z1 + 32;
+				cut_ops.push({ mat:MAT_WALL, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+				continue;
+			}
+			else
+			{
+				if ( WallExists( x, y - 1, z ) && // Doors require floor, but no ceiling
+				     !WallExists( x, y + 1, z ) ) // Nothing above potential door spawn point (bottom part)
+				{
+					if ( WallExists( x - 1, y, z ) && WallExists( x + 1, y, z ) && !WallExists( x, y, z - 1 ) && !WallExists( x, y, z + 1 ) &&
+						 WallExists( x - 1, y + 1, z ) && WallExists( x + 1, y + 1, z ) && !WallExists( x, y + 1, z - 1 ) && !WallExists( x, y + 1, z + 1 ) )
+					{
+						var x1 = x * 32;
+						var x2 = x1 + 32;
+						var y1 = y * block_height;
+						var y2 = y1 + 32;
+						var z1 = z * 32;
+						var z2 = z1 + 32;
+						
+						var cz = ( z1 + z2 ) / 2;
+						z1 = ~~( cz - 3 );
+						z2 = ~~( cz + 3 );
+						
+						cut_ops.push({ mat:MAT_DOOR, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+						level_grid[ x ][ y ][ z ].is_door = true;
+						continue;
+					}
+					else
+					if ( !WallExists( x - 1, y, z ) && !WallExists( x + 1, y, z ) && WallExists( x, y, z - 1 ) && WallExists( x, y, z + 1 ) &&
+						 !WallExists( x - 1, y + 1, z ) && !WallExists( x + 1, y + 1, z ) && WallExists( x, y + 1, z - 1 ) && WallExists( x, y + 1, z + 1 ) )
+					{
+						var x1 = x * 32;
+						var x2 = x1 + 32;
+						var y1 = y * block_height;
+						var y2 = y1 + 32;
+						var z1 = z * 32;
+						var z2 = z1 + 32;
+						
+						var cx = ( x1 + x2 ) / 2;
+						x1 = ~~( cx - 3 );
+						x2 = ~~( cx + 3 );
+						
+						cut_ops.push({ mat:MAT_DOOR, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+						level_grid[ x ][ y ][ z ].is_door = true;
+						continue;
+					}
+				}
+				
+				// Stairs
+
+				if ( !WallExists( x, y+1, z ) ) // Nothing on top
+				if ( WallExists( x, y-1, z ) ) // Anything under
+				{
+					var x1 = x * 32;
+					var x2 = x1 + 32;
+					var y1 = y * block_height;
+					var y2 = y1 + block_height;
+					var z1 = z * 32;
+					var z2 = z1 + 32;
+
+					y2 += block_height / 2; // Potential border
+
+					if ( WallExists( x + 1, y, z ) && !WallExists( x + 1, y + 1, z )/* && !WallExists( x - 1, y, z ) && !StairsExists( x - 1, y, z ) && WallExists( x - 1, y - 1, z ) */ &&
+						 !StairsExists( x, y, z + 1 ) && !StairsExists( x, y, z - 1 ) && !StairsExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z - 1 ) ) // x+
+					{
+						cut_ops.push({ mat:MAT_STAIRS, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
+							riseZInc:!WallExists( x, y, z+1 ) && !WallExists( x, y-1, z+1 ) && !StairsExists( x, y-1, z+1 ), 
+							riseZDec:!WallExists( x, y, z-1 ) && !WallExists( x, y-1, z-1 ) && !StairsExists( x, y-1, z-1 ), 
+							riseXInc:false, 
+							riseXDec:false });
+						level_grid[ x ][ y ][ z ].is_stairs = true;
+						//continue;
+					}
+					else
+					if ( WallExists( x - 1, y, z ) && !WallExists( x - 1, y + 1, z )/* && !WallExists( x + 1, y, z ) && !StairsExists( x + 1, y, z ) && WallExists( x + 1, y - 1, z )*/ && 
+						 !StairsExists( x, y, z + 1 ) && !StairsExists( x, y, z - 1 ) && !StairsExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z - 1 ) ) // x-
+					{
+						cut_ops.push({ mat:MAT_STAIRS, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
+							riseZInc:!WallExists( x, y, z+1 ) && !WallExists( x, y-1, z+1 ) && !StairsExists( x, y-1, z+1 ), 
+							riseZDec:!WallExists( x, y, z-1 ) && !WallExists( x, y-1, z-1 ) && !StairsExists( x, y-1, z-1 ), 
+							riseXInc:false, 
+							riseXDec:false });
+						level_grid[ x ][ y ][ z ].is_stairs = true;
+						//continue;
+					}
+					//else
+					if ( WallExists( x, y, z + 1 ) && !WallExists( x, y + 1, z + 1 )/* && !WallExists( x, y, z - 1 ) && !StairsExists( x, y, z - 1 ) && WallExists( x, y - 1, z - 1 )*/ && 
+						 !StairsExists( x + 1, y, z ) && !StairsExists( x - 1, y, z ) && !StairsExists( x + 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z ) ) // z+
+					{
+						cut_ops.push({ mat:MAT_STAIRS, orientation:2, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
+							riseXInc:!WallExists( x+1, y, z ) && !WallExists( x+1, y-1, z ) && !StairsExists( x+1, y-1, z ), 
+							riseXDec:!WallExists( x-1, y, z ) && !WallExists( x-1, y-1, z ) && !StairsExists( x-1, y-1, z ), 
+							riseZInc:false, 
+							riseZDec:false });
+						level_grid[ x ][ y ][ z ].is_stairs = true;
+						//continue;
+					}
+					else
+					if ( WallExists( x, y, z - 1 ) && !WallExists( x, y + 1, z - 1 )/* && !WallExists( x, y, z + 1 ) && !StairsExists( x, y, z + 1 ) && WallExists( x, y - 1, z + 1 )*/ && 
+						 !StairsExists( x + 1, y, z ) && !StairsExists( x - 1, y, z ) && !StairsExists( x + 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z ) ) // z-
+					{
+						cut_ops.push({ mat:MAT_STAIRS, orientation:3, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
+							riseXInc:!WallExists( x+1, y, z ) && !WallExists( x+1, y-1, z ) && !StairsExists( x+1, y-1, z ), 
+							riseXDec:!WallExists( x-1, y, z ) && !WallExists( x-1, y-1, z ) && !StairsExists( x-1, y-1, z ), 
+							riseZInc:false, 
+							riseZDec:false });
+						level_grid[ x ][ y ][ z ].is_stairs = true;
+						//continue;
+					}
+					
+					if ( level_grid[ x ][ y ][ z ].is_stairs )
+					continue;
+				}
+
+			}
+		}
+		
+		// Solve stairs conflicts regarding borders being spawned between perpendicular		stairs
+		for ( var i = 0; i < cut_ops.length; i++ )
+		for ( var i2 = 0; i2 < cut_ops.length; i2++ )
+		if ( i !== i2 )
+		{
+			if ( cut_ops[ i ].mat === MAT_STAIRS )
+			if ( cut_ops[ i2 ].mat === MAT_STAIRS )
+			{
+				if ( ( cut_ops[ i ].orientation < 2 ) !== ( cut_ops[ i2 ].orientation < 2 ) ) // Not parallel
+				{
+					if ( cut_ops[ i ].orientation === 0 )
+					{
+						if ( cut_ops[ i ].x2 === cut_ops[ i2 ].x1 ) // X-continued
+						if ( cut_ops[ i ].z1 === cut_ops[ i2 ].z1 ) // Same Z
+						if ( cut_ops[ i ].y2 === cut_ops[ i2 ].y1 ) // Y-continued
+						{
+							cut_ops[ i2 ].riseXDec = false;
+						}
+					}
+					else
+					if ( cut_ops[ i ].orientation === 1 )
+					{
+						if ( cut_ops[ i ].x1 === cut_ops[ i2 ].x2 ) // X-pre-continued
+						if ( cut_ops[ i ].z1 === cut_ops[ i2 ].z1 ) // Same Z
+						if ( cut_ops[ i ].y2 === cut_ops[ i2 ].y1 ) // Y-continued
+						{
+							cut_ops[ i2 ].riseXInc = false;
+						}
+					}
+					else
+					if ( cut_ops[ i ].orientation === 2 )
+					{
+						if ( cut_ops[ i ].z2 === cut_ops[ i2 ].z1 ) // Z-continued
+						if ( cut_ops[ i ].x1 === cut_ops[ i2 ].x1 ) // Same X
+						if ( cut_ops[ i ].y2 === cut_ops[ i2 ].y1 ) // Y-continued
+						{
+							cut_ops[ i2 ].riseZDec = false;
+						}
+					}
+					else
+					if ( cut_ops[ i ].orientation === 3 )
+					{
+						if ( cut_ops[ i ].z1 === cut_ops[ i2 ].z2 ) // Z-pre-continued
+						if ( cut_ops[ i ].x1 === cut_ops[ i2 ].x1 ) // Same X
+						if ( cut_ops[ i ].y2 === cut_ops[ i2 ].y1 ) // Y-continued
+						{
+							cut_ops[ i2 ].riseZInc = false;
+						}
+					}
+				}
+			}
+		}
+		
+		// Some borders
+		for ( var x = 0; x < level_grid.length; x++ )
+		for ( var y = 0; y < level_grid[ x ].length; y++ )
+		for ( var z = 0; z < level_grid[ x ][ y ].length; z++ )
+		{
+			if ( level_grid[ x ][ y ][ z ].is_wall )
+			{
+			}
+			else
+			if ( WallExists( x, y - 1, z ) )
+			{
+				var y1 = y * block_height;
+				var y2 = y1 + block_height;
+				
+				y2 -= block_height / 2;
+				
+				if ( !WallExists( x + 1, y, z ) && !WallExists( x + 1, y - 1, z ) && !StairsExists( x + 1, y - 1, z ) )
+				{
+					var x1 = x * 32;
+					var x2 = x1 + 32;
+					var z1 = z * 32;
+					var z2 = z1 + 32;
+					
+					x1 = x2 - 2;
+					
+					cut_ops.push({ mat:MAT_BORDER, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+				}
+				if ( !WallExists( x - 1, y, z ) && !WallExists( x - 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z ) )
+				{
+					var x1 = x * 32;
+					var x2 = x1 + 32;
+					var z1 = z * 32;
+					var z2 = z1 + 32;
+					
+					x2 = x1 + 2;
+					
+					cut_ops.push({ mat:MAT_BORDER, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+				}
+				if ( !WallExists( x, y, z + 1 ) && !WallExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z + 1 ) )
+				{
+					var x1 = x * 32;
+					var x2 = x1 + 32;
+					var z1 = z * 32;
+					var z2 = z1 + 32;
+					
+					z1 = z2 - 2;
+					
+					cut_ops.push({ mat:MAT_BORDER, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+				}
+				if ( !WallExists( x, y, z - 1 ) && !WallExists( x, y - 1, z - 1 ) && !StairsExists( x, y - 1, z - 1 ) )
+				{
+					var x1 = x * 32;
+					var x2 = x1 + 32;
+					var z1 = z * 32;
+					var z2 = z1 + 32;
+					
+					z2 = z1 + 2;
+					
+					cut_ops.push({ mat:MAT_BORDER, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+				}
+			}
+		}
+		
+		/*
+		var cut_ops = [];
+		var cut_ops_y = 0;
+		var cluster_size = 32;
+		
+		var max_size_y = 32;
+		for ( var i = 0; i < concrete_ops; i++ )
+		{
+			var max_size = 32;
+			var min_size = 32;
+			
+			var cur_size_x = 32;
+			var cur_size_y = 32;
+			var cur_size_z = 32;
+			
+			var x1 = ~~( sdRandomPattern.random() * ( size_x - cur_size_x ) / cluster_size ) * cluster_size;
+			var x2 = x1 + cur_size_x;
+			
+			var y1 = Math.ceil( sdRandomPattern.random() * ( size_y - cur_size_y ) / cluster_size ) * cluster_size;
+			var y2 = y1 + cur_size_y;
+			
+			var z1 = ~~( sdRandomPattern.random() * ( size_z - cur_size_z ) / cluster_size ) * cluster_size;
+			var z2 = z1 + cur_size_z;
+			
+			cut_ops.push({ mat_x:~~(sdRandomPattern.random()*2) * 32, mat_y:~~(sdRandomPattern.random()*2) * 32, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+		}*/
 		
 		sdRandomPattern.RestoreSeed();
 		
@@ -1248,50 +1692,7 @@ class main
 				world_rgb[ c++ ] = terrain_color.b * 255;
 				continue;
 			}
-			/*
-			var quad_radius = Math.max( Math.abs( x - size_x / 2 ), Math.abs( z - size_z / 2 ) );
 			
-			if ( y > 15 &&
-				 quad_radius > size_x / 6 &&
-				 quad_radius < size_x / 3 &&
-				 !( 
-					( y <= 30 && ( Math.abs( x + size_x / 8 - size_x / 2 ) <= 5 || Math.abs( x - size_x / 8 - size_x / 2 ) <= 5  ||
-								   Math.abs( z + size_z / 8 - size_z / 2 ) <= 5 || Math.abs( z - size_z / 8 - size_z / 2 ) <= 5 ) )
-					||
-					( ( y > 35 || quad_radius < size_x / 6 + 10 || quad_radius > size_x / 3 - 10 ) && ( Math.abs( x - size_x / 2 ) <= 15 || Math.abs( z - size_z / 2 ) <= 15 ) )
-					||
-					( quad_radius > size_x / 6 + 20 && quad_radius < size_x / 3 - 20 && Math.abs( x - size_x / 2 ) > size_x / 6 + 20 && Math.abs( z - size_z / 2 ) > size_z / 6 + 20 )
-					) )
-			{
-				//fill[ i ] = edge_density - 0.1;
-				fill[ i ] = 0;
-				
-				c += 3;
-			}
-			else
-			{
-				if ( y > 10 &&
-					 quad_radius > size_x / 6 - 5 &&
-					 quad_radius < size_x / 3 + 5 )
-				{
-					// Ruined wall
-					world_rgb[ c++ ] = 241 * 1;
-					world_rgb[ c++ ] = 241 * 1;
-					world_rgb[ c++ ] = 241 * 1;
-					
-					noise_tex[ i ] = ( noise_tex[ i ] + 0.5 ) / 2;
-					
-					fill[ i ] += 0.042; // Increase visibility where wall is
-				}
-				else
-				{
-					// Ground
-					world_rgb[ c++ ] = terrain_color.r * 255;
-					world_rgb[ c++ ] = terrain_color.g * 255;
-					world_rgb[ c++ ] = terrain_color.b * 255;
-				}
-			}
-			*/
 			world_rgb[ c   ] = terrain_color.r * 255;
 			world_rgb[ c+1 ] = terrain_color.g * 255;
 			world_rgb[ c+2 ] = terrain_color.b * 255;
@@ -1305,20 +1706,189 @@ class main
 				if ( y >= cut_ops[ op ].y1 )
 				if ( y < cut_ops[ op ].y2 )
 				{
-					if ( cut_ops[ op ].op === 0 )
+					var fill_power = 1;
+					/*
+					world_rgb[ c   ] = ~~( 127 + Math.sin( op ) * 50 );
+					world_rgb[ c+1 ] = ~~( 127 + Math.sin( op + 1 ) * 50 );
+					world_rgb[ c+2 ] = ~~( 127 + Math.sin( op + 2 ) * 50 );
+					*/
+					var rgba = null;
+					
+					if ( cut_ops[ op ].mat === MAT_WALL )
 					{
-						//fill[ i ] -= 0.05 * Math.min( y / 20, 1 );
-						fill[ i ] -= 0.03 * Math.min( y / 20, 1 );
+						var off_x = 0;
+						var off_y = 0;
+						
+						if ( x === cut_ops[ op ].x1 || z === cut_ops[ op ].z2-1 )
+						rgba = main.level_bitmap.getPixel32( ( x + z ) % 32 + off_x, ( 31 - ( y % 32 ) ) + off_y );
+						else
+						if ( x === cut_ops[ op ].x2-1 || z === cut_ops[ op ].z1 )
+						rgba = main.level_bitmap.getPixel32( ( 31 - ( ( x + z ) % 32 ) ) + off_x, ( 31 - ( y % 32 ) ) + off_y );
+						else
+						{
+							var off_x = 32;
+							var off_y = 0;
+							rgba = main.level_bitmap.getPixel32( ( x % 32 ) + off_x, ( z % 32 ) + off_y );
+						}
 					}
 					else
+					if ( cut_ops[ op ].mat === MAT_DOOR )
 					{
-						//fill[ i ] = 1;
-						fill[ i ] += 0.08;
-
-						world_rgb[ c   ] = 241 * 1;
-						world_rgb[ c+1 ] = 241 * 1;
-						world_rgb[ c+2 ] = 241 * 1;
+						var off_x = 0;
+						var off_y = 32;
+						
+						if ( cut_ops[ op ].orientation === 0 )
+						{
+							if ( x === cut_ops[ op ].x1 )
+							{
+								rgba = main.level_bitmap.getPixel32( ( z - cut_ops[ op ].z1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
+							}
+							else
+							if ( x === cut_ops[ op ].x2 - 1 )
+							{
+								rgba = main.level_bitmap.getPixel32( 31 - ( z - cut_ops[ op ].z1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
+							}
+							else // Cap
+							{
+								var off_x = 32;
+								var off_y = 32;
+								rgba = main.level_bitmap.getPixel32( x % 32 + off_x, z % 32 + off_y );
+							}
+						}
+						else
+						if ( cut_ops[ op ].orientation === 1 )
+						{
+							if ( z === cut_ops[ op ].z1 )
+							{
+								rgba = main.level_bitmap.getPixel32( 31 - ( x - cut_ops[ op ].x1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
+							}
+							else
+							if ( z === cut_ops[ op ].z2 - 1 )
+							{
+								rgba = main.level_bitmap.getPixel32( ( x - cut_ops[ op ].x1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
+							}
+							else // Cap
+							{
+								var off_x = 32;
+								var off_y = 32;
+								rgba = main.level_bitmap.getPixel32( x % 32 + off_x, z % 32 + off_y );
+							}
+						}
 					}
+					else
+					if ( cut_ops[ op ].mat === MAT_STAIRS )
+					{
+						var rise_potential = 0;
+						
+						var elevation = 0;
+						
+						if ( cut_ops[ op ].riseXDec && x < cut_ops[ op ].x1 + 2 ||
+							 cut_ops[ op ].riseXInc && x >= cut_ops[ op ].x2 - 2 ||
+							 cut_ops[ op ].riseZDec && z < cut_ops[ op ].z1 + 2 ||
+							 cut_ops[ op ].riseZInc && z >= cut_ops[ op ].z2 - 2 )
+						rise_potential = block_height / 2;
+						
+						if ( cut_ops[ op ].orientation === 0 )
+						{
+							elevation = ( x - cut_ops[ op ].x1 ) * 0.75 - 8;
+							
+							//if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation ||
+							//	 elevation < 0 )
+							//fill_power = 0;
+						}
+						else
+						if ( cut_ops[ op ].orientation === 1 )
+						{
+							elevation = -( x - cut_ops[ op ].x2 + 1 ) * 0.75 - 8;
+							
+							//if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation || // + 1 because in else case stair will be higher than floor by 1 voxel
+							//	 elevation < 0 )
+							//fill_power = 0;
+						}
+						else
+						if ( cut_ops[ op ].orientation === 2 )
+						{
+							elevation = ( z - cut_ops[ op ].z1 ) * 0.75 - 8;
+							
+							//if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation ||
+							//	 elevation < 0 )
+							//fill_power = 0;
+						}
+						else
+						if ( cut_ops[ op ].orientation === 3 )
+						{
+							elevation = -( z - cut_ops[ op ].z2 + 1 ) * 0.75 - 8;
+							
+							//if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation || // + 1 because in else case stair will be higher than floor by 1 voxel
+							//	 elevation < 0 )
+							//fill_power = 0;
+						}
+						//else
+						//fill_power = 0;
+					
+						if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation || // + 1 because in else case stair will be higher than floor by 1 voxel
+							 elevation < 0 )
+						fill_power = 0;
+					
+						
+						if ( fill_power > 0 )
+						{
+							if ( rise_potential > 0 )
+							{
+								/*world_rgb[ c   ] = 255;
+								world_rgb[ c+1 ] = 0;
+								world_rgb[ c+2 ] = 0;*/
+								
+								var off_x = 32;
+								var off_y = 32;
+								
+								//elevation = elevation;
+
+								if ( cut_ops[ op ].orientation >= 2 )
+								rgba = main.level_bitmap.getPixel32( ~~((y-cut_ops[ op ].y2+34 - elevation)*0.25 + 1 ) % 32 + off_x, ~~(z*0.25) % 32 + off_y );
+								else
+								rgba = main.level_bitmap.getPixel32( ~~((y-cut_ops[ op ].y2+34 - elevation)*0.25 + 1 ) % 32 + off_x, ~~(x*0.25) % 32 + off_y );
+					
+								if ( rgba.r < 30 )
+								fill_power = 0;
+							}
+							else
+							{
+								var off_x = 32;
+								var off_y = 32;
+								if ( cut_ops[ op ].orientation < 2 )
+								rgba = main.level_bitmap.getPixel32( x % 32 + off_x, z % 32 + off_y );
+								else
+								rgba = main.level_bitmap.getPixel32( z % 32 + off_x, x % 32 + off_y );
+							}
+						}
+					}
+					else
+					if ( cut_ops[ op ].mat === MAT_BORDER )
+					{
+						/*world_rgb[ c   ] = 255;
+						world_rgb[ c+1 ] = 0;
+						world_rgb[ c+2 ] = 0;*/
+						
+						var off_x = 32;
+						var off_y = 32;
+						if ( cut_ops[ op ].orientation === 0 )
+						rgba = main.level_bitmap.getPixel32( ~~((y-cut_ops[ op ].y2+34)*0.25) % 32 + off_x, ~~(z*0.25) % 32 + off_y );
+						else
+						rgba = main.level_bitmap.getPixel32( ~~((y-cut_ops[ op ].y2+34)*0.25) % 32 + off_x, ~~(x*0.25) % 32 + off_y );
+					
+						if ( rgba.r < 30 )
+						fill_power = 0;
+					}
+
+					if ( rgba !== null )
+					{
+						world_rgb[ c   ] = rgba.r;
+						world_rgb[ c+1 ] = rgba.g;
+						world_rgb[ c+2 ] = rgba.b;
+					}
+					
+					fill[ i ] += fill_power;
 				}
 			}
 			c += 3;
@@ -1805,6 +2375,21 @@ class main
 			}
 		}
 	}
+						
+	static SetAsRandom3D( v )
+	{
+		var omega = Math.random() * Math.PI * 2;
+		var z = Math.random() * 2 - 1;
+
+		var one_minus_sqr_z = Math.sqrt(1-z*z);
+
+		v.x = one_minus_sqr_z * Math.cos(omega);
+		v.y = one_minus_sqr_z * Math.sin(omega);
+		v.z = z;
+
+		return v;
+	}
+	
 	static GetEntityBrightness( x, y, z )
 	{
 		if ( Math.abs( main.GetEntityBrightness_lx - x ) <= 2 )
@@ -2485,7 +3070,7 @@ class main
 		main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.06 * GSPEED );
 		
 		
-		
+		/*
 		if ( main.my_character === null )
 		{
 			if ( main.hold_fire )
@@ -2506,7 +3091,7 @@ class main
 							is_rocket: sdCharacter.weapon_is_rocket[ 0 ]
 						});
 			}
-		}
+		}*/
 		
 		if ( up_vector.y > 0 )
 		{

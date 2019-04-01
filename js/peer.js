@@ -1,3 +1,9 @@
+/*
+
+	If not working in Opera - go to opera://settings/?search=UDP and put that dot higher (Opera does not allow UDP by default at all. That setting honestly would do more sense if this was per-side instead of global).
+
+*/
+
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 require('webrtc-adapter');
 module.exports.RTCSessionDescription = window.RTCSessionDescription ||
@@ -368,6 +374,7 @@ Negotiator._setupListeners = function (connection, pc, pc_id) {
     pc.onicecandidate = function (evt) {
         if (evt.candidate) {
             util.log("Received ICE candidates for:", connection.peer);
+			
             provider.socket.send({
                 type: "CANDIDATE",
                 payload: {
@@ -388,8 +395,9 @@ Negotiator._setupListeners = function (connection, pc, pc_id) {
                 connection.close();
                 break;
             case "disconnected":
-                util.log("iceConnectionState is disconnected, closing connections to " + peerId);
-                connection.close();
+                //util.log("iceConnectionState is disconnected, reconnection can happen(?) to " + peerId); // custom
+                util.log("iceConnectionState is disconnected, closing connections to " + peerId); // old
+                connection.close(); // old
                 break;
             case "completed":
                 pc.onicecandidate = util.noop;
@@ -1105,7 +1113,8 @@ var dataCount = 1;
 var BinaryPack = require("js-binarypack");
 var RTCPeerConnection = require("./adapter").RTCPeerConnection;
 var util = {
-    noop: function () { },
+    //noop: function ( ...args ) { console.log( args ); },
+    noop: function ( ...args ) { },
     CLOUD_HOST: "0.peerjs.com",
     CLOUD_PORT: 443,
     chunkedBrowsers: { Chrome: 1 },

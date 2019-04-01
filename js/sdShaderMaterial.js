@@ -23,7 +23,10 @@ class sdShaderMaterial
 			mat = new THREE.ShaderMaterial({
 				uniforms: 
 				{
-					brightness: { type: "f", value: 1 }
+					brightness: { type: "f", value: 1 },
+					r: { type: "f", value: 1 },
+					g: { type: "f", value: 1 },
+					b: { type: "f", value: 0 }
 				},
 				depthWrite: true,
 				transparent: false,
@@ -52,12 +55,16 @@ class sdShaderMaterial
 				varying vec4 pos;
 				varying vec3 vert_pos;
 				
+				uniform float r;
+				uniform float g;
+				uniform float b;
+				
 				void main()
 				{
 					gl_FragColor.rgba = vec4( 1.0, 1.0, 1.0, 1.0 );
 				
 					if ( vert_pos.z < 0.3 )
-					gl_FragColor.rgba = vec4( 1.0, 1.0, 0.0, 1.0 );
+					gl_FragColor.rgba = vec4( r, g, b, 1.0 );
 				
 					//gl_FragDepthEXT = ( pos.z ) / 1024.0;
 					gl_FragDepthEXT = ( pos.z - 3.0 ) / 1024.0;

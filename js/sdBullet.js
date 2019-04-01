@@ -82,6 +82,7 @@ class sdBullet
 		this.b = 192 / 255 * 1.5;
 		
 		this.is_rocket = params.is_rocket || false;
+		this.is_sniper = params.is_sniper || false;
 		
 		this.trail_spawn = 0;
 		
@@ -175,7 +176,7 @@ class sdBullet
 				{
 					sdSound.PlaySound({ sound: lib.wall_hit, position: new THREE.Vector3( tx, ty, tz  ), volume: 1 });
 					main.WorldPaintDamage( tx, ty, tz, 1.5 );
-					sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK, x:tx, y:ty, z:tz });
+					sdSprite.CreateSprite({ type: this.is_sniper ? sdSprite.TYPE_SNIPER_HIT : sdSprite.TYPE_SPARK, x:tx, y:ty, z:tz });
 					
 					sdSync.MP_SendEvent( sdSync.COMMAND_I_BULLET_HIT_WORLD, tx, ty, tz );
 				}
@@ -189,7 +190,7 @@ class sdBullet
 			this.trail_spawn += GSPEED;
 			if ( this.trail_spawn > 2 )
 			{
-				this.trail_spawn -= 2;
+				this.trail_spawn = this.trail_spawn % 2;
 				
 				var bx = this.x;
 				var by = this.y;
@@ -203,6 +204,30 @@ class sdBullet
 				}
 
 				sdSprite.CreateSprite({ type: sdSprite.TYPE_SMOKE, x:bx, y:by - 1, z:bz });
+			}
+		}
+		else
+		if ( this.is_sniper )
+		{
+			this.trail_spawn += GSPEED;
+			//if ( this.trail_spawn > 0.5 )
+			{
+				this.trail_spawn = this.trail_spawn % 0.5;
+				
+				var bx = this.x;
+				var by = this.y;
+				var bz = this.z;
+				/*
+				if ( this.visual_intens > 0 )
+				{
+					bx = bx * ( 1 - this.visual_intens ) + this.visual_x * ( this.visual_intens );
+					by = by * ( 1 - this.visual_intens ) + this.visual_y * ( this.visual_intens );
+					bz = bz * ( 1 - this.visual_intens ) + this.visual_z * ( this.visual_intens );
+				}*/
+
+				sdSprite.CreateSprite({ type: sdSprite.TYPE_SNIPER_TRAIL, x:bx - this.tox * GSPEED * 0.666, y:by - this.toy * GSPEED * 0.666, z:bz - this.toz * GSPEED * 0.666 });
+				sdSprite.CreateSprite({ type: sdSprite.TYPE_SNIPER_TRAIL, x:bx - this.tox * GSPEED * 0.333, y:by - this.toy * GSPEED * 0.333, z:bz - this.toz * GSPEED * 0.333 });
+				sdSprite.CreateSprite({ type: sdSprite.TYPE_SNIPER_TRAIL, x:bx, y:by, z:bz });
 			}
 		}
 		
@@ -336,6 +361,11 @@ class sdBullet
 		sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK, x:t.x, y:t.y, z:t.z, tox:(tox+t.tox)/2, toy:(toy+t.toy)/2, toz:(toz+t.toz)/2 });
 		else
 		sdSprite.CreateSprite({ type: sdSprite.TYPE_BLOOD, x:t.x, y:t.y, z:t.z, tox:(tox+t.tox)/2, toy:(toy+t.toy)/2, toz:(toz+t.toz)/2 });
+	
+		if ( bullet.is_sniper )
+		{
+			sdSprite.CreateSprite({ type: sdSprite.TYPE_SNIPER_HIT, x:t.x, y:t.y, z:t.z, tox:0, toy:0, toz:0 });
+		}
 		
 		var hit_radius = 2;
 		var hit_radius_pow2 = hit_radius * hit_radius;
@@ -480,11 +510,11 @@ class sdBullet
 					var dy = a.y - y;
 					var dz = a.z - z;
 					
-					var power = explosion_intens / di * ( 1 - Math.pow( di / hit_radius, 2 ) ); 
+					var power = explosion_intens / di * ( 1 - Math.pow( di / hit_radius, 4 ) ); 
 					
 					a.WakeUp();
 					
-					var knock_power = 35; // 25
+					var knock_power = 25; // 35 // 25
 
 					if ( !main.MP_mode || b.owner === main.my_character )
 					{
@@ -535,7 +565,7 @@ class sdBullet
 				}
 			}
 		}
-
+		
 		for ( var i = 0; i < owner_cloud.length; i++ )
 		if ( owner_cloud_damage[ i ] > 0 )
 		{

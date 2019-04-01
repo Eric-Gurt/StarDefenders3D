@@ -26,15 +26,20 @@ class sdNet
 		
 		sdNet.peer_counter = -1; // in match, used to guess player's character ID
 		
+		sdNet.request_stack = [];
+		setInterval( sdNet.ContentStackWorker, 500 );
+		
 		sdNet.peer = null;
 		SpawnPeer();
 		function SpawnPeer()
 		{
-			sdNet.peer = new Peer( undefined, { debug:2, config:{ 'iceServers': [
+			sdNet.peer = new Peer( undefined, { 
+							//host: 'localhost', port: 9000, path: '/',
+							debug:2, config:{ 'iceServers': [
 						//{ 'url': 'stun:stun.l.google.com:19302' },
 						{ url: 'stun:stun.l.google.com:19302?transport=udp' },
-						//{ url: 'stun:stun.services.mozilla.com' }, // Removed because Firefox says "Using five or more STUN/TURN servers causes problems"? Strange.
-						{ url: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }, // Apparently they state their service is free
+						{ url: 'stun:stun.services.mozilla.com' }, // Removed because Firefox says "Using five or more STUN/TURN servers causes problems"? Strange.
+						//{ url: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }, // Apparently they state their service is free. Actually this one breaks everything instead
 						{ url: 'turn:turn.bistri.com:80', username: 'homeo', credential: 'homeo' }, // Was enough to work during 1st test
 						{ url: "turn:13.250.13.83:3478?transport=udp", username: "YzYNCouZM1mhqhmseWk6", credential: "YzYNCouZM1mhqhmseWk6" } // Asia
 					] } });
@@ -74,14 +79,20 @@ class sdNet
 		sdNet.key = null;
 		sdNet.pass_plus_key = null;
 		
-		sdNet.InitiateLoginOrRegister();
+		sdNet.InitiateLoginOrRegister( false );
 		
 		sdNet.invited_to_group = false;
 		sdNet.invited_to_enemy_group = false;
 	}
 	
-	static InitiateLoginOrRegister()
+	static InitiateLoginOrRegister( forceful )
 	{
+		if ( sdNet.InitiateLoginOrRegister_block )
+		return;
+		sdNet.InitiateLoginOrRegister_block = true;
+
+		if ( forceful )
+		sdNet.uid = null;
 		
 		if ( sdNet.uid === null )
 		{
@@ -113,7 +124,10 @@ class sdNet
 			{
 				var parts = v.split('|');
 				if ( parts[ 0 ] !== 'done' )
-				sdNet.GotServerError( v );
+				{
+					sdNet.GotServerError( v );
+					return;
+				}
 			
 				sdNet.uid = ~~parts[ 1 ];
 				
@@ -138,7 +152,10 @@ class sdNet
 			{
 				var parts = v.split('|');
 				if ( parts[ 0 ] !== 'done' )
-				sdNet.GotServerError( v );
+				{
+					sdNet.GotServerError( v );
+					return;
+				}
 			
 				sdNet.key = parts[ 1 ];
 				
@@ -154,6 +171,8 @@ class sdNet
 				document.getElementById('status_field').innerHTML = 'Pass_plus_key received';
 				
 				sdNet.SendLeaveQuickPlayCommand();
+
+				sdNet.InitiateLoginOrRegister_block = false;
 				
 			}, true );
 		}
@@ -162,6 +181,7 @@ class sdNet
 	
 	static SendLeaveQuickPlayCommand()
 	{
+		if ( sdNet.uid !== null )
 		sdNet.httpGetContent({ request:'leave_quick_play', uid:sdNet.uid, key:sdNet.key, pass_plus_key:sdNet.pass_plus_key }, function( v )
 		{
 			var parts = v.split('|');
@@ -231,6 +251,11 @@ class sdNet
 					any_not_me = true;
 				}
 			}
+		}
+		
+		if ( e.innerHTML.length > t.length || ( e.innerHTML.length === t.length && e.innerHTML !== t ) )
+		{
+			sdSound.PlayInterfaceSound({ sound: lib.ui_down, volume: 1 });
 		}
 		e.innerHTML = t;
 		
@@ -362,8 +387,26 @@ class sdNet
 			sdNet.FillWithPlayerList( document.getElementById('enemy_group_players'), parts[ 1 ] !== '' ? parts[ 1 ].split(',') : [], true );
 		}, false );
 	}
-
 	static httpGetContent( param_obj, callback, retry )
+	{
+		for ( var i = 0; i < sdNet.request_stack.length; i++ )
+		if ( sdNet.request_stack[ 1 ] === callback )
+		{
+			console.warn('Same callback');
+			return;
+		}
+		sdNet.request_stack.push([ param_obj, callback, retry ]);
+	}
+	static ContentStackWorker()
+	{
+		if ( sdNet.request_stack.length > 0 )
+		{
+			var a = sdNet.request_stack.shift();
+			var i = 0;
+			sdNet._httpGetContent( a[ i++ ], a[ i++ ], a[ i++ ] );
+		}
+	}
+	static _httpGetContent( param_obj, callback, retry )
 	{
 		if ( retry === true )
 		retry = true;
@@ -434,6 +477,10 @@ class sdNet
 				setTimeout( sdNet.httpGetContent( param_obj, callback, retry ), retry_time );
 			}
 		};
+		
+		xmlHttp.onerror = function()
+		{
+		};
 
 		xmlHttp.send( parameters );
 	}
@@ -448,7 +495,8 @@ class sdNet
 			t = 'Connection lost';
 		}
 		
-		console.warn( t );
+		//console.warn( t );
+		
 		//alert( t );
 	}
 	static OfflineTraining( enemies )
@@ -504,10 +552,15 @@ class sdNet
 	
 	static GotServerError( v )
 	{
-		if ( v === 'error|Bad login.' || v === 'error|Outdated hash' || v === 'error|Outdated key.' )
+		var parts = v.split('|');
+		
+		if ( parts[ 1 ] === 'Bad login.' || parts[ 1 ] === 'Outdated hash.' || parts[ 1 ] === 'Outdated key.' )
 		{
-			sdNet.uid = null;
-			sdNet.InitiateLoginOrRegister();
+			if ( ~~parts[ 2 ] === sdNet.uid ) // Related to our uid?
+			{
+				//sdNet.uid = null;
+				sdNet.InitiateLoginOrRegister( true );
+			}
 		}
 		else
 		throw new Error( v );

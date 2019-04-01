@@ -9,6 +9,7 @@ class sdAI
 {
 	static init_class()
 	{
+		sdAI.attack_walls_randomly_when_nobody_is_visible = false;
 	}
 	
 	constructor( c )
@@ -23,7 +24,7 @@ class sdAI
 		this.fire_probability = 0;
 		this.fire_wish = 0;
 		
-		this.look_vector = new THREE.Vector3();
+		this.look_vector = new THREE.Vector3( 1, 0, 0 ); // Zero value will cause NaN during lerp
 	}
 	
 	ApplyLogic( GSPEED ) // Never return early, because .look_direction must be normalized (or else shots will throw AI into sky)
