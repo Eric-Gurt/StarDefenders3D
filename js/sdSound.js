@@ -5,7 +5,7 @@ class sdSound
 	{
 		static init_class()
 		{
-			sdSound.MASTER_SOUND_VOLUME = 0.25; // 0.25
+			sdSound.MASTER_SOUND_VOLUME = 0.1; // 0.25
 			sdSound.interface_volume = 0.5;
 
 
@@ -93,7 +93,7 @@ class sdSound
 		
 		}
 		
-		static UpdateVolume( _sound, reusable_global_volume=-1 )
+		static UpdateVolume( _sound, reusable_global_volume=-1, smooth=0.1 )
 		{
 			if ( reusable_global_volume === -1 )
 			reusable_global_volume = sdSound.CalculateGlobalVolume();
@@ -105,7 +105,7 @@ class sdSound
 			
 			var new_rate = 1;
 			
-			_sound.setVolume( result_volume );
+			_sound.setVolume( result_volume, smooth );
 			
 			new_rate *= _sound.mypitch; 
 			
@@ -257,7 +257,7 @@ class sdSound
 			
 			_sound.myvolume = params.volume;
 			
-			sdSound.UpdateVolume( _sound );
+			sdSound.UpdateVolume( _sound, -1, 0 );
 			
 			_sound.setLoop( params.loop );
 			

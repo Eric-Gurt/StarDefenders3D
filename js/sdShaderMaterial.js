@@ -81,7 +81,9 @@ class sdShaderMaterial
 					tDiffuse: { type: "t", value: texture },
 					fog: { type: "c", value: new THREE.Color( 0x000000 ) },
 					fog_intensity: { type: "f", value: 0 },
-					brightness: { type: "f", value: 999 }
+					brightness: { type: "f", value: 999 },
+					diffuse: { type: "c", value: new THREE.Color( 0xffffff ) },
+					depth_offset: { type: "f", value: 1.5 }
 				},
 				depthWrite: true,
 				transparent: false,
@@ -112,7 +114,8 @@ class sdShaderMaterial
 				
 					if ( fog_intensity > 0.0 )
 					{
-						float fog_morph = 1.0 / ( 1.0 + gl_Position.z * 0.017 );
+						//float fog_morph = 1.0 / ( 1.0 + gl_Position.z * 0.017 );
+						float fog_morph = 1.0 / max( 1.0 + gl_Position.z * 0.017, 1.0 );
 						fog_final = fog_morph;
 					}
 					else
@@ -133,6 +136,9 @@ class sdShaderMaterial
 				
 				uniform float brightness;
 				
+				uniform vec3 diffuse;
+				uniform float depth_offset;
+				
 				void main()
 				{
 					gl_FragColor.rgba = texture2D( tDiffuse, vUv ).rgba;
@@ -142,13 +148,16 @@ class sdShaderMaterial
 						discard;
 					}
 				
+					gl_FragColor.rgb *= diffuse.rgb;
+					//gl_FragColor.a = 1.0;
+				
 					if ( fog_final < 1.0 )
 					{
 						gl_FragColor.rgb *= vec3( brightness );
 
 						gl_FragColor.rgb = gl_FragColor.rgb * vec3( fog_final ) + fog.rgb * vec3( 1.0 - fog_final );
 					}
-					gl_FragDepthEXT = ( pos.z - 1.5 ) / 1024.0;
+					gl_FragDepthEXT = ( pos.z - depth_offset ) / 1024.0;
 				}	
 			`
 			});

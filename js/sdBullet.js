@@ -83,6 +83,9 @@ class sdBullet
 		
 		this.is_rocket = params.is_rocket || false;
 		this.is_sniper = params.is_sniper || false;
+		this.is_plasma = params.is_plasma || false;
+		
+		this.splash_radius = params.splash_radius;
 		
 		this.trail_spawn = 0;
 		
@@ -100,16 +103,42 @@ class sdBullet
 		
 		if ( this.is_rocket )
 		{
-			this.dx = params.dx;
-			this.dy = params.dy;
-			this.dz = params.dz;
-			
+			if ( this.is_plasma )
+			{
+				this.air_friction = 0.95;
+				this.dy = -0.1;
+				
+				this.r = sdSprite.plas_r;
+				this.g = sdSprite.plas_g;
+				this.b = sdSprite.plas_b;
+			}
+			else
+			{
+				this.dx = params.dx;
+				this.dy = params.dy;
+				this.dz = params.dz;
+				
+				this.r = sdSprite.expl_r;
+				this.g = sdSprite.expl_g;
+				this.b = sdSprite.expl_b;
+
+				this.air_friction = 0.95;
+
+				sdSound.PlaySound({ sound: lib.rocket_attached_sound, parent_mesh: this.mesh, volume: 1 });
+			}
+		}
+		else
+		if ( this.is_sniper )
+		{
 			this.air_friction = 0.95;
-			
-			sdSound.PlaySound({ sound: lib.rocket_attached_sound, parent_mesh: this.mesh, volume: 1 });
+			/*this.r = sdSprite.sniper_r;
+			this.g = sdSprite.sniper_g;
+			this.b = sdSprite.sniper_b;*/
 		}
 		else
 		{
+			this.air_friction = 0.95;
+			//this.dy = -0.05;
 		}
 	}
 	remove()
@@ -174,18 +203,25 @@ class sdBullet
 			{
 				if ( !this.is_rocket )
 				{
-					sdSound.PlaySound({ sound: lib.wall_hit, position: new THREE.Vector3( tx, ty, tz  ), volume: 1 });
+					var vol = this.hp_damage / 30;
+					
+					sdSound.PlaySound({ sound: lib.wall_hit, position: new THREE.Vector3( tx, ty, tz ), volume: 1 * vol });
+					
+					if ( this.is_sniper )
+					main.WorldPaintDamage( tx, ty, tz, 4.5 );
+					else
 					main.WorldPaintDamage( tx, ty, tz, 1.5 );
+					
 					sdSprite.CreateSprite({ type: this.is_sniper ? sdSprite.TYPE_SNIPER_HIT : sdSprite.TYPE_SPARK, x:tx, y:ty, z:tz });
 					
-					sdSync.MP_SendEvent( sdSync.COMMAND_I_BULLET_HIT_WORLD, tx, ty, tz );
+					sdSync.MP_SendEvent( sdSync.COMMAND_I_BULLET_HIT_WORLD, tx, ty, tz, this.is_sniper, vol );
 				}
 
 				return true;
 			}
 		}
 		
-		if ( this.is_rocket )
+		if ( this.is_rocket && !this.is_plasma )
 		{
 			this.trail_spawn += GSPEED;
 			if ( this.trail_spawn > 2 )
@@ -230,6 +266,23 @@ class sdBullet
 				sdSprite.CreateSprite({ type: sdSprite.TYPE_SNIPER_TRAIL, x:bx, y:by, z:bz });
 			}
 		}
+		else
+		if ( this.is_plasma )
+		{
+		}
+		
+		if ( !this.is_rocket && !this.is_plasma )
+		{
+			// Bullets and rails have damage decrease over time
+			this.hp_damage = main.MorphWithTimeScale( this.hp_damage, 0, this.air_friction, GSPEED * 2 );
+			this.hp_damage_head = main.MorphWithTimeScale( this.hp_damage_head, 0, this.air_friction, GSPEED * 2 );
+			
+			if ( !main.MP_mode || this.owner === main.my_character )
+			if ( this.hp_damage < 0.5 || this.hp_damage_head < 0.5 )
+			{
+				return true;
+			}
+		}
 		
 		if ( main.MP_mode && this.owner !== main.my_character )
 		{
@@ -241,11 +294,11 @@ class sdBullet
 		
 		if ( !main.MP_mode || this.owner === main.my_character )
 		{
-			if ( this.x < -200 || this.x > main.level_chunks_x * main.chunk_size + 200 )
+			if ( this.x < -main.world_end_xyz || this.x > main.level_chunks_x * main.chunk_size + main.world_end_xyz )
 			return true;
-			if ( this.y < -200 || this.y > main.level_chunks_y * main.chunk_size + 200 )
+			if ( this.y < main.world_end_y || this.y > main.level_chunks_y * main.chunk_size + main.world_end_xyz )
 			return true;
-			if ( this.z < -200 || this.z > main.level_chunks_z * main.chunk_size + 200 )
+			if ( this.z < -main.world_end_xyz || this.z > main.level_chunks_z * main.chunk_size + main.world_end_xyz )
 			return true;
 		}
 	
@@ -295,10 +348,10 @@ class sdBullet
 			if ( a.removed )
 			continue;
 		
-			var di_path_bullet = Math.sqrt( Math.pow( fx-tx, 2 ), Math.pow( fy-ty, 2 ), Math.pow( fz-tz, 2 ) );
-			var di_path_atom = Math.sqrt( Math.pow( a.x-a.lx, 2 ), Math.pow( a.y-a.ly, 2 ), Math.pow( a.z-a.lz, 2 ) );
+			var di_path_bullet = Math.sqrt( Math.pow( fx-tx, 2 ) + Math.pow( fy-ty, 2 ) + Math.pow( fz-tz, 2 ) );
+			var di_path_atom = Math.sqrt( Math.pow( a.x-a.lx, 2 ) + Math.pow( a.y-a.ly, 2 ) + Math.pow( a.z-a.lz, 2 ) );
 		
-			var steps = Math.max( di_path_bullet, di_path_atom ) / impact_radius * 8; // 4 is not enough
+			var steps = Math.max( di_path_bullet, di_path_atom ) / impact_radius;
 			
 			if ( steps > 100 )
 			steps = 100;
@@ -330,6 +383,9 @@ class sdBullet
 		
 		if ( best_hit !== null )
 		{
+			var hp_damage = sdByteShifter.approx( this.hp_damage );
+			var hp_damage_head = sdByteShifter.approx( this.hp_damage_head );
+			
 			// Send this before damage applied, so sdCharacter.hea > 0 and thus damage sent and not ignored
 			if ( main.MP_mode )
 			if ( best_hit.parent.hea > 0 ) // Almost Copy [ 1 / 2 ] Do not hit dead players or else damage may happen after respawn
@@ -340,18 +396,24 @@ class sdBullet
 					this.tox * this.knock_power, 
 					this.toy * this.knock_power, 
 					this.toz * this.knock_power,
-					this.local_peer_uid
+					this.local_peer_uid,
+					hp_damage,
+					hp_damage_head
 				);
 			}
 			
-			sdBullet.DrawPlayerDamageAround( best_hit, this.tox * this.knock_power, this.toy * this.knock_power, this.toz * this.knock_power, this );
+			sdBullet.DrawPlayerDamageAround( best_hit, this.tox * this.knock_power, this.toy * this.knock_power, this.toz * this.knock_power, this, hp_damage, hp_damage_head );
 			
+			// Move bullet where it will possibly explode
+			this.x = tx * best_hit_morph + fx * ( 1 - best_hit_morph );
+			this.y = ty * best_hit_morph + fy * ( 1 - best_hit_morph );
+			this.z = tz * best_hit_morph + fz * ( 1 - best_hit_morph );
 			return true; // detonation
 		}
 		
 		return false;
 	}
-	static DrawPlayerDamageAround( t, tox, toy, toz, bullet )
+	static DrawPlayerDamageAround( t, tox, toy, toz, bullet, hp_damage=null, hp_damage_head=null ) // Last 2 params are usually more accurate values of damage
 	{
 		t.parent.tox += tox;
 		t.parent.toy += toy;
@@ -370,22 +432,30 @@ class sdBullet
 		var hit_radius = 2;
 		var hit_radius_pow2 = hit_radius * hit_radius;
 		
+		var damage_done = 0;
+		
 		if ( bullet !== null )
 		{
 			var dmg = 0;
 			
 			if ( t.material === sdAtom.MATERIAL_ALIVE_PLAYER )
-			dmg = bullet.hp_damage;
+			dmg = hp_damage;
+			//dmg = bullet.hp_damage;
 			else
 			if ( t.material === sdAtom.MATERIAL_ALIVE_PLAYER_HEAD )
-			dmg = bullet.hp_damage_head;
+			dmg = hp_damage_head;
+			//dmg = bullet.hp_damage_head;
 	
-			dmg = sdByteShifter.approx( dmg );
+			if ( dmg !== sdByteShifter.approx( dmg ) )
+			throw new Error('Possible desync');
+		
+			//dmg = sdByteShifter.approx( dmg );
 			
 			if ( dmg > 0 )
 			{	
-				t.parent.DealDamage( dmg, bullet.owner );
+				t.parent.DealDamage( dmg, bullet.owner, t.x, t.y, t.z );
 
+				damage_done = dmg * sdAtom.atom_hp_damage_scale_bullets;
 			}
 		}
 		
@@ -421,9 +491,13 @@ class sdBullet
 					a.g = Math.max( 0, a.g * ( 1 - morph * 2 ) );
 					a.b = Math.max( 0, a.b * ( 1 - morph * 2 ) );
 
-					if ( a.r <= 0.25 ) // 0.02
-					if ( a.g <= 0.25 )
-					if ( a.b <= 0.25 )
+					if ( damage_done > 0 )
+					a.hp -= damage_done * morph;
+
+					//if ( a.r <= 0.25 ) // 0.02
+					//if ( a.g <= 0.25 )
+					//if ( a.b <= 0.25 )
+					if ( a.hp <= 0 )
 					{
 						a.remove( i );
 						i--;
@@ -463,11 +537,16 @@ class sdBullet
 	}
 	static DrawExplosion( x, y, z, explosion_intens, hp_damage, b )
 	{
-		main.WorldPaintDamage( x, y, z, 8 );
+		main.WorldPaintDamage( x, y, z, b.splash_radius );
 		
+		if ( b.is_plasma )
+		{
+		//sdSound.PlaySound({ sound: lib.spark2, position:new THREE.Vector3(x,y,z), volume: 1 });
+		}
+		else
 		sdSound.PlaySound({ sound: lib.explosion, position:new THREE.Vector3(x,y,z), volume: 1 });
 		
-		sdSprite.CreateSprite({ type: sdSprite.TYPE_EXPLOSION, x:x, y:y, z:z, size:-8 });
+		sdSprite.CreateSprite({ type: sdSprite.TYPE_EXPLOSION, x:x, y:y, z:z, size:-b.splash_radius, r:b.r, g:b.g, b:b.b });
 		
 		var hit_radius = 20;
 		var hit_radius_pow2 = hit_radius * hit_radius;
@@ -504,6 +583,8 @@ class sdBullet
 				
 				var morph = Math.pow( 1 - di / hit_radius, 2 );
 				
+				var damage_done = 0;
+				
 				if ( explosion_intens > 0 )
 				{
 					var dx = a.x - x;
@@ -514,7 +595,7 @@ class sdBullet
 					
 					a.WakeUp();
 					
-					var knock_power = 25; // 35 // 25
+					var knock_power = 25 * b.splash_radius / 8; // 35 // 25
 
 					if ( !main.MP_mode || b.owner === main.my_character )
 					{
@@ -541,6 +622,8 @@ class sdBullet
 								owner_cloud_tox[ cloud_i ] += dx * knock_power * power / sdCharacter.atoms_per_player; // Copy [ 2 / 2 ]
 								owner_cloud_toy[ cloud_i ] += dy * knock_power * power / sdCharacter.atoms_per_player;
 								owner_cloud_toz[ cloud_i ] += dz * knock_power * power / sdCharacter.atoms_per_player;
+								
+								damage_done = dmg;
 							}
 						}
 					}
@@ -553,10 +636,14 @@ class sdBullet
 					a.r = Math.max( 0, a.r * ( 1 - morph * 0.75 ) );
 					a.g = Math.max( 0, a.g * ( 1 - morph * 2 ) );
 					a.b = Math.max( 0, a.b * ( 1 - morph * 2 ) );
+					
+					if ( damage_done > 0 )
+					a.hp -= damage_done;
 
-					if ( a.r <= 0.25 )
-					if ( a.g <= 0.25 )
-					if ( a.b <= 0.25 )
+					//if ( a.r <= 0.25 )
+					//if ( a.g <= 0.25 )
+					//if ( a.b <= 0.25 )
+					if ( a.hp <= 0 )
 					{
 						a.remove( i );
 						i--;
@@ -579,9 +666,10 @@ class sdBullet
 				owner_cloud_damage[ i ],
 				owner_cloud_tox[ i ],
 				owner_cloud_toy[ i ],
-				owner_cloud_toz[ i ] );
+				owner_cloud_toz[ i ],
+				b.x,b.y,b.z );
 				
-			owner_cloud[ i ].DealDamage( owner_cloud_damage[ i ], b.owner );
+			owner_cloud[ i ].DealDamage( owner_cloud_damage[ i ], b.owner, b.x, b.y, b.z );
 		}
 
 	}

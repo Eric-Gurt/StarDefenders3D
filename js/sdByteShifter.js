@@ -435,26 +435,38 @@ class sdByteShifter
 		else
 		if ( command === sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER )
 		{
-			let c = args[ 0 ];
+			let c = args[ 0 ];			
 			let dmg = args[ 1 ];
 			let tox = args[ 2 ];
 			let toy = args[ 3 ];
 			let toz = args[ 4 ];
+			let hit_x = args[ 5 ];
+			let hit_y = args[ 6 ];
+			let hit_z = args[ 7 ];
+			
+			if ( dmg !== ~~dmg )
+			throw new Error('Damage is not rounded - might be source of alive/dead desync (dmg = '+dmg+')');
+			
 			message = 
 				command + _ + 
 				this.approx( c.uid ) + _ + 
 				this.approx( dmg ) + _ + 
 				this.approx( tox ) + _ + 
 				this.approx( toy ) + _ + 
-				this.approx( toz );
+				this.approx( toz ) + _ + 
+				this.approx( hit_x ) + _ + 
+				this.approx( hit_y ) + _ + 
+				this.approx( hit_z );
 		
-			self_sent_in = 60;
+			//self_sent_in = 60;
+			self_sent_in = 120;
 		}
 		else
 		if ( command === sdSync.COMMAND_I_SPAWN_GORE || 
 			 command === sdSync.COMMAND_I_BULLET_HIT_WORLD || 
 			 command === sdSync.COMMAND_I_DIRECT_HIT_ATOM ||
-			 command === sdSync.COMMAND_I_RESSURECT )
+			 command === sdSync.COMMAND_I_RESSURECT ||
+			 command === sdSync.COMMAND_I_RELOAD )
 		{
 			message = 
 				command;
@@ -462,7 +474,7 @@ class sdByteShifter
 			for ( var i = 0; i < args.length; i++ )
 			message += _ + this.approx( args[ i ] );
 		
-			self_sent_in = 60;
+			self_sent_in = 120;
 		}
 		else
 		if ( command === sdSync.COMMAND_I_SAY )
@@ -587,7 +599,10 @@ class sdByteShifter
 				knock_power: sdCharacter.weapon_knock_power[ curwea ],
 				hp_damage: sdCharacter.weapon_hp_damage[ curwea ],
 				hp_damage_head: sdCharacter.weapon_hp_damage_head[ curwea ],
-				is_rocket: sdCharacter.weapon_is_rocket[ curwea ]
+				is_rocket: sdCharacter.weapon_is_rocket[ curwea ],
+				is_sniper: sdCharacter.weapon_is_sniper[ curwea ],
+				is_plasma: sdCharacter.weapon_is_plasma[ curwea ],
+				splash_radius: sdCharacter.weapon_splash_radius[ curwea ]
 			});
 			bullet.local_peer_uid = local_peer_uid;
 			
@@ -629,7 +644,7 @@ class sdByteShifter
 				let c = sdCharacter.characters[ i ];
 				if ( c.uid === uid )
 				{
-					c.DealDamage( Number( parts[ 2 ] ), this.parent_dataConnection.character );
+					c.DealDamage( Number( parts[ 2 ] ), this.parent_dataConnection.character, Number( parts[ 6 ] ), Number( parts[ 7 ] ), Number( parts[ 8 ] ) );
 					c.tox += Number( parts[ 3 ] );
 					c.toy += Number( parts[ 4 ] );
 					c.toz += Number( parts[ 5 ] );
@@ -653,12 +668,18 @@ class sdByteShifter
 			let tx = Number( parts[ 1 ] );
 			let ty = Number( parts[ 2 ] );
 			let tz = Number( parts[ 3 ] );
+			let is_sniper = Boolean( parts[ 4 ] );
+			let vol = Number( parts[ 5 ] );
 			
 			
-			sdSound.PlaySound({ sound: lib.wall_hit, position: new THREE.Vector3( tx, ty, tz  ), volume: 1 });
+			sdSound.PlaySound({ sound: lib.wall_hit, position: new THREE.Vector3( tx, ty, tz ), volume: 1 * vol });
 			
+			if ( is_sniper )
+			main.WorldPaintDamage( tx, ty, tz, 4.5 );
+			else
 			main.WorldPaintDamage( tx, ty, tz, 1.5 );
-			sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK, x:tx, y:ty, z:tz });
+		
+			sdSprite.CreateSprite({ type: is_sniper ? sdSprite.TYPE_SNIPER_HIT : sdSprite.TYPE_SPARK, x:tx, y:ty, z:tz });
 				
 			return true;
 		}
@@ -723,6 +744,9 @@ class sdByteShifter
 			let toz = Number( parts[ 4 ] );
 			let local_peer_uid = Number( parts[ 5 ] );
 			
+			let hp_damage = Number( parts[ 6 ] );
+			let hp_damage_head = Number( parts[ 7 ] );
+			
 			let bullet = null;
 			
 			for ( let i = 0; i < sdBullet.bullets.length; i++ )
@@ -737,7 +761,7 @@ class sdByteShifter
 			}
 			if ( bullet !== null )
 			{
-				sdBullet.DrawPlayerDamageAround( best_hit, tox, toy, toz, bullet );
+				sdBullet.DrawPlayerDamageAround( best_hit, tox, toy, toz, bullet, hp_damage, hp_damage_head );
 			
 				return true;
 			}
@@ -747,6 +771,13 @@ class sdByteShifter
 		{
 			let c = this.parent_dataConnection.character;
 			c.Ressurect( false );
+			return true;
+		}
+		else
+		if ( command === sdSync.COMMAND_I_RELOAD )
+		{
+			let c = this.parent_dataConnection.character;
+			c.ReloadIfPossible();
 			return true;
 		}
 		else

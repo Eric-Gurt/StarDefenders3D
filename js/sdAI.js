@@ -16,8 +16,10 @@ class sdAI
 	{
 		this.ai = c;
 		
-		this.fav_gun = ~~( Math.random() * 2 );
-		this.fav_fire_mode = 1 + ~~( Math.random() * 2 );
+		//this.fav_gun = ~~( Math.random() * 2 );
+		this.ResetFavGun();
+		//this.fav_fire_mode = 1 + ~~( Math.random() * 2 );
+		this.fav_fire_mode = 1;
 		
 		this.control_change_tim = 0;
 		
@@ -27,8 +29,15 @@ class sdAI
 		this.look_vector = new THREE.Vector3( 1, 0, 0 ); // Zero value will cause NaN during lerp
 	}
 	
+	ResetFavGun()
+	{
+		this.fav_gun = ~~( Math.random() * 5 );
+	}
+	
 	ApplyLogic( GSPEED ) // Never return early, because .look_direction must be normalized (or else shots will throw AI into sky)
 	{
+		//return;
+		
 		var c = this.ai;
 		
 		this.control_change_tim -= GSPEED;
@@ -120,8 +129,11 @@ class sdAI
 				//this.look_vector.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.995, GSPEED ) );
 				this.look_vector.lerp( targ, main.MorphWithTimeScale( 0, 1, 0.7, GSPEED ) );
 				
-				fire_prepare = true;
-				force_rocket = true;
+				if ( sdAI.attack_walls_randomly_when_nobody_is_visible )
+				{
+					fire_prepare = true;
+					force_rocket = true;
+				}
 			}
 		}
 		else

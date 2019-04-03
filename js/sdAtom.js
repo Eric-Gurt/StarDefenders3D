@@ -83,6 +83,9 @@ class sdAtom
 		
 		sdAtom.atom_scale = 0.5; // Atom & voxel grid scale
 		
+		sdAtom.atom_hp = 0.2; // 0.1 is not enough for splash-spark attacks (player can disappear)
+		sdAtom.atom_hp_damage_scale_bullets = 0.005;
+		
 		sdAtom.material = sdShaderMaterial.CreateMaterial( null, 'particle' );
 
 		sdAtom.atom_limit = 4096 * 2 * 2;
@@ -111,10 +114,10 @@ class sdAtom
 		sdAtom.mesh = new THREE.Points( sub_geom, sdAtom.material );
 		sdAtom.mesh.frustumCulled = false;
 		
-		var bmp = new BitmapData( 32, 32 );
+		var bmp = new BitmapData( 64, 32 );
 		
 		var mini_texture = new Image();
-		mini_texture.src = "assets/voxel_player.png";
+		mini_texture.src = "assets/voxel_player3.png";
 		mini_texture.onload = function() 
 		{
 			bmp.ctx.drawImage( mini_texture, 0, 0 );
@@ -197,6 +200,8 @@ class sdAtom
 		this.r = r;
 		this.g = g;
 		this.b = b;
+		
+		this.hp = sdAtom.atom_hp; // Used only to hide atoms due to shots & splash damage
 		
 		this.r_initial = r;
 		this.g_initial = g;
@@ -338,7 +343,8 @@ class sdAtom
 				dz /= di;
 				
 				if ( ch.in_limb )
-				if ( di > target_di + 2 * GSPEED )
+				//if ( di > target_di + 2 * GSPEED )
+				if ( di > target_di + 2 + 2 * GSPEED )
 				{
 					sdBullet.DrawSingleAtomDamage( ch.a );
 					sdBullet.DrawSingleAtomDamage( ch.b );
@@ -391,7 +397,7 @@ class sdAtom
 			if ( a.material > sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
 			{
 				if ( a.parent.hea <= 0 )
-				if ( a.y < -200 )
+				if ( a.y < main.world_end_y )
 				{
 					a.remove();
 					i--;
@@ -562,7 +568,17 @@ class sdAtom
 			var dz = 0;
 			
 			var is_rocket = b.is_rocket;
+			var is_plasma = b.is_plasma;
 			
+			if ( is_plasma )
+			{
+				dx = b.tox;
+				dy = b.toy;
+				dz = b.toz;
+				
+				length = 6;
+			}
+			else
 			if ( is_rocket )
 			{
 				dx = b.dx;
@@ -597,6 +613,14 @@ class sdAtom
 				vertices[ point * 3 + 2 ] = bz + dz * morph;
 
 				rgba[ point * 4 + 3 ] = 1; // Scale
+				if ( is_plasma )
+				{
+					rgba[ point * 4     ] = b.r * 2;
+					rgba[ point * 4 + 1 ] = b.g * 2;
+					rgba[ point * 4 + 2 ] = b.b * 2;
+					uvs2[ point ] = 1;
+				}
+				else
 				if ( is_rocket )
 				{
 					if ( i2 < 1 )
@@ -652,9 +676,9 @@ class sdAtom
 			vertices[ point * 3 + 1 ] = sdAtom.stars[ i ].y + main.main_camera.position.y;
 			vertices[ point * 3 + 2 ] = sdAtom.stars[ i ].z + main.main_camera.position.z;
 
-			rgba[ point * 4     ] = main.fog_color_color.r + 0.4 + Math.sin( sdAtom.stars[ i ].time_offset ) * 0.2;
-			rgba[ point * 4 + 1 ] = main.fog_color_color.g + 0.4 + Math.sin( sdAtom.stars[ i ].time_offset ) * 0.2;
-			rgba[ point * 4 + 2 ] = main.fog_color_color.b + 0.4 + Math.sin( sdAtom.stars[ i ].time_offset ) * 0.2;
+			rgba[ point * 4     ] = main.fog_color_color.r + 0.8 + Math.sin( sdAtom.stars[ i ].time_offset ) * 0.4; // 0.4 0.2
+			rgba[ point * 4 + 1 ] = main.fog_color_color.g + 0.8 + Math.sin( sdAtom.stars[ i ].time_offset ) * 0.4;
+			rgba[ point * 4 + 2 ] = main.fog_color_color.b + 0.8 + Math.sin( sdAtom.stars[ i ].time_offset ) * 0.4;
 			rgba[ point * 4 + 3 ] = 1;
 			uvs2[ point ] = 1;
 			

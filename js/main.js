@@ -40,10 +40,19 @@ class main
 		
 		main.WEAPON_RIFLE = 0;
 		main.WEAPON_ROCKET = 1;
+		main.WEAPON_SHOTGUN = 2;
+		main.WEAPON_SNIPER = 3;
+		main.WEAPON_SPARK = 4;
 		
 		main.date_match_started = new Date();
 		
 		main.anim_frame = -1;
+		
+		main.crosshair = null;
+		
+		main.ingame_menu_visible = false;
+		
+		main.mouse_move_sequence = []; // Should prevent Chrome bug when movement input is random
 		
 		main.hold_w = 0;
 		main.hold_s = 0;
@@ -87,7 +96,7 @@ class main
 		
 		main.turn_method = localStorage.getItem('stardefenders_turn_method');
 		if ( main.turn_method === null )
-		main.turn_method = 0;
+		main.turn_method = 1;
 		else
 		main.turn_method = Number( main.turn_method );
 	
@@ -97,6 +106,7 @@ class main
 		main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 2.26 );
 	
 		main.fov = Number( localStorage.getItem( 'stardefenders_fov' ) || 103 ); // 90
+		main.zoom_intensity = 1; // When right click is held
 		
 		setTimeout( function()
 		{
@@ -161,6 +171,10 @@ class main
 		main.pb3driver = null;
 		main.pb3driver_channel = null;
 		
+		main.song_channel = null;
+		
+		main.wind_channel = null;
+		
 		var bmp = new BitmapData( 64, 64 );
 		var mini_texture = new Image();
 		mini_texture.src = "assets/voxel_level.png";
@@ -175,6 +189,29 @@ class main
 			bmp.ctx.drawImage( mini_texture, 0, 0 );
 		};
 		
+		
+		
+		
+		
+		
+		
+		var bmp2 = new BitmapData( 128, 128 );
+		bmp2.fillRectCSS( 0, 0, 128, 128, '#AAAAAA' );
+		main.world_end_texture = new THREE.CanvasTexture( bmp2.ctx.canvas );
+		//main.world_end_texture.magFilter = THREE.NearestFilter;
+		//main.world_end_texture.minFilter = THREE.NearestMipMapNearestFilter;
+		main.RandomizeGroundColor = function()
+		{
+			bmp2.fillRectCSS( 0, 0, 128, 128, '#'+Math.floor(sdRandomPattern.random()*16777215).toString(16) );
+			main.world_end_texture.needsUpdate = true;
+		};
+		main.world_end_y = 0;
+		main.world_end_xyz = 500;
+		
+		
+		
+		
+		
 		var crashed = false;
 		window.onerror = function( message, url, lineNumber ) {
 			if ( !crashed )
@@ -186,6 +223,15 @@ class main
 		
 		main.fog_color = 0x000000;
 		main.fog_color_color = null;
+		
+		main.songs = [
+			'maD__Alg0rh1tm_-_02_-_alg0rh1tm_-_Sandglass',
+			'maD__Alg0rh1tm_-_01_-_alg0rh1tm_-_Circuit'
+		];
+		main.song_titles = [
+			'alg0rh1tm - Sandglass by maD & Alg0rh1tm',
+			'alg0rh1tm - Circuit by maD & Alg0rh1tm'
+		];
 		
 		main.DestroyLevel();
 	}
@@ -222,6 +268,7 @@ class main
 		document.getElementById('lobby_ui').style.display = 'none';
 		document.getElementById('ingame_hud').style.display = 'inherit';
 		document.getElementById('menu').style.display = 'none';
+		main.ingame_menu_visible = false;
 		
 		main.renderer.domElement.onmousedown = main.onMouseDown;
 		main.renderer.domElement.onmouseup = main.onMouseUp;
@@ -269,7 +316,8 @@ class main
 		main.renderer.autoClear = false;
 		document.body.appendChild( main.renderer.domElement );
 		
-		main.main_camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 1024 );
+		//main.main_camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 1024 );
+		main.main_camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 4098 );
 		main.main_camera.position.x = -5;
 		main.main_camera.position.y = -5;
 		main.main_camera.position.z = -5;
@@ -389,10 +437,25 @@ class main
 
 		//
 
+		if ( e.keyCode === 82 ) // R
+		{
+			if ( main.my_character !== null )
+			main.my_character.ReloadIfPossible();
+		}
+		else
 		if ( e.keyCode === 49 ) // 1
 		main.action_weapon = main.WEAPON_RIFLE;
 		else
 		if ( e.keyCode === 50 ) // 2
+		main.action_weapon = main.WEAPON_SPARK;
+		else
+		if ( e.keyCode === 51 ) // 3
+		main.action_weapon = main.WEAPON_SHOTGUN;
+		else
+		if ( e.keyCode === 52 ) // 4
+		main.action_weapon = main.WEAPON_SNIPER;
+		else
+		if ( e.keyCode === 53 ) // 5
 		main.action_weapon = main.WEAPON_ROCKET;
 		else
 		if ( e.keyCode === 9 ) // Tab
@@ -435,6 +498,7 @@ class main
 			if ( document.getElementById('menu').style.display !== 'inherit' )
 			{
 				document.getElementById('menu').style.display = 'inherit';
+				main.ingame_menu_visible = true;
 
 				function Fractally( e )
 				{
@@ -447,7 +511,10 @@ class main
 				Fractally( document.getElementById('menu') );
 			}
 			else
-			document.getElementById('menu').style.display = 'none';
+			{
+				document.getElementById('menu').style.display = 'none';
+				main.ingame_menu_visible = false;
+			}
 		}
 		
 		if ( e.keyCode === 90 ) // Z
@@ -482,6 +549,8 @@ class main
 			c.HideForFPS();
 
 			c._UpdateHealthBarIfNeeded();
+			
+			c._UpdateAmmoBarIfNeeded();
 		}
 	}
 	static onKeyUp( e )
@@ -518,21 +587,52 @@ class main
 		main.hold_fire = 1;
 	
 		if ( e.which === 3 )
-		main.hold_fire = 2;
+		main.zoom_intensity = 0.5;
+		//main.hold_fire = 2;
 	}
 	static onMouseUp( e )
 	{
 		main.hold_fire = 0;
+		
+		if ( e.which === 3 )
+		main.zoom_intensity = 1;
 	}
-	static onMouseMove( e )
+	static onMouseMove( e ) // Apparently this solves Chrome bug?
 	{
+		if ( main.ingame_menu_visible )
+		return;
+	
+		main.mouse_move_sequence.push( e ); // Perhaps e.movementX/Y values are not set yet?
+	}
+	static WorkWithMouseMovements()
+	{
+		/*if ( main.mouse_move_sequence.length > 5 )
+		{
+			main.mouse_move_sequence.shi
+		}*/
+		
+		if ( main.mouse_move_sequence.length > 0 )
+		{
+			//console.log( main.mouse_move_sequence );
+
+			for ( var i = 0; i < main.mouse_move_sequence.length; i++ )
+			main._onMouseMove( main.mouse_move_sequence[ i ] );
+
+			main.mouse_move_sequence = [];
+		}
+	}
+	static _onMouseMove( e )
+	{
+		if ( main.ingame_menu_visible )
+		return;
+	
 		/*if ( main.Dist3D( e.movementX, e.movementY, 0, 0,0,0) > 400 ) // Chrome MouseLock bug (cursor thrown in random direction when cursor leaves browser window
 		{
 			return;
 		}*/
-
-		var xx = e.movementX * main.sensitivity;
-		var yy = e.movementY * main.sensitivity;
+		
+		var xx = e.movementX * main.sensitivity * main.zoom_intensity;
+		var yy = e.movementY * main.sensitivity * main.zoom_intensity;
 		
 		if ( main.turn_method === 1 )
 		{
@@ -639,6 +739,7 @@ class main
 	{
 		//return;
 		
+		//if ( false )
 		if (!document.fullscreenElement && 
 			!document.mozFullScreenElement && !document.webkitFullscreenElement) {
 			if (document.documentElement.requestFullscreen) {
@@ -766,10 +867,25 @@ class main
 			main.scene.remove( main.pb3driver );
 			main.pb3driver = null;
 		}
+		
+		if ( main.song_channel !== null )
+		{
+			main.song_channel.CancelPlayback();
+			main.song_channel = null;
+		}
+		
+		if ( main.wind_channel !== null )
+		{
+			main.wind_channel.CancelPlayback();
+			main.wind_channel = null;
+		}
+		
 	}
 	static BuildLevel( seed )
 	{
 		sdRandomPattern.SetSeed( seed ); // 43223
+		
+		main.crosshair = document.getElementById('crosshair');
 		
 		main.GAME_FPS = 30;
 		
@@ -782,7 +898,19 @@ class main
 		main.pb3driver_channel = new SimplePanVolumeDriver();
 		
 		sdSound.PlaySound({ sound: lib.pb3_spoiler, parent_mesh: main.pb3driver, channel:main.pb3driver_channel, volume: 0, loop: true });
-
+		
+		
+		main.song_channel = new SimplePanVolumeDriver();
+		let song_id = ~~( sdRandomPattern.random() * main.songs.length );
+		LateLoadFileIfNeeded( main.songs[ song_id ]+'.mp3', function ()
+		{
+			if ( main.game_loop_started )
+			{
+				main.onChatMessage( '', 'Now playing song: <br>'+main.song_titles[ song_id ], null, '255,255,255' );
+				//sdSound.PlaySound({ sound: lib[ main.songs[ song_id ] ], parent_mesh: main.main_camera, channel:main.song_channel, volume: 0.8, loop: true });
+				sdSound.PlaySound({ sound: lib[ main.songs[ song_id ] ], parent_mesh: main.main_camera, channel:main.song_channel, volume: 0.4, loop: true });
+			}
+		});
 
 		var radius = 32;
 		var bmp = new BitmapData( radius, radius, true );
@@ -1199,6 +1327,29 @@ class main
 		sdAtom.init(); // updates fog
 		
 		sdAtom.RandomizeStars();
+		
+		if ( main.ground_mesh )
+		{
+			main.DestroyMovieClip( main.ground_mesh );
+		}
+		
+		main.RandomizeGroundColor();
+		var g = new THREE.PlaneBufferGeometry( 800, 800, 16, 16 );
+		var m = sdShaderMaterial.CreateMaterial( main.world_end_texture, 'sprite' );
+		m.uniforms.fog.value = new THREE.Color( main.fog_color );
+		m.uniforms.fog_intensity.value = 1;
+		m.uniforms.brightness.value = 1;
+		main.ground_mesh = new THREE.Mesh( g, m );
+		main.ground_mesh.rotation.x = -Math.PI * 0.5;
+		main.ground_mesh.position.x = size_x / 2;
+		main.ground_mesh.position.z = size_z / 2;
+		main.ground_mesh.position.y = main.world_end_y;
+		main.scene.add( main.ground_mesh );
+		
+		var g = new THREE.PlaneBufferGeometry( 6000, 6000, 32, 32 );
+		var ground_mesh_huge = new THREE.Mesh( g, m );
+		ground_mesh_huge.position.z = -5;
+		main.ground_mesh.add( ground_mesh_huge );
 		
 		//sdSprite.RandomizeSpriteEffects();
 		
@@ -2115,6 +2266,12 @@ class main
 			main.voxel_static.push( chunk );
 		}
 		
+		
+
+		main.wind_channel = new SimplePanVolumeDriver();
+		sdSound.PlaySound({ sound: lib.wind, parent_mesh: main.main_camera, channel:main.wind_channel, volume: 0, loop: true });
+		//sdSound.SetSoundPitch( main.wind_channel, 0.5 );
+		
 	}
 	static DrawDebugPoint( x, y, z, color=0xFF0000, size=3, opacity=0.5, ms_duration=0 ) // debugdrawpoint
 	{
@@ -2214,11 +2371,21 @@ class main
 		return x;
 	}
 	
-	static WorldPaintDamage( x, y, z, radius, is_gore_painter=false )
+	static WorldPaintDamage( x, y, z, radius, mode=0/*is_gore_painter=false*/,red=0,green=0,blue=0 ) // mode: cutter=0, gore_paiter=1, gore_builder=2
 	{
+		const MODE_CUTTER = 0;
+		const MODE_GORE_PAINTER = 1;
+		const MODE_GORE_BUILDER = 2;
+		
 		var chunk_size = main.chunk_size;
 		
-		var radius_int = main.FastCeil( radius ) + 2;
+		var radius_int = main.FastCeil( radius );
+		
+		if ( mode === MODE_CUTTER )
+		radius_int += 2;
+	
+		if ( mode === MODE_GORE_PAINTER )
+		radius_int += 2; // Not sure about this one
 		
 		var radius_pow2 = radius * radius;
 		var radius_vis_upd = radius + 2;
@@ -2310,7 +2477,7 @@ class main
 					{
 						anything_done = true;
 
-						if ( is_gore_painter )
+						if ( mode === MODE_GORE_PAINTER )
 						{
 							chunk.rgba[ i * 4 + 0 ] = Math.max( 0, chunk.rgba[ i * 4 + 0 ] * ( 1 - 0.2 * 0.75 ) );
 							chunk.rgba[ i * 4 + 1 ] = Math.max( 0, chunk.rgba[ i * 4 + 1 ] * ( 1 - 0.2 * 2 ) );
@@ -2321,19 +2488,46 @@ class main
 							chunk.rgba[ i * 4 + 3 ] = 0;
 							geometry_changed = true;
 
-							if ( Math.random() < 0.05 )
+							//if ( Math.random() < 0.05 )
+							if ( Math.random() < 0.1 )
 							{
 								var power = -1 / Math.max( 1, di ) * ( radius - di );
-								var r_x = ( Math.random() - 0.5 );
-								var r_y = ( Math.random() - 0.5 );
-								var r_z = ( Math.random() - 0.5 );
-								sdSprite.CreateSprite({ type: sdSprite.TYPE_ROCK, x:x-xx, y:y-yy, z:z-zz, tox:(xx+r_x)*power, toy:(yy+r_y)*power, toz:(zz+r_z)*power });
+								//var r_x = ( Math.random() - 0.5 );
+								//var r_y = ( Math.random() - 0.5 );
+								//var r_z = ( Math.random() - 0.5 );
+								
+								var r = new THREE.Vector3();
+								main.SetAsRandom3D( r );
+								r.x *= 0.5;
+								r.y *= 0.5;
+								r.z *= 0.5;
+								
+								//var sprite = sdSprite.CreateSprite({ type: sdSprite.TYPE_ROCK, x:x-xx, y:y-yy, z:z-zz, tox:(xx+r_x)*power, toy:(yy+r_y)*power, toz:(zz+r_z)*power });
+								var sprite = sdSprite.CreateSprite({ type: sdSprite.TYPE_ROCK, x:x-xx, y:y-yy, z:z-zz, tox:(xx+r.x)*power, toy:(yy+r.y)*power, toz:(zz+r.z)*power });
+								
+								sprite.mesh.material.uniforms.diffuse.value.r = chunk.rgba[ i * 4 + 0 ] * 2;
+								sprite.mesh.material.uniforms.diffuse.value.g = chunk.rgba[ i * 4 + 1 ] * 2;
+								sprite.mesh.material.uniforms.diffuse.value.b = chunk.rgba[ i * 4 + 2 ] * 2;
 							}
 						}
 					}
+					else
+					if ( mode === MODE_GORE_BUILDER )
+					{
+						chunk.rgba[ i * 4 + 0 ] = red;
+						chunk.rgba[ i * 4 + 1 ] = green;
+						chunk.rgba[ i * 4 + 2 ] = blue;
+
+						chunk.rgba[ i * 4 + 3 ] = 1;
+						
+						chunk.uvs2[ i ] = Math.random();	
+						
+						geometry_changed = true;
+						anything_done = true;
+					}
 				}
 				else
-				if ( !is_gore_painter )
+				if ( mode === MODE_CUTTER )
 				if ( di < radius_pow2_vis_upd )
 				{
 					if ( chunk.uvs2[ i ] < 0 )
@@ -2358,7 +2552,7 @@ class main
 		
 		if ( anything_done )
 		{
-			if ( is_gore_painter )
+			if ( mode === MODE_GORE_PAINTER )
 			{
 				for ( var i = 0; i < chunk_updates.length; i++ )
 				chunk_updates[ i ].UpdateChunk( false, true, false );
@@ -2599,6 +2793,8 @@ class main
 		
 		main.recalc_brightness_tasks.push( arr );
 	}
+	
+	
 	static _RecalcBrightness( ux, uy, uz, radius_int ) 
 	{
 		var chunk_updates = [];
@@ -2621,23 +2817,43 @@ class main
 		
 		if ( radius_int !== Infinity )
 		{
-			from_x = Math.max( 0, ux - main.FastCeil( uy / 3 ) - radius_int );
-			to_x = Math.min( size_x, ux + main.FastCeil( uy / 3 ) + radius_int + 1 );
+			from_x = Math.max( 0, ux - 0 - radius_int );
+			to_x = Math.min( size_x, ux + 0 + radius_int + 1 );
 			
-			from_z = Math.max( 0, uz - main.FastCeil( uy / 3 ) - radius_int );
-			to_z = Math.min( size_z, uz + main.FastCeil( uy / 3 ) + radius_int + 1 );
+			from_z = Math.max( 0, uz - 0 - radius_int );
+			to_z = Math.min( size_z, uz + 0 + radius_int + 1 );
 		}
 		
 		var pattern = new sdRandomPattern( Math.min( 256, radius_int * radius_int ) ).values;
 		var pattern_i = 0;
 		
-		for ( var y = highest_y - 1; y >= 0; y-- )
+		var z,x,y;
+		
+		var y_rare_spread_inc = 0;
+		
+		for ( y = highest_y - 1; y >= 0; y-- )
 		{
 			var anything_on_this_level = ( radius_int === Infinity || y > highest_y - radius_int * 2 );
 			
-			for ( var x = from_x; x < to_x; x++ )
-			for ( var z = from_z; z < to_z; z++ )
-			if ( radius_int === Infinity || main.FastCeil( Math.max( Math.abs( ux-x ), Math.abs( uz-z ) ) ) <= main.FastCeil( ( uy - y ) / 3 ) + radius_int )
+			y_rare_spread_inc++;
+			
+			if ( y_rare_spread_inc >= 3 )
+			{
+				y_rare_spread_inc = 0;
+				if ( from_x > 0 )
+				from_x -= 1;
+				if ( from_z > 0 )
+				from_z -= 1;
+				if ( to_x < size_x )
+				to_x += 1;
+				if ( to_z < size_z )
+				to_z += 1;
+			}
+			
+			for ( x = from_x; x < to_x; x++ )
+			for ( z = from_z; z < to_z; z++ )
+			//if ( radius_int === Infinity || 
+			//	 main.FastCeil( Math.max( Math.abs( ux-x ), Math.abs( uz-z ) ) ) <= main.FastCeil( ( uy - y ) / 3 ) + radius_int )
 			{
 				var chunk_xx = ~~( x / chunk_size );
 				var chunk_yy = ~~( y / chunk_size );
@@ -2824,6 +3040,234 @@ class main
 		chunk_updates[ i ].UpdateChunk( false, false, true );
 	}
 	
+	/*static _RecalcBrightness( ux, uy, uz, radius_int ) 
+	{
+		var chunk_updates = [];
+		
+		var chunk_size = main.chunk_size;
+		
+		var size_x = main.level_chunks_x * chunk_size;
+		var size_y = main.level_chunks_y * chunk_size;
+		var size_z = main.level_chunks_z * chunk_size;
+		
+		var highest_y = Math.min( size_y, uy + radius_int + 1 );
+		
+		if ( radius_int === Infinity )
+		highest_y = size_y;
+		
+		var from_x = 0;
+		var from_z = 0;
+		var to_x = size_x;
+		var to_z = size_z;
+		
+		if ( radius_int !== Infinity )
+		{
+			from_x = Math.max( 0, ux - main.FastCeil( uy / 3 ) - radius_int );
+			to_x = Math.min( size_x, ux + main.FastCeil( uy / 3 ) + radius_int + 1 );
+			
+			from_z = Math.max( 0, uz - main.FastCeil( uy / 3 ) - radius_int );
+			to_z = Math.min( size_z, uz + main.FastCeil( uy / 3 ) + radius_int + 1 );
+		}
+		
+		var pattern = new sdRandomPattern( Math.min( 256, radius_int * radius_int ) ).values;
+		var pattern_i = 0;
+		
+		var z,x,y;
+		
+		for ( y = highest_y - 1; y >= 0; y-- )
+		{
+			var anything_on_this_level = ( radius_int === Infinity || y > highest_y - radius_int * 2 );
+			
+			for ( x = from_x; x < to_x; x++ )
+			for ( z = from_z; z < to_z; z++ )
+			if ( radius_int === Infinity || 
+				 main.FastCeil( Math.max( Math.abs( ux-x ), Math.abs( uz-z ) ) ) <= main.FastCeil( ( uy - y ) / 3 ) + radius_int )
+			{
+				var chunk_xx = ~~( x / chunk_size );
+				var chunk_yy = ~~( y / chunk_size );
+				var chunk_zz = ~~( z / chunk_size );
+
+				var ch = chunk_xx * main.level_chunks_y * main.level_chunks_z + chunk_yy * main.level_chunks_z + chunk_zz;
+
+				var chunk = main.voxel_static[ ch ];
+
+				var av_x = x - chunk_xx * chunk_size;
+				var av_y = y - chunk_yy * chunk_size;
+				var av_z = z - chunk_zz * chunk_size;
+
+				var anything_done = false;
+
+				{
+					var i = av_x * chunk_size * chunk_size + av_y * chunk_size + av_z;
+
+					if ( chunk.uvs2[ i ] !== -1 )
+					{
+						if ( chunk.rgba[ i * 4 + 3 ] <= 0 )
+						continue;
+
+						var orig_beam_power = main.lightmap_beam_power;
+
+						var old_uvs2 = chunk.uvs2[ i ];
+						chunk.uvs2[ i ] = 0;
+
+						for ( var b = 0; b < main.lightmap_rays_per_direction; b++ )
+						for ( var xx = -1; xx <= 1; xx++ )
+						for ( var zz = -1; zz <= 1; zz++ )
+						if ( xx !== 0 || zz !== 0 )
+						{
+							var beam_power = orig_beam_power;
+
+							// May calc brightness
+							var i2 = i;
+							
+							var till_sun = size_y - y - 1;
+
+							if ( xx > 0 )
+							till_sun = Math.min( till_sun, ( size_x - x - 1 ) * 2 );
+							else
+							if ( xx < 0 )
+							till_sun = Math.min( till_sun, ( x - 1 ) * 2 );
+
+							if ( zz > 0 )
+							till_sun = Math.min( till_sun, ( size_z - z - 1 ) * 2 );
+							else
+							if ( zz < 0 )
+							till_sun = Math.min( till_sun, ( z - 1 ) * 2 );
+							
+							var speed = chunk_size;
+							var rare_speed = xx * chunk_size * chunk_size + zz;
+
+							var rare = 0;
+							var rare_scale = main.lightmap_rare_scale + pattern[ ( pattern_i++ ) % pattern.length ] * main.lightmap_rare_random;
+
+							var current_av_x = av_x;
+							var current_av_y = av_y;
+							var current_av_z = av_z;
+
+							var _ch = ch;
+							var _chunk = chunk;
+
+							var was_stopped = false;
+
+							while ( till_sun > 0 )
+							{
+								till_sun--;
+
+								i2 += speed;
+								current_av_y += 1;
+								if ( current_av_y >= chunk_size )
+								{
+									i2 -= chunk_size * chunk_size;
+									current_av_y -= chunk_size;
+									_ch += main.level_chunks_z;
+									_chunk = main.voxel_static[ _ch ];
+								}
+
+								if ( rare <= 0 )
+								{
+									i2 += rare_speed;
+									rare += rare_scale;
+
+									current_av_x += xx;
+									current_av_z += zz;
+									if ( xx > 0 )
+									{
+										if ( current_av_x >= chunk_size )
+										{
+											i2 -= chunk_size * chunk_size * chunk_size;
+											current_av_x -= chunk_size;
+											_ch += main.level_chunks_z * main.level_chunks_y;
+											_chunk = main.voxel_static[ _ch ];
+										}
+									}
+									else
+									if ( xx < 0 )
+									{
+										if ( current_av_x < 0 )
+										{
+											i2 += chunk_size * chunk_size * chunk_size;
+											current_av_x += chunk_size;
+											_ch -= main.level_chunks_z * main.level_chunks_y;
+											_chunk = main.voxel_static[ _ch ];
+										}
+									}
+
+									if ( zz > 0 )
+									{
+										if ( current_av_z >= chunk_size )
+										{
+											i2 -= chunk_size;
+											current_av_z -= chunk_size;
+											_ch += 1;
+											_chunk = main.voxel_static[ _ch ];
+										}
+									}
+									else
+									if ( zz < 0 )
+									{
+										if ( current_av_z < 0 )
+										{
+											i2 += chunk_size;
+											current_av_z += chunk_size;
+											_ch -= 1;
+											_chunk = main.voxel_static[ _ch ];
+										}
+									}
+
+								}
+								rare--;
+
+								if ( _chunk.rgba[ i2 * 4 + 3 ] > 0 )
+								{
+									beam_power *= main.lightmap_hit_power_multiplier;
+									if ( beam_power <= main.lightmap_non_existent_power )
+									{
+										was_stopped = true;
+										break;
+									}
+								}
+							}
+							if ( !was_stopped )
+							chunk.uvs2[ i ] += beam_power;
+						}
+
+						chunk.uvs2[ i ] += main.lightmap_ambient; // Ambient
+
+						if ( old_uvs2 !== chunk.uvs2[ i ] )
+						{
+							anything_done = true;
+							anything_on_this_level = true;
+						}
+
+					}
+				}
+
+				if ( anything_done )
+				{
+					var search = chunk_updates.length - 1;
+					while ( true )
+					{
+						if ( chunk_updates[ search ] === chunk )
+						break;
+						
+						search--;
+						if ( search < 0 )
+						{
+							chunk_updates.push( chunk );
+							break;
+						}
+					}
+				}
+			}
+			
+			if ( !anything_on_this_level )
+			break;
+		}
+		
+		for ( var i = 0; i < chunk_updates.length; i++ )
+		chunk_updates[ i ].UpdateChunk( false, false, true );
+	}*/
+	
 	static TraceLine( x,y,z, x2,y2,z2, stop_condition_chunk=null, step_scale=1, offset=0 )
 	{
 		var chunk_size = main.chunk_size;
@@ -2980,6 +3424,8 @@ class main
 	}
 	static onEnterFrame()
 	{
+		main.WorkWithMouseMovements();
+		
 		var GSPEED = main.GSPEED;
 		
 		pb2_mp.get_fps();
@@ -2996,10 +3442,12 @@ class main
 	
 		main.composer.renderer.domElement.style.filter = "brightness(" + Math.round( Math.min( 2, main.hit_pulse ) * 100 ) + "%)";
 		
-		if ( main.fov !== main.main_camera.fov )
+		if ( main.fov * main.zoom_intensity !== main.main_camera.fov )
 		{
-			main.main_camera.fov = main.fov;
+			main.main_camera.fov = main.fov * main.zoom_intensity;
 			main.main_camera.updateProjectionMatrix();
+			
+			main.UpdateScreenSize();
 		}
 		
 		if ( main.my_character === null )
@@ -3035,6 +3483,24 @@ class main
 				main.speed.addVectors( main.speed, axis );
 			}
 		}
+		else
+		{
+			var scale = 1 + Math.max( 0, main.my_character.reload_timer * 0.5 );
+			
+			if ( main.my_character.time_to_reload > 0 )
+			scale += main.my_character.time_to_reload;
+			else
+			if ( main.my_character.ammo[ main.my_character.curwea ] <= 0 )
+			scale += Math.PI;
+			//( ( main.my_character.ammo[ main.my_character.curwea ] <= 0 || main.my_character.time_to_reload > 0 ) ? main.my_character.time_to_reload : 2 ) );
+			
+			var normal_size = 6;
+			main.crosshair.style.width = ( normal_size * scale * 2 )+'px';
+			main.crosshair.style.height = ( normal_size * scale * 2 )+'px';
+			main.crosshair.style.marginLeft = ( - normal_size * scale )+'px';
+			main.crosshair.style.marginTop = ( - normal_size * scale )+'px';
+			main.crosshair.style.opacity = 1 / ( 1 + Math.abs( 1 - scale ) );
+		}
 			
 		main.speed.x = main.MorphWithTimeScale( main.speed.x, 0, 0.7, GSPEED );
 		main.speed.y = main.MorphWithTimeScale( main.speed.y, 0, 0.7, GSPEED );
@@ -3046,7 +3512,14 @@ class main
 		main.main_camera.position.x += main.speed.x * GSPEED;
 		main.main_camera.position.y += main.speed.y * GSPEED;
 		main.main_camera.position.z += main.speed.z * GSPEED;
-	
+		
+		if ( main.main_camera.position.y < main.world_end_y + 5 )
+		main.main_camera.position.y = main.world_end_y + 5;
+		main.ground_mesh.position.x = main.main_camera.position.x;
+		main.ground_mesh.position.z = main.main_camera.position.z;
+		
+		sdSound.SetSoundPitch( main.wind_channel, 0.5 + Math.pow( main.speed.length() * 0.2, 1 ) );
+		sdSound.SetSoundVolume( main.wind_channel, Math.min( 3, 0.1 + 0.666 * Math.pow( main.speed.length() * 0.3, 1.5 ) ) ); // 0.1 + 0.4 , 2
 	
 		// Passive restore
 		main.main_camera.updateMatrixWorld();
@@ -3507,9 +3980,11 @@ class Chunk
 			var _c = 0;
 			var _b = 0;
 			
-			for ( var x = 0; x < larger_chunk_size; x++ )
-			for ( var y = 0; y < larger_chunk_size; y++ )
-			for ( var z = 0; z < larger_chunk_size; z++ )
+			var x,y,z,x2,y2,z2;
+			
+			for ( x = 0; x < larger_chunk_size; x++ )
+			for ( y = 0; y < larger_chunk_size; y++ )
+			for ( z = 0; z < larger_chunk_size; z++ )
 			{
 				if ( x % 2 === 0 )
 				if ( y % 2 === 0 )
@@ -3533,9 +4008,9 @@ class Chunk
 					if ( upd_brightness_visibility )
 					_uvs2[ _b ] = -1; // Max value
 
-					for ( var x2 = 0; x2 < 2; x2++ )
-					for ( var y2 = 0; y2 < 2; y2++ )
-					for ( var z2 = 0; z2 < 2; z2++ )
+					out1: for ( x2 = 0; x2 < 2; x2++ )
+					for ( y2 = 0; y2 < 2; y2++ )
+					for ( z2 = 0; z2 < 2; z2++ )
 					if ( rgba[ c + 3 + ( x2 * larger_chunk_size * larger_chunk_size + y2 * larger_chunk_size + z2 ) * 4 ] > 0 &&
 						 uvs2[ b + x2 * larger_chunk_size * larger_chunk_size + y2 * larger_chunk_size + z2 ] >= 0 )
 					{
@@ -3551,7 +4026,7 @@ class Chunk
 						if ( upd_brightness_visibility )
 						_uvs2[ _b ] = Math.max( _uvs2[ _b ], uvs2[ b + x2 * larger_chunk_size * larger_chunk_size + y2 * larger_chunk_size + z2 ] );
 
-						break;
+						break out1;
 					}
 
 					_c += 4;
@@ -3593,7 +4068,12 @@ rocket_attached_sound.mp3
 rocket_fire.mp3
 ui_down.mp3
 ui_notification.mp3
-wall_hit.mp3`;
+wall_hit.mp3
+sniper.mp3
+wind.mp3
+spark2.mp3
+shotgun.mp3
+reload.mp3`;
 var sounds = sounds_raw.split('\r').join('').split('\n');
 delete sounds_raw;
 
@@ -3651,3 +4131,28 @@ function DoLoadStuff()
 }
 
 DoLoadStuff();
+
+function LateLoadFileIfNeeded( this_i, callback )
+{
+	let audioLoader = new THREE.AudioLoader();
+
+	audioLoader.load( 'assets/sounds/'+this_i, 
+		function( buffer )
+		{
+			// No extension needed
+			if ( this_i.lastIndexOf( '.mp3' ) === this_i.length - 4 )
+			this_i = this_i.substr( 0, this_i.length - 4 );
+
+			lib[ this_i ] = buffer;
+
+			lib[ this_i ].title = this_i;
+			
+			callback();
+		},
+		undefined,
+		function()
+		{
+			console.log('Cannot late-load sound file "'+this_i+'"');
+		}
+	);
+}

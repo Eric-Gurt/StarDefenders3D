@@ -15,6 +15,8 @@ class sdSprite
 		sdSprite.TYPE_SPARK_EXPLOSION = 5;
 		sdSprite.TYPE_SNIPER_TRAIL = 6;
 		sdSprite.TYPE_SNIPER_HIT = 7;
+		sdSprite.TYPE_DAMAGE_REPORT = 8;
+		sdSprite.TYPE_SHELL = 9;
 		
 		sdSprite.GEOM_PLANE = 0;
 		sdSprite.GEOM_SPHERE = 1;
@@ -23,22 +25,47 @@ class sdSprite
 		sdSprite.expl_g = 0;
 		sdSprite.expl_b = 1;
 		
+		sdSprite.plas_r = 0;
+		sdSprite.plas_g = 1;
+		sdSprite.plas_b = 0;
+		
+		sdSprite.sniper_r = 0;
+		sdSprite.sniper_g = 1;
+		sdSprite.sniper_b = 0;
+		
 		sdSprite.sprites = [];
 		
 		sdSprite.texture_blood = null;
-		
-		var bmp = new BitmapData( 64, 128, true );
-		var mini_texture = new Image();
-		mini_texture.src = "assets/hit_marks.png";
-		mini_texture.onload = function() 
 		{
-			bmp.ctx.drawImage( mini_texture, 0, 0 );
-		
-			sdSprite.texture_blood = new THREE.CanvasTexture( bmp.canvas );
-			sdSprite.texture_blood.magFilter = THREE.NearestFilter;
-			sdSprite.texture_blood.minFilter = THREE.NearestMipMapNearestFilter;
-			sdSprite.texture_blood.flipY = false;
-		};
+			const bmp = new BitmapData( 64, 128, true );
+			const mini_texture = new Image();
+			mini_texture.src = "assets/hit_marks.png";
+			mini_texture.onload = function() 
+			{
+				bmp.ctx.drawImage( mini_texture, 0, 0 );
+
+				sdSprite.texture_blood = new THREE.CanvasTexture( bmp.canvas );
+				sdSprite.texture_blood.magFilter = THREE.NearestFilter;
+				sdSprite.texture_blood.minFilter = THREE.NearestMipMapNearestFilter;
+				sdSprite.texture_blood.flipY = false;
+			};
+		}
+		sdSprite.bitmap_numbers = null;
+		{
+			const bmp = new BitmapData( 30, 5, true );
+			const mini_texture = new Image();
+			mini_texture.src = "assets/numbers.png";
+			mini_texture.onload = function() 
+			{
+				bmp.ctx.drawImage( mini_texture, 0, 0 );
+				sdSprite.bitmap_numbers = bmp;
+/*
+				sdSprite.texture_numbers = new THREE.CanvasTexture( bmp.canvas );
+				sdSprite.texture_numbers.magFilter = THREE.NearestFilter;
+				sdSprite.texture_numbers.minFilter = THREE.NearestMipMapNearestFilter;
+				sdSprite.texture_numbers.flipY = false;*/
+			};
+		}
 		
 		sdSprite.RandomizeGlobalExplosionColor = function()
 		{
@@ -55,6 +82,19 @@ class sdSprite
 				sdSprite.expl_b /= m;
 			}
 			
+			sdSprite.plas_r = sdRandomPattern.random() + 0.5;
+			sdSprite.plas_g = sdRandomPattern.random() + 0.5;
+			sdSprite.plas_b = sdRandomPattern.random() + 0.5;
+			var m = Math.max( sdSprite.plas_r, sdSprite.plas_g, sdSprite.plas_b );
+			if ( m === 0 )
+			sdSprite.plas_g = m = 1;
+			else
+			{
+				sdSprite.plas_r /= m;
+				sdSprite.plas_g /= m;
+				sdSprite.plas_b /= m;
+			}
+			
 			var sniper_color_r = sdRandomPattern.random() + 0.5;
 			var sniper_color_g = sdRandomPattern.random() + 0.5;
 			var sniper_color_b = sdRandomPattern.random() + 0.5;
@@ -67,43 +107,11 @@ class sdSprite
 				sniper_color_g /= m;
 				sniper_color_b /= m;
 			}
-			
-			bmp.ctx.clearRect( 0, 0, bmp.width, bmp.height );
-			bmp.ctx.drawImage( mini_texture, 0, 0 );
-			
-			for ( var x = 0; x < bmp.width; x++ )
-			for ( var y = 0; y < bmp.height; y++ )
-			{
-				var c = bmp.getPixel32( x, y );
-				if ( c.g === 255 )
-				{
-					if ( c.r === 255 )
-					if ( c.b === 0 )
-					{
-						// Yellow
-						c.r = sdSprite.expl_r;
-						c.g = sdSprite.expl_g;
-						c.b = sdSprite.expl_b;
-
-						bmp.setPixelC( x, y, c, 255 );
-					}
-					
-					
-					if ( c.r === 0 )
-					if ( c.b === 0 )
-					{
-						// Green
-						c.r = sniper_color_r;
-						c.g = sniper_color_g;
-						c.b = sniper_color_b;
-
-						bmp.setPixelC( x, y, c, 255 );
-					}
-				}
-			}
-			bmp.setPixelsDone();
-			
-			sdSprite.texture_blood.needsUpdate = true;
+			sdSprite.sniper_r = sniper_color_r;
+			sdSprite.sniper_g = sniper_color_g;
+			sdSprite.sniper_b = sniper_color_b;
+			//bmp.ctx.clearRect( 0, 0, bmp.width, bmp.height );
+			//bmp.ctx.drawImage( mini_texture, 0, 0 );
 			
 		};
 	}
@@ -111,9 +119,13 @@ class sdSprite
 	static CreateSprite( params )
 	{
 		if ( sdSprite.texture_blood === null )
-		return;
+		return null;
 	
-		sdSprite.sprites.push( new sdSprite( params ) );
+		var s = new sdSprite( params );
+	
+		sdSprite.sprites.push( s );
+		
+		return s;
 	}
 	constructor( params )
 	{
@@ -132,7 +144,7 @@ class sdSprite
 		this.frames = 4;
 		this.frames_to_play = 3;
 		
-		var effect_id = 0;
+		var effect_id = -1;
 		
 		var rand_rot = true;
 		
@@ -146,6 +158,8 @@ class sdSprite
 		this.is_glowing = false;
 		
 		this.gore_painter = false;
+		
+		this.scale_to_keep_size = 0;
 			
 		if ( params.type === sdSprite.TYPE_BLOOD )
 		{
@@ -209,6 +223,9 @@ class sdSprite
 			this.frames_to_play = 4;
 			
 			this.is_glowing = true;
+			params.r = sdSprite.sniper_r;
+			params.g = sdSprite.sniper_g;
+			params.b = sdSprite.sniper_b;
 		}
 		else
 		if ( params.type === sdSprite.TYPE_SNIPER_HIT )
@@ -217,6 +234,31 @@ class sdSprite
 			this.frame_time = 4;
 			
 			this.is_glowing = true;
+			params.r = sdSprite.sniper_r;
+			params.g = sdSprite.sniper_g;
+			params.b = sdSprite.sniper_b;
+		}
+		else
+		if ( params.type === sdSprite.TYPE_DAMAGE_REPORT )
+		{
+			this.is_glowing = true;
+			this.frame_time = 35 + Math.random() * 15;
+			this.frames = 1;
+			this.frames_to_play = 1;
+			rand_rot = false;
+			this.gravity = 0.05;
+			
+			this.scale_to_keep_size = 0.001 * 0.35 / main.pixel_ratio;
+		}
+		else
+		if ( params.type === sdSprite.TYPE_SHELL )
+		{
+			effect_id = 7;
+			rand_rot = true;
+			this.frame_time = 35 + Math.random() * 15;
+			this.frames = 4;
+			this.frames_to_play = 1;
+			this.gravity = 0.1;
 		}
 		
 		var rot = new THREE.Quaternion();
@@ -235,20 +277,82 @@ class sdSprite
 			if ( params.type === sdSprite.TYPE_BLOOD )
 			g = new THREE.PlaneBufferGeometry( 8 * 1.5, 8 * 1.5 );
 			else
+			if ( params.type === sdSprite.TYPE_SPARK_EXPLOSION )
+			g = new THREE.PlaneBufferGeometry( 8 * 0.5, 8 * 0.5 );
+			else
 			g = new THREE.PlaneBufferGeometry( 8, 8 );
 		
+			if ( params.type === sdSprite.TYPE_DAMAGE_REPORT )
+			{
+				var bmp = new BitmapData( 64, 64, true );
+				//bmp.fillRectCSS( 0, 0, 64, 64, '#FF0000');
+				/*
+				bmp.ctx.textAlign = "center"; 
+				bmp.ctx.font = "bold 16px Verdana";
+				//bmp.ctx.font = "bold 12px Courier";
+				bmp.ctx.fillStyle = "white";
+				bmp.ctx.fillText( Math.ceil( params.text ), 32, 32 - 8 );
+				*/
+			   
+				//sdSprite.bitmap_numbers
+				if ( params.text >= 0 )
+				{
+					var s = ( Math.ceil( params.text ) ).toString();
+
+					var offset_x = ~~( 32 - ( s.length * 4 - 1 ) / 2 );
+
+					for ( var i = 0; i < s.length; i++ )
+					{
+						var char_id = s.charCodeAt( i ) - '0'.charCodeAt( 0 );
+						bmp.ctx.drawImage( sdSprite.bitmap_numbers.canvas, char_id*3,0, 3,5, i*4+offset_x,32-3, 3,5 );
+					}
+				}
+				else
+				{
+					const smiley = [ '🤔','🤨','😒','😕','🙁','😞','😟','😭','😦','😧','😠' ];
+					
+					bmp.ctx.textAlign = "center"; 
+					bmp.ctx.font = "bold 16px Verdana";
+					
+					bmp.ctx.fillStyle = "red";
+					var rand_id = ~~( Math.random() * smiley.length );
+					bmp.ctx.fillText( smiley[ rand_id ], 32, 32 + 8 /* - 8*/ );
+				}
+			   
+				var tex = new THREE.CanvasTexture( bmp.canvas );
+				tex.magFilter = THREE.NearestFilter;
+				tex.minFilter = THREE.NearestMipMapNearestFilter;
+				//tex.flipY = false;
+
+				m = sdShaderMaterial.CreateMaterial( tex, 'sprite' );
+					
+				//m.depthTest = false;
+				//m.uniforms.depth_offset.value = 100;
+				m.uniforms.depth_offset.value = 1000;
+			}
+			else
 			m = sdShaderMaterial.CreateMaterial( sdSprite.texture_blood, 'sprite' );
 			
 			m.uniforms.fog.value = new THREE.Color( main.fog_color );
 			m.uniforms.fog_intensity.value = this.is_glowing ? 0 : 1;
+			
+			if ( params.r !== undefined )
+			{
+				m.uniforms.diffuse.value.r = params.r;
+				m.uniforms.diffuse.value.g = params.g;
+				m.uniforms.diffuse.value.b = params.b;
+			}
 		}
 		else
 		{
 			g = new THREE.SphereBufferGeometry( 1, 16, 16 );
 			m = sdShaderMaterial.CreateMaterial( null, 'explosion' );
-			m.uniforms.r.value = sdSprite.expl_r;
+			/*m.uniforms.r.value = sdSprite.expl_r;
 			m.uniforms.g.value = sdSprite.expl_g;
-			m.uniforms.b.value = sdSprite.expl_b;
+			m.uniforms.b.value = sdSprite.expl_b;*/
+			m.uniforms.r.value = params.r;
+			m.uniforms.g.value = params.g;
+			m.uniforms.b.value = params.b;
 			
 			let v = new THREE.Vector3();
 			for ( var i = 0; i < 50; i++ )
@@ -258,7 +362,7 @@ class sdSprite
 				v.x *= r;
 				v.y *= r;
 				v.z *= r;
-				sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK_EXPLOSION, x:params.x, y:params.y, z:params.z, tox:v.x, toy:v.y, toz:v.z });
+				sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK_EXPLOSION, x:params.x, y:params.y, z:params.z, tox:v.x, toy:v.y, toz:v.z, r:params.r * 2, g:params.g * 2, b:params.b * 2 });
 			}
 		}
 		
@@ -272,8 +376,11 @@ class sdSprite
 		
 		if ( geom === sdSprite.GEOM_PLANE )
 		{
-			this.SetEffectID( effect_id, 8 );
-			this.SetFrame( 0 );
+			if ( effect_id !== -1 )
+			{
+				this.SetEffectID( effect_id, 8 );
+				this.SetFrame( 0 );
+			}
 		}
 		else
 		{	
@@ -342,7 +449,7 @@ class sdSprite
 				oy * ( 1 - morph ) + this.mesh.position.y * morph, 
 				oz * ( 1 - morph ) + this.mesh.position.z * morph, 
 				1 + Math.random(), 
-				true );
+				1 );
 				
 				this.frame++; // so there is more gore...
 			}
@@ -356,6 +463,12 @@ class sdSprite
 		this.mesh.scale.x += this.scale_speed * GSPEED;
 		this.mesh.scale.y += this.scale_speed * GSPEED;
 		this.mesh.scale.z += this.scale_speed * GSPEED;
+		
+		if ( this.scale_to_keep_size !== 0 )
+		{
+			var di = main.Dist3D( this.mesh.position.x, this.mesh.position.y, this.mesh.position.z, main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z );
+			this.mesh.scale.x = this.mesh.scale.y = this.mesh.scale.z = di * this.scale_to_keep_size * main.main_camera.fov;
+		}
 		
 		if ( this.is_glowing )
 		this.mesh.material.uniforms.brightness.value = 1;

@@ -22,12 +22,13 @@ class sdNet
 		sdNet.match_dataConnections = [];
 		sdNet.match_queued_dataConnections = null; // these will be assigned later, once fully connected. So we know from who messages are coming
 
-		sdNet.match_uid = -1;
+		//sdNet.match_uid = -1;
+		sdNet.match_uid = -2; // Why it was -1? -2 means it is not reset yet
 		
 		sdNet.peer_counter = -1; // in match, used to guess player's character ID
 		
 		sdNet.request_stack = [];
-		setInterval( sdNet.ContentStackWorker, 500 );
+		setInterval( sdNet.ContentStackWorker, 100 );
 		
 		sdNet.peer = null;
 		SpawnPeer();
@@ -253,7 +254,7 @@ class sdNet
 			}
 		}
 		
-		if ( e.innerHTML.length > t.length || ( e.innerHTML.length === t.length && e.innerHTML !== t ) )
+		if ( e.innerHTML.length < t.length || ( e.innerHTML.length === t.length && e.innerHTML !== t ) )
 		{
 			sdSound.PlayInterfaceSound({ sound: lib.ui_down, volume: 1 });
 		}
@@ -390,17 +391,22 @@ class sdNet
 	static httpGetContent( param_obj, callback, retry )
 	{
 		for ( var i = 0; i < sdNet.request_stack.length; i++ )
-		if ( sdNet.request_stack[ 1 ] === callback )
+		//if ( sdNet.request_stack[ i ][ 1 ] === callback )
+		if ( sdNet.request_stack[ i ][ 0 ].request === param_obj.request )
 		{
-			console.warn('Same callback');
+			//console.warn('Same callback');
+			//console.warn('Same callback for request: '+param_obj.request);
 			return;
 		}
 		sdNet.request_stack.push([ param_obj, callback, retry ]);
+		//console.log( 'Scheduled request:' + sdNet.request_stack[ sdNet.request_stack.length - 1 ][ 0 ].request );
 	}
 	static ContentStackWorker()
 	{
 		if ( sdNet.request_stack.length > 0 )
 		{
+			//console.log( 'Request being executed:' + sdNet.request_stack[ 0 ][ 0 ].request );
+			
 			var a = sdNet.request_stack.shift();
 			var i = 0;
 			sdNet._httpGetContent( a[ i++ ], a[ i++ ], a[ i++ ] );

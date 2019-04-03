@@ -17,6 +17,9 @@ class sdCharacter
 		sdCharacter.ATOMS_LEG2B = 7;
 		sdCharacter.ATOMS_RIFLE = 8;
 		sdCharacter.ATOMS_ROCKET = 9;
+		sdCharacter.ATOMS_SNIPER = 10;
+		sdCharacter.ATOMS_SHOTGUN = 11;
+		sdCharacter.ATOMS_SPARK = 12;
 		
 		sdCharacter.characters = [];
 		
@@ -40,18 +43,23 @@ class sdCharacter
 		sdCharacter.arm_cross_left = 0.6; // how much arms are rotated towards each other
 		sdCharacter.arm_cross_right = 0.0; // how much arms are rotated towards each other
 		
-		// [ rifle, rocket, alt-rifle, alt-rocket ]
-		sdCharacter.weapon_reload_times = [ 2, 25, 30 * 0.2, 25 ];
-		sdCharacter.weapon_self_knockbacks = [ 0.1, 0.5, 0.1, 0.5 ];
-		sdCharacter.weapon_is_rocket = [ false, true, false, false ];
-		sdCharacter.weapon_is_sniper = [ false, false, false, true ];
+		//										[ rifle,	rocket,		shotgun,	sniper,		spark ]
+		sdCharacter.weapon_ammo_per_clip =		[ 25,		Infinity,	8,			Infinity,	15 ];
+		sdCharacter.weapon_reload_times =		[ 2,		25,			30 * 0.2,	30,			5 ];
+		sdCharacter.weapon_self_knockbacks =	[ 0.1,		0.5,		0.35,		0.5,		0.2 ];
+		sdCharacter.weapon_is_rocket =			[ false,	true,		false,		false,		true ];
+		sdCharacter.weapon_is_sniper =			[ false,	false,		false,		true,		false ];
+		sdCharacter.weapon_is_plasma =			[ false,	false,		false,		false,		true ];
 
-		sdCharacter.weapon_speed = [ 40, 4, 30, 60 ];
-		sdCharacter.weapon_knock_power = [ 0.02, 0.1, 0.0075, 0.04 ];
-		sdCharacter.weapon_hp_damage = [ 30, 115, 10, 90 ];
-		sdCharacter.weapon_hp_damage_head = [ 60, 115, 20, 180 ];
-		sdCharacter.weapon_knock_count = [ 1, 1, 15, 1 ];
-		sdCharacter.weapon_knock_spread = [ 1.5, 0, 5, 0.5 ];
+		sdCharacter.weapon_speed =				[ 40,		4,			30,			80/*60*/,	40/*8*/ ];
+		sdCharacter.weapon_knock_power =		[ 0.02,		0.1,		0.0075,		0.04,		0.04/*0.1*/ ];
+		sdCharacter.weapon_hp_damage =			[ 30,		115,		10,			90,			40 ];
+		sdCharacter.weapon_hp_damage_head =		[ 60,		115,		20,			180,		45 ];
+		sdCharacter.weapon_knock_count =		[ 1,		1,			15,			1,			1 ];
+		sdCharacter.weapon_knock_spread =		[ 0,		0,			5,			0.5,		0 ];
+		sdCharacter.weapon_spread_from_recoil =	[ 5,		0,			0,			0,			5 ];
+		sdCharacter.weapon_splash_radius =		[ null,		8,			null,		null,		4 ];
+		sdCharacter.weapon_spawn_shell =		[ true,		false,		true,		false,		false ];
 		sdCharacter.weapon_switch_time = 15;
 		
 		sdCharacter.collision_dots = [];
@@ -91,6 +99,23 @@ class sdCharacter
 		
 	}
 	
+	ReloadIfPossible()
+	{
+		if ( this.ammo[ this.curwea ] < sdCharacter.weapon_ammo_per_clip[ this.curwea ] )
+		if ( this.time_to_reload <= 0 )
+		{
+			this.ammo[ this.curwea ] = 0;
+			this._UpdateAmmoBarIfNeeded();
+			
+			this.time_to_reload = Math.PI * 2;
+			
+			sdSound.PlaySound({ sound: lib.reload, parent_mesh: this.mesh, volume: 1.5 });
+			
+			if ( main.my_character === this )
+			sdSync.MP_SendEvent( sdSync.COMMAND_I_RELOAD );
+		}
+	}
+	
 	static CreateCharacter( params )
 	{
 		var c = new sdCharacter( params );
@@ -106,6 +131,32 @@ class sdCharacter
 			document.getElementById('hp_bar').innerHTML = Math.ceil( Math.max( 0, this.hea ) )+'%';
 		}
 	}
+	_UpdateAmmoBarIfNeeded()
+	{
+		if ( this === main.my_character )
+		{
+			document.getElementById('ammo_bar').style.display = ( this.ammo[ this.curwea ] !== Infinity ) ? 'block' : 'none';
+		//	document.getElementById('ammo_bar').innerHTML = this.ammo[ this.curwea ] + ' | ' + sdCharacter.weapon_ammo_per_clip[ this.curwea ];
+			
+			if ( this.ammo[ this.curwea ] !== Infinity )
+			{
+				var s = '';
+				for ( var i = 0; i < sdCharacter.weapon_ammo_per_clip[ this.curwea ]; i++ )
+				{
+					if ( this.ammo[ this.curwea ] > i )
+					s += '|';
+					else
+					s += '.';
+				}
+				
+				var offs = ( sdCharacter.weapon_ammo_per_clip[ this.curwea ] * 0.6 + 2 );
+				document.getElementById('ammo_bar').style.width = offs + 'vh';
+				document.getElementById('ammo_bar').style.marginLeft = ( -offs/2 ) + 'vh';
+				
+				document.getElementById('ammo_bar').innerHTML = s;
+			}
+		}
+	}
 	
 	Ressurect( was_me )
 	{
@@ -117,15 +168,40 @@ class sdCharacter
 		console.log('Ressurect on non-removed character? Not adding it "back" to list of characters.');
 		
 		old_char.Respawn( was_me );
+		
+		//var hash = {};
 
 		for ( var g = 0; g < old_char.atoms.length; g++ )
 		for ( var i = 0; i < old_char.atoms[ g ].length; i++ )
 		{
+			// Leave rigid bodies as part of the level. Looks messy, ruins immersion
+			/*if ( !main.MP_mode )
+			if ( !old_char.atoms[ g ][ i ].removed )
+			{
+				var xx = ~~( old_char.atoms[ g ][ i ].x );
+				var yy = ~~( old_char.atoms[ g ][ i ].y );
+				var zz = ~~( old_char.atoms[ g ][ i ].z );
+				
+				var h = xx+':'+yy+':'+zz;
+				
+				if ( hash[ h ] === undefined )
+				{
+					if ( main.TraceLine( xx,yy,zz, xx,yy-2,zz, null, 1, 0 ) < 1 )
+					{
+						hash[ h ] = true;
+						main.WorldPaintDamage( xx, yy, zz, 0.75, 2, old_char.atoms[ g ][ i ].r, old_char.atoms[ g ][ i ].g, old_char.atoms[ g ][ i ].b );
+					}
+					
+				}
+			}*/
+			
 			old_char.atoms[ g ][ i ].removed = false;
 			old_char.atoms[ g ][ i ].material = old_char.atoms[ g ][ i ].material_initial;
 			old_char.atoms[ g ][ i ].r = old_char.atoms[ g ][ i ].r_initial;
 			old_char.atoms[ g ][ i ].g = old_char.atoms[ g ][ i ].g_initial;
 			old_char.atoms[ g ][ i ].b = old_char.atoms[ g ][ i ].b_initial;
+			
+			old_char.atoms[ g ][ i ].hp = sdAtom.atom_hp;
 
 			old_char.atoms[ g ][ i ].my_chains.length = old_char.atoms[ g ][ i ].my_chains_initial_length; // Do not keep all temporary ones
 
@@ -172,23 +248,55 @@ class sdCharacter
 		this.toz = 0;
 		
 		this.hurt_timeout = 0;
+		
+		if ( this.ai !== null )
+		this.ai.ResetFavGun();
+	
+		this.ammo = sdCharacter.weapon_ammo_per_clip.slice(); // Copy
+					
+		this.time_to_reload = 0; // Reset reload
+		
+		this.last_attacker = null;
+		this.last_attacker_time = 0;
 	}
 	
-	DealDamage( d, from=null )
+	DealDamage( d, from=null, x=0, y=0, z=0 )
 	{
 		if ( this.hea > 0 )
 		{
+			if ( from !== null && from !== this )
+			{
+				this.last_attacker = from;
+				this.last_attacker_time = pb2_mp.ticks_passed;
+			}
+			else
+			{
+				if ( this.last_attacker !== null )
+				if ( pb2_mp.ticks_passed - this.last_attacker_time < 7000 )
+				{
+					from = this.last_attacker;
+				}
+			}
+		
 			this.hea -= d;
+			this.regen_timer = 0;
 			
 			var color = '255,255,255,0.25';
 			
-			if ( from === main.my_character )
+			if ( from === main.my_character && main.my_character !== null )
 			{
 				if ( this.team !== main.mp_character.team )
 				{
 					color = '100,255,100,1';
 					
 					main.HitPulse( d );
+				
+					var v = new THREE.Vector3();
+					main.SetAsRandom3D( v );
+					v.x *= 0.25;
+					v.y *= 0.25;
+					v.z *= 0.25;
+					sdSprite.CreateSprite({ type: sdSprite.TYPE_DAMAGE_REPORT, x:x, y:y, z:z, tox:v.x, toy:v.y+0.2, toz:v.z, text:d });
 					
 					if ( this.hea <= 0 )
 					{
@@ -203,6 +311,14 @@ class sdCharacter
 				else
 				{
 					main.HitPulse( -d );
+					
+					var v = new THREE.Vector3();
+					main.SetAsRandom3D( v );
+					v.x *= 0.25;
+					v.y *= 0.25;
+					v.z *= 0.25;
+					sdSprite.CreateSprite({ type: sdSprite.TYPE_DAMAGE_REPORT, x:x, y:y, z:z, tox:v.x, toy:v.y+0.2, toz:v.z, text:-1 });
+					
 					if ( this.hea <= 0 )
 					main.HitPulse( -100 );
 				}
@@ -220,13 +336,13 @@ class sdCharacter
 				else
 				main.onChatMessage( '', 'Player #'+this.GetUserUID() + ' dies', null, color );
 			
-				sdSound.PlaySound({ sound: lib.player_death, parent_mesh: this.mesh, volume: 1 });
+				sdSound.PlaySound({ sound: lib.player_death, parent_mesh: this.mesh, volume: 0.666 });
 			}
 			else
 			{
 				if ( this.hurt_timeout <= 0 )
 				{
-					sdSound.PlaySound({ sound: lib.player_hit, parent_mesh: this.mesh, volume: 1 });
+					sdSound.PlaySound({ sound: lib.player_hit, parent_mesh: this.mesh, volume: 0.666 });
 					this.hurt_timeout = 5;
 				}
 			}
@@ -249,7 +365,20 @@ class sdCharacter
 		for ( var i = 0; i < all.length; i++ )
 		{
 			var a = all[ i ];
+			
 			a.material = m;
+			
+			if ( m === sdAtom.MATERIAL_GIB )
+			{
+				if ( a.r_initial !== a.g_initial || a.r_initial !== a.b_initial || a.g_initial !== a.b_initial ) // Darken non-gray parts only
+				{
+					var av = ( a.r + a.g + a.b ) / 3;
+					a.r = a.r * 0.25 + av * 0.25;
+					a.g = a.g * 0.25 + av * 0.25;
+					a.b = a.b * 0.25 + av * 0.25;
+				}
+			}
+			
 			if ( initial )
 			a.material_initial = m;
 		}
@@ -259,12 +388,6 @@ class sdCharacter
 		let was_me = false;
 		if ( main.my_character === this )
 		{
-			/*
-			if ( !main.MP_mode )
-			{
-				main.GAME_FPS = 15;
-			}
-			*/
 			main.main_camera.position.x += this.look_direction.x * 10;
 			main.main_camera.position.y += this.look_direction.y * 10;
 			main.main_camera.position.z += this.look_direction.z * 10;
@@ -293,6 +416,11 @@ class sdCharacter
 				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_LEG2B  ], sdAtom.MATERIAL_GIB );
 				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_RIFLE  ], sdAtom.MATERIAL_GIB_GUN );
 				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_ROCKET ], sdAtom.MATERIAL_GIB_GUN );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_SNIPER ], sdAtom.MATERIAL_GIB_GUN );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_SHOTGUN ], sdAtom.MATERIAL_GIB_GUN );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_SPARK ], sdAtom.MATERIAL_GIB_GUN );
+				
+				
 
 				function ConnectAToBAtBOriginAt( all, all2, x, y, z )
 				{
@@ -310,10 +438,14 @@ class sdCharacter
 							if ( b.removed )
 							continue;
 
-							var di = main.Dist3D( a.x, a.y, a.z, b.x, b.y, b.z );
+							//var di = main.Dist3D( a.x, a.y, a.z, b.x, b.y, b.z );
+							var di_pow2 = main.Dist3D_Vector_pow2( a.x-b.x, a.y-b.y, a.z-b.z );
 
-							if ( di <= 1 )
+							//if ( di <= 1 )
+							if ( di_pow2 <= 1 )
 							{
+								var di = Math.sqrt( di_pow2 );
+								
 								var ch = sdChain.CreateChain( a, b, di, false );
 								ragdoll_chains.push( ch );
 							}
@@ -359,7 +491,8 @@ class sdCharacter
 					}
 					
 				//}, 2000 );
-				}, ( !main.MP_mode && was_me ) ? 500 : 2000 );
+				//}, ( !main.MP_mode && was_me ) ? 500 : 2000 );
+				}, ( !main.MP_mode && was_me ) ? 250 : 2000 );
 			}
 		}
 	}
@@ -394,7 +527,13 @@ class sdCharacter
 		this.y = params.y;
 		this.z = params.z;
 		
+		this.time_to_reload = 0;
+		
+		this.ammo = sdCharacter.weapon_ammo_per_clip.slice(); // Copy
+		
 		this.ai = ( main.MP_mode ? null : new sdAI( this ) );
+		
+		this.last_attacker = null;
 		
 		this.last_valid_x = this.x;
 		this.last_valid_y = this.y;
@@ -428,6 +567,7 @@ class sdCharacter
 		var bmp = params.bmp;
 		
 		this.hea = 100;
+		this.regen_timer = 0;
 		
 		this.team = params.team || 0;
 		
@@ -490,6 +630,15 @@ class sdCharacter
 		this.rocket = new THREE.Object3D();
 		this.mesh.add( this.rocket );
 		
+		this.sniper = new THREE.Object3D();
+		this.mesh.add( this.sniper );
+		
+		this.shotgun = new THREE.Object3D();
+		this.mesh.add( this.shotgun );
+		
+		this.spark = new THREE.Object3D();
+		this.mesh.add( this.spark );
+		
 		var f = new THREE.Object3D();
 		f.position.x = -8;
 		f.position.y = 3;
@@ -499,6 +648,21 @@ class sdCharacter
 		f.position.x = -7;
 		f.position.y = 1;
 		this.rocket.add( f );
+		
+		var f = new THREE.Object3D();
+		f.position.x = -8;
+		f.position.y = 2;
+		this.sniper.add( f );
+		
+		var f = new THREE.Object3D();
+		f.position.x = -8;
+		f.position.y = 2;
+		this.shotgun.add( f );
+		
+		var f = new THREE.Object3D();
+		f.position.x = -9;
+		f.position.y = 2;
+		this.spark.add( f );
 		//
 		
 		var max_chain_length = sdCharacter.max_chain_length;
@@ -508,7 +672,7 @@ class sdCharacter
 
 		var context_atoms_from = sdAtom.atoms.length;
 
-		for ( var x = 0; x < 32; x++ )
+		for ( var x = 0; x < 64; x++ )
 		for ( var y = 0; y < 16; y++ )
 		{
 			var rgba = bmp.getPixel32( x, y );
@@ -563,6 +727,10 @@ class sdCharacter
 				if ( a.y >= y1 )
 				if ( a.x < x1 + w )
 				if ( a.y < y1 + h )
+				/*if ( -a.model_x >= x1 )
+				if ( -a.model_y >= y1 )
+				if ( -a.model_x < x1 + w )
+				if ( -a.model_y < y1 + h )*/
 				all.push( a );
 			}
 			
@@ -585,6 +753,11 @@ class sdCharacter
 					sdChain.CreateChain( a, b, di, true );
 				}
 			}
+			
+			if ( all.length === 0 )
+			throw new Error('No atoms here?');
+		
+			//console.log( all.length );
 
 			return all;
 		}
@@ -626,7 +799,7 @@ class sdCharacter
 				a.model_z = a.model_z - z;
 			}
 		}
-		var body,head,arm1,arm2,leg1a,leg2a,leg1b,leg2b,rifle,rocket;
+		var body,head,arm1,arm2,leg1a,leg2a,leg1b,leg2b,rifle,rocket,sniper,shotgun,spark;
 		this.atoms = [];
 		this.atoms[ sdCharacter.ATOMS_BODY ] = body = ConnectBodyPart( 0, 0, 7, 11 ); // body
 		this.atoms[ sdCharacter.ATOMS_HEAD ] = head = ConnectBodyPart( 19, 6, 7, 6 ); // head
@@ -634,14 +807,21 @@ class sdCharacter
 		this.atoms[ sdCharacter.ATOMS_ARM2 ] = arm2 = CopyPart( this.atoms[ sdCharacter.ATOMS_ARM1 ] ); // arm
 		this.atoms[ sdCharacter.ATOMS_LEG1A ] = leg1a = ConnectBodyPart( 19, 0, 7, 4 ); // leg
 		this.atoms[ sdCharacter.ATOMS_LEG2A ] = leg2a = CopyPart( this.atoms[ sdCharacter.ATOMS_LEG1A ] ); // leg
-		this.atoms[ sdCharacter.ATOMS_LEG1B ] = leg1b = ConnectBodyPart( 26, 0, 7, 4 ); // leg
+		this.atoms[ sdCharacter.ATOMS_LEG1B ] = leg1b = ConnectBodyPart( 26, 0, 5, 4 ); // leg
 		this.atoms[ sdCharacter.ATOMS_LEG2B ] = leg2b = CopyPart( this.atoms[ sdCharacter.ATOMS_LEG1B ] ); // leg
 		this.atoms[ sdCharacter.ATOMS_RIFLE ] = rifle = ConnectBodyPart( 8, 5, 10, 5 ); // rifle
 		this.atoms[ sdCharacter.ATOMS_ROCKET ] = rocket = ConnectBodyPart( 0, 11, 14, 5 ); // rocket
+		this.atoms[ sdCharacter.ATOMS_SNIPER ] = sniper = ConnectBodyPart( 32, 0, 10, 4 ); // sniper
+		this.atoms[ sdCharacter.ATOMS_SHOTGUN ] = shotgun = ConnectBodyPart( 43, 0, 14, 5 ); // shotgun
+		this.atoms[ sdCharacter.ATOMS_SPARK ] = spark = ConnectBodyPart( 27, 5, 12, 5 ); // spark
+		
 		
 		this.SetBodyPartMaterial( head, sdAtom.MATERIAL_ALIVE_PLAYER_HEAD, true );
 		this.SetBodyPartMaterial( rifle, sdAtom.MATERIAL_ALIVE_PLAYER_GUN, true );
 		this.SetBodyPartMaterial( rocket, sdAtom.MATERIAL_ALIVE_PLAYER_GUN, true );
+		this.SetBodyPartMaterial( sniper, sdAtom.MATERIAL_ALIVE_PLAYER_GUN, true );
+		this.SetBodyPartMaterial( shotgun, sdAtom.MATERIAL_ALIVE_PLAYER_GUN, true );
+		this.SetBodyPartMaterial( spark, sdAtom.MATERIAL_ALIVE_PLAYER_GUN, true );
 	
 		SetOrigin( body, 4, 9, 0 );
 		SetOrigin( arm1, 8, 0, 0 );
@@ -654,6 +834,9 @@ class sdCharacter
 		
 		SetOrigin( rifle, 11, 9, 0 );
 		SetOrigin( rocket, 8, 15, 0 );
+		SetOrigin( sniper, 35, 3, 0 );
+		SetOrigin( shotgun, 49, 3, 0 );
+		SetOrigin( spark, 31, 8, 0 );
 		
 		for ( var i = context_atoms_from; i < sdAtom.atoms.length; i++ )
 		{
@@ -728,243 +911,318 @@ class sdCharacter
 	
 	static ApplyTeamColorToObject( a, team )
 	{
+		function Delta( x,y,z )
+		{
+			if ( a.r === a.g )
+			if ( a.r === a.b )
+			{
+				return false;
+			}
+			var di = Math.sqrt( Math.pow( Math.abs( a.r * 255 - x ), 2 ) + Math.pow( Math.abs( a.g * 255 - y ), 2 ) + Math.pow( Math.abs( a.b * 255 - z ), 2 ) );
+			if ( di < 130 )
+			return true;
+			return false;
+		}
+		
+		function Set( r,g,b )
+		{
+			//var br = ( a.r + a.g + a.b ) / 3;
+			var br = Math.max( a.r + a.g + a.b );
+			
+			a.r = br * r * 0.9 + br * 0.1;
+			a.g = br * g * 0.9 + br * 0.1;
+			a.b = br * b * 0.9 + br * 0.1;
+			/*
+			a.r = 1;
+			a.g = 1;
+			a.b = 1;*/
+		}
+		
 		if ( team === 0 )
 		{
-			if ( a.r * 255 === 0 &&
+			/*if ( a.r * 255 === 0 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 128 )
+			     a.b * 255 === 128 )*/
+			if ( Delta( 0, 0, 128 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 128 / 255;
+				a.b = 128 / 255;*/
+				Set( 0, 0, 128 / 255 );
 			}
 			else
-			if ( a.r * 255 === 255 &&
+			/*if ( a.r * 255 === 255 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 255, 0, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 1;
+				a.b = 1;*/
+				Set( 0, 0, 1 );
 			}
 			else
-			if ( a.r * 255 === 128 &&
+			/*if ( a.r * 255 === 128 &&
 			     a.g * 255 === 128 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 128, 128, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 0, 0 );
 			}
 		}
 		else
 		if ( team === 1 )
 		{
-			if ( a.r * 255 === 0 &&
+			/*if ( a.r * 255 === 0 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 128 )
+			     a.b * 255 === 128 )*/
+			if ( Delta( 0, 0, 128 ) )
 			{
-				a.r = 128 / 255;
+				/*a.r = 128 / 255;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 128 / 255, 0, 0 );
 			}
 			else
-			if ( a.r * 255 === 255 &&
+			/*if ( a.r * 255 === 255 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 255, 0, 0 ) )
 			{
-				a.r = 1;
+				/*a.r = 1;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 1, 0, 0 );
 			}
 			else
-			if ( a.r * 255 === 128 &&
+			/*if ( a.r * 255 === 128 &&
 			     a.g * 255 === 128 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 128, 128, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 0, 0 );
 			}
 		}
 		else
 		if ( team === 2 )
 		{
-			if ( a.r * 255 === 0 &&
+			/*if ( a.r * 255 === 0 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 128 )
+			     a.b * 255 === 128 )*/
+			if ( Delta( 0, 0, 128 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 128 / 255;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 128 / 255, 0 );
 			}
 			else
-			if ( a.r * 255 === 255 &&
+			/*if ( a.r * 255 === 255 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 255, 0, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 1;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 1, 0 );
 			}
 			else
-			if ( a.r * 255 === 128 &&
+			/*if ( a.r * 255 === 128 &&
 			     a.g * 255 === 128 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 128, 128, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 0, 0 );
 			}
 		}
 		else
 		if ( team === 3 )
 		{
-			if ( a.r * 255 === 0 &&
+			/*if ( a.r * 255 === 0 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 128 )
+			     a.b * 255 === 128 )*/
+			if ( Delta( 0, 0, 128 ) )
 			{
-				a.r = 128 / 255;
+				/*a.r = 128 / 255;
 				a.g = 128 / 255;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 128 / 255, 128 / 255, 0 );
 			}
 			else
-			if ( a.r * 255 === 255 &&
+			/*if ( a.r * 255 === 255 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 255, 0, 0 ) )
 			{
-				a.r = 1;
+				/*a.r = 1;
 				a.g = 1;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 1, 1, 0 );
 			}
 			else
-			if ( a.r * 255 === 128 &&
+			/*if ( a.r * 255 === 128 &&
 			     a.g * 255 === 128 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 128, 128, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 0, 0 );
 			}
 		}
 		else
 		if ( team === 4 )
 		{
-			if ( a.r * 255 === 0 &&
+			/*if ( a.r * 255 === 0 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 128 )
+			     a.b * 255 === 128 )*/
+			if ( Delta( 0, 0, 128 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 128 / 255;
-				a.b = 128 / 255;
+				a.b = 128 / 255;*/
+				Set( 0, 128 / 255, 128 / 255 );
 			}
 			else
-			if ( a.r * 255 === 255 &&
+			/*if ( a.r * 255 === 255 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 255, 0, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 1;
-				a.b = 1;
+				a.b = 1;*/
+				Set( 0, 1, 1 );
 			}
 			else
-			if ( a.r * 255 === 128 &&
+			/*if ( a.r * 255 === 128 &&
 			     a.g * 255 === 128 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 128, 128, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 0, 0 );
 			}
 		}
 		else
 		if ( team === 5 )
 		{
-			if ( a.r * 255 === 0 &&
+			/*if ( a.r * 255 === 0 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 128 )
+			     a.b * 255 === 128 )*/
+			if ( Delta( 0, 0, 128 ) )
 			{
-				a.r = 128 / 255;
+				/*a.r = 128 / 255;
 				a.g = 0;
-				a.b = 128 / 255;
+				a.b = 128 / 255;*/
+				Set( 128 / 255, 0, 128 / 255 );
 			}
 			else
-			if ( a.r * 255 === 255 &&
+			/*if ( a.r * 255 === 255 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 255, 0, 0 ) )
 			{
-				a.r = 1;
+				/*a.r = 1;
 				a.g = 0;
-				a.b = 1;
+				a.b = 1;*/
+				Set( 1, 0, 1 );
 			}
 			else
-			if ( a.r * 255 === 128 &&
+			/*if ( a.r * 255 === 128 &&
 			     a.g * 255 === 128 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 128, 128, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 0, 0 );
 			}
 		}
 		else
 		if ( team === 6 )
 		{
-			if ( a.r * 255 === 0 &&
+			/*if ( a.r * 255 === 0 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 128 )
+			     a.b * 255 === 128 )*/
+			if ( Delta( 0, 0, 128 ) )
 			{
-				a.r = 128 / 255;
+				/*a.r = 128 / 255;
 				a.g = 128 / 255;
-				a.b = 128 / 255;
+				a.b = 128 / 255;*/
+				Set( 128 / 255, 128 / 255, 128 / 255 );
 			}
 			else
-			if ( a.r * 255 === 255 &&
+			/*if ( a.r * 255 === 255 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 255, 0, 0 ) )
 			{
-				a.r = 1;
+				/*a.r = 1;
 				a.g = 1;
-				a.b = 1;
+				a.b = 1;*/
+				Set( 1, 1, 1 );
 			}
 			else
-			if ( a.r * 255 === 128 &&
+			/*if ( a.r * 255 === 128 &&
 			     a.g * 255 === 128 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 128, 128, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 0, 0 );
 			}
 		}
 		else
 		if ( team === 7 )
 		{
-			if ( a.r * 255 === 0 &&
+			/*if ( a.r * 255 === 0 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 128 )
+			     a.b * 255 === 128 )*/
+			if ( Delta( 0, 0, 128 ) )
 			{
-				a.r = 32 / 255;
+				/*a.r = 32 / 255;
 				a.g = 32 / 255;
-				a.b = 32 / 255;
+				a.b = 32 / 255;*/
+				Set( 32 / 255, 32 / 255, 32 / 255 );
 			}
 			else
-			if ( a.r * 255 === 255 &&
+			/*if ( a.r * 255 === 255 &&
 			     a.g * 255 === 0 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 255, 0, 0 ) )
 			{
-				a.r = 64 / 255;
+				/*a.r = 64 / 255;
 				a.g = 64 / 255;
-				a.b = 64 / 255;
+				a.b = 64 / 255;*/
+				Set( 64 / 255, 64 / 255, 64 / 255 );
 			}
 			else
-			if ( a.r * 255 === 128 &&
+			/*if ( a.r * 255 === 128 &&
 			     a.g * 255 === 128 &&
-			     a.b * 255 === 0 )
+			     a.b * 255 === 0 )*/
+			if ( Delta( 128, 128, 0 ) )
 			{
-				a.r = 0;
+				/*a.r = 0;
 				a.g = 0;
-				a.b = 0;
+				a.b = 0;*/
+				Set( 0, 0, 0 );
 			}
 		}
 	}
@@ -1008,6 +1266,9 @@ class sdCharacter
 		for_fps = !for_fps;
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_RIFLE ], for_fps || this.curwea === main.WEAPON_RIFLE );
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ROCKET ], for_fps || this.curwea === main.WEAPON_ROCKET );
+		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SNIPER ], for_fps || this.curwea === main.WEAPON_SNIPER );
+		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SHOTGUN ], for_fps || this.curwea === main.WEAPON_SHOTGUN );
+		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SPARK ], for_fps || this.curwea === main.WEAPON_SPARK );
 	}
 	
 	PlayShotSound( curwea )
@@ -1015,15 +1276,33 @@ class sdCharacter
 		var c = this;
 		if ( c === main.my_character )
 		{
-			if ( curwea === 0 )
+			if ( curwea === main.WEAPON_RIFLE )
 			sdSound.PlaySound({ sound: lib.rifle_fire, parent_mesh: c.mesh, volume: 0.25 });
+			else
+			if ( curwea === main.WEAPON_SNIPER )
+			sdSound.PlaySound({ sound: lib.sniper, parent_mesh: c.mesh, volume: 0.75 });
+			else
+			if ( curwea === main.WEAPON_SHOTGUN )
+			sdSound.PlaySound({ sound: lib.shotgun, parent_mesh: c.mesh, volume: 2 });
+			else
+			if ( curwea === main.WEAPON_SPARK )
+			sdSound.PlaySound({ sound: lib.spark2, parent_mesh: c.mesh, volume: 1 });
 			else
 			sdSound.PlaySound({ sound: lib.rocket_fire, parent_mesh: c.mesh, volume: 0.25 });
 		}
 		else
 		{
-			if ( curwea === 0 )
+			if ( curwea === main.WEAPON_RIFLE )
 			sdSound.PlaySound({ sound: lib.rifle_fire, parent_mesh:c.body, volume: 0.25 });
+			else
+			if ( curwea === main.WEAPON_SNIPER )
+			sdSound.PlaySound({ sound: lib.sniper, parent_mesh:c.body, volume: 0.75 });
+			else
+			if ( curwea === main.WEAPON_SHOTGUN )
+			sdSound.PlaySound({ sound: lib.shotgun, parent_mesh:c.body, volume: 2 });
+			else
+			if ( curwea === main.WEAPON_SPARK )
+			sdSound.PlaySound({ sound: lib.spark2, parent_mesh:c.body, volume: 1 });
 			else
 			sdSound.PlaySound({ sound: lib.rocket_fire, parent_mesh:c.body, volume: 0.25 });
 		}
@@ -1149,6 +1428,36 @@ class sdCharacter
 			}
 				
 			var dir_unscaled = new THREE.Vector2( c.act_x, c.act_y );
+			
+			// Prevent AI from falling
+			if ( c.ai !== null && main.my_character !== c )
+			{
+				if ( c.x < 10 )
+				{
+					dir_unscaled.x = -1;
+					c.walk_vector_xz.x = 0;
+					c.walk_vector_xz.y = 1;
+				}
+				if ( c.x > main.level_chunks_x * main.chunk_size - 10 )
+				{
+					dir_unscaled.x = 1;
+					c.walk_vector_xz.x = 0;
+					c.walk_vector_xz.y = 1;
+				}
+				if ( c.z < 10 )
+				{
+					dir_unscaled.y = 1;
+					c.walk_vector_xz.x = 0;
+					c.walk_vector_xz.y = 1;
+				}
+				if ( c.z > main.level_chunks_z * main.chunk_size - 10 )
+				{
+					dir_unscaled.y = -1;
+					c.walk_vector_xz.x = 0;
+					c.walk_vector_xz.y = 1;
+				}
+			}
+			
 			var dir = new THREE.Vector2( dir_unscaled.x, dir_unscaled.y );
 			dir.normalize();
 			
@@ -1246,83 +1555,122 @@ class sdCharacter
 				{
 					c.curwea = c.act_weapon;
 					
+					c._UpdateAmmoBarIfNeeded();
+					
 					if ( c === main.my_character )
 					c.UpdateWeaponVisibilityFPS( true );
 
 					c.reload_timer = sdCharacter.weapon_switch_time;
+					
+					c.time_to_reload = 0; // Reset reload
 				}
 				
 				if ( c.reload_timer <= 0 )
 				{
 					if ( c.act_fire > 0 )
+					if ( c.time_to_reload <= 0 )
 					{
-						var curwea = c.curwea;
-						
-						if ( c.act_fire === 2 )
+						if ( c.ammo[ c.curwea ] > 0 )
 						{
-							curwea += 2;
-						}
-						
-						c.reload_timer = sdCharacter.weapon_reload_times[ curwea ];
-						
-						if ( !c.stand )
-						{
-							c.tox += c.look_direction.x * sdCharacter.weapon_self_knockbacks[ curwea ];
-							c.toy += c.look_direction.y * sdCharacter.weapon_self_knockbacks[ curwea ];
-							c.toz += c.look_direction.z * sdCharacter.weapon_self_knockbacks[ curwea ];
-						}
-						
-						c.recoil += sdCharacter.weapon_self_knockbacks[ curwea ];
-						
-						var speed = sdCharacter.weapon_speed[ curwea ];
-						
-						var visual = active_weapon.children[ 0 ].getWorldPosition();
-
-						if ( !main.MP_mode || main.my_character === c )
-						{
-							c.PlayShotSound( curwea );
+							c.ammo[ c.curwea ] -= 1;
 							
-							for ( var p = 0; p < sdCharacter.weapon_knock_count[ curwea ]; p++ )
+							c._UpdateAmmoBarIfNeeded();
+						
+							var curwea = c.curwea;
+
+							/*if ( c.act_fire === 2 )
 							{
-								var spread = { x:0, y:0, z:0 };
+								curwea += 2;
+							}*/
 
-								if ( sdCharacter.weapon_knock_spread[ curwea ] > 0 )
+							c.reload_timer = sdCharacter.weapon_reload_times[ curwea ];
+
+							if ( !c.stand )
+							{
+								c.tox += c.look_direction.x * sdCharacter.weapon_self_knockbacks[ curwea ];
+								c.toy += c.look_direction.y * sdCharacter.weapon_self_knockbacks[ curwea ];
+								c.toz += c.look_direction.z * sdCharacter.weapon_self_knockbacks[ curwea ];
+							}
+							
+							if ( sdCharacter.weapon_spawn_shell[ curwea ] )
+							{
+								var v = new THREE.Vector3();
+								main.SetAsRandom3D( v );
+								v.x *= 0.1;
+								v.y *= 0.1;
+								v.z *= 0.1;
+								var gun_world_pos = active_weapon.getWorldPosition();
+
+								var quaternion = new THREE.Quaternion();
+								active_weapon.getWorldQuaternion( quaternion );
+								var gun_world_dir = new THREE.Vector3( -0.5, 1, -1 );
+								gun_world_dir.applyQuaternion( quaternion );
+
+								v.x += gun_world_dir.x * 0.5;
+								v.y += gun_world_dir.y * 0.5;
+								v.z += gun_world_dir.z * 0.5;
+								
+								sdSprite.CreateSprite({ type: sdSprite.TYPE_SHELL, x:gun_world_pos.x, y:gun_world_pos.y, z:gun_world_pos.z, tox:v.x + c.tox, toy:v.y + c.toy, toz:v.z + c.toz });
+							}
+							
+							var speed = sdCharacter.weapon_speed[ curwea ];
+
+							var visual = active_weapon.children[ 0 ].getWorldPosition();
+
+							if ( !main.MP_mode || main.my_character === c )
+							{
+								c.PlayShotSound( curwea );
+
+								for ( var p = 0; p < sdCharacter.weapon_knock_count[ curwea ]; p++ )
 								{
-									main.SetAsRandom3D( spread );
-									var r = Math.random() * sdCharacter.weapon_knock_spread[ curwea ];
-									spread.x *= r;
-									spread.y *= r;
-									spread.z *= r;
+									var spread = { x:0, y:0, z:0 };
+
+									if ( sdCharacter.weapon_knock_spread[ curwea ] > 0 || sdCharacter.weapon_spread_from_recoil[ curwea ] > 0 )
+									{
+										main.SetAsRandom3D( spread );
+										var r = Math.random() * ( sdCharacter.weapon_knock_spread[ curwea ] + sdCharacter.weapon_spread_from_recoil[ curwea ] * c.recoil );
+										spread.x *= r;
+										spread.y *= r;
+										spread.z *= r;
+									}
+
+									var bullet = sdBullet.CreateBullet({ 
+										x: c.x, 
+										y: c.y + sdCharacter.shoot_offset_y, 
+										z: c.z,
+										visual_x: visual.x,
+										visual_y: visual.y,
+										visual_z: visual.z,
+										tox: -c.look_direction.x * speed + c.tox + spread.x,
+										toy: -c.look_direction.y * speed + c.toy + spread.y,
+										toz: -c.look_direction.z * speed + c.toz + spread.z,
+										dx: -c.look_direction.x * speed * 0.2,
+										dy: -c.look_direction.y * speed * 0.2,
+										dz: -c.look_direction.z * speed * 0.2,
+										owner: c,
+										knock_power: sdCharacter.weapon_knock_power[ curwea ],
+										hp_damage: sdCharacter.weapon_hp_damage[ curwea ],
+										hp_damage_head: sdCharacter.weapon_hp_damage_head[ curwea ],
+										is_rocket: sdCharacter.weapon_is_rocket[ curwea ],
+										is_sniper: sdCharacter.weapon_is_sniper[ curwea ],
+										is_plasma: sdCharacter.weapon_is_plasma[ curwea ],
+										splash_radius: sdCharacter.weapon_splash_radius[ curwea ]
+									});
+
+									if ( main.MP_mode )
+									{
+										bullet.GiveLocalPeerUID();
+										sdSync.MP_SendEvent( sdSync.COMMAND_I_SPAWN_BULLET, bullet, curwea, p );
+									}
 								}
 
-								var bullet = sdBullet.CreateBullet({ 
-									x: c.x, 
-									y: c.y + sdCharacter.shoot_offset_y, 
-									z: c.z,
-									visual_x: visual.x,
-									visual_y: visual.y,
-									visual_z: visual.z,
-									tox: -c.look_direction.x * speed + c.tox + spread.x,
-									toy: -c.look_direction.y * speed + c.toy + spread.y,
-									toz: -c.look_direction.z * speed + c.toz + spread.z,
-									dx: -c.look_direction.x * speed * 0.2,
-									dy: -c.look_direction.y * speed * 0.2,
-									dz: -c.look_direction.z * speed * 0.2,
-									owner: c,
-									knock_power: sdCharacter.weapon_knock_power[ curwea ],
-									hp_damage: sdCharacter.weapon_hp_damage[ curwea ],
-									hp_damage_head: sdCharacter.weapon_hp_damage_head[ curwea ],
-									is_rocket: sdCharacter.weapon_is_rocket[ curwea ],
-									is_sniper: sdCharacter.weapon_is_sniper[ curwea ]
-								});
-
-								if ( main.MP_mode )
-								{
-									bullet.GiveLocalPeerUID();
-									sdSync.MP_SendEvent( sdSync.COMMAND_I_SPAWN_BULLET, bullet, curwea, p );
-								}
 							}
 
+							c.recoil += sdCharacter.weapon_self_knockbacks[ curwea ];
+						}
+						else
+						{
+							c.ReloadIfPossible();
 						}
 					}
 				}
@@ -1347,13 +1695,29 @@ class sdCharacter
 		
 		if ( c.hurt_timeout > 0 )
 		c.hurt_timeout -= GSPEED;
+	
+		if ( !main.MP_mode && c === main.my_character )
+		{
+			if ( c.hea < 100 )
+			{
+				if ( c.regen_timer < 90 )
+				{
+					c.regen_timer += GSPEED;
+				}
+				else
+				{
+					c.hea = Math.min( 100, c.hea + GSPEED );
+					c._UpdateHealthBarIfNeeded();
+				}
+			}
+		}
 
-		if ( c.y < -200 )
+		if ( c.y < main.world_end_y )
 		if ( !main.MP_mode || c === main.my_character )
 		{
-			c.DealDamage( 1000 );
+			c.DealDamage( 1000, null, c.x, c.y, c.z );
 
-			sdSync.MP_SendEvent( sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER, c, 1000, 0, 0, 0 );
+			sdSync.MP_SendEvent( sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER, c, 1000, 0,0,0, c.x,c.y,c.z );
 		}
 
 		correct_mesh_rotation_ang = 0;
@@ -1566,25 +1930,23 @@ class sdCharacter
 			c.last_valid_sit = c.sit;
 		}
 
-		var active_weapon = ( c.curwea === 0 ) ? c.rifle : c.rocket;
-		var passive_weapon = ( c.curwea !== 0 ) ? c.rifle : c.rocket;
-
+		var active_weapon = null;//( c.curwea === 0 ) ? c.rifle : c.rocket;
+		var passive_weapons = [];
+		
+		if ( c.curwea === main.WEAPON_RIFLE ) active_weapon = c.rifle; else passive_weapons.push( c.rifle );
+		if ( c.curwea === main.WEAPON_ROCKET ) active_weapon = c.rocket; else passive_weapons.push( c.rocket );
+		if ( c.curwea === main.WEAPON_SHOTGUN ) active_weapon = c.shotgun; else passive_weapons.push( c.shotgun );
+		if ( c.curwea === main.WEAPON_SNIPER ) active_weapon = c.sniper; else passive_weapons.push( c.sniper );
+		if ( c.curwea === main.WEAPON_SPARK ) active_weapon = c.spark; else passive_weapons.push( c.spark );
+		//
 		WeaponLogic( c, GSPEED, active_weapon );
-
 
 		if ( active_weapon.parent !== c.arm2 )
 		{
 			active_weapon.parent.remove( active_weapon );
 			c.arm2.add( active_weapon );
 		}
-		if ( passive_weapon.parent !== c.body )
-		{
-			passive_weapon.parent.remove( passive_weapon );
-			c.body.add( passive_weapon );
-		}
-
-
-
+		
 		active_weapon.position.x = -10;
 		active_weapon.position.y = 0;
 		active_weapon.position.z = 0 - c.recoil;
@@ -1592,14 +1954,35 @@ class sdCharacter
 		active_weapon.rotation.x = 0;
 		active_weapon.rotation.y = -sdCharacter.arm_cross_right;
 		active_weapon.rotation.z = 0;
+		
+		
+		for ( var p = 0; p < passive_weapons.length; p++ )
+		{
+			var passive_weapon = passive_weapons[ p ];
 
-		passive_weapon.position.x = 5;
-		passive_weapon.position.y = 6;
-		passive_weapon.position.z = 0;
+			if ( passive_weapon.parent !== c.body )
+			{
+				passive_weapon.parent.remove( passive_weapon );
+				c.body.add( passive_weapon );
+				
+				passive_weapon.scale.x = passive_weapon.scale.y = passive_weapon.scale.z = 1;
+			}
 
-		passive_weapon.rotation.y = Math.PI / 2;
-		passive_weapon.rotation.x = Math.PI / 2;
-		passive_weapon.rotation.z = 0;
+			passive_weapon.position.x = 5;
+			passive_weapon.position.y = 6;
+			passive_weapon.position.z = 0;
+
+			passive_weapon.rotation.y = Math.PI / 2;
+			passive_weapon.rotation.x = Math.PI / 2;
+			passive_weapon.rotation.z = 0;
+
+			if ( passive_weapons.length > 0 )
+			{
+				var prog = p / ( passive_weapons.length - 1 ) * Math.PI * 0.5 + Math.PI * 0.5 / 2;
+				passive_weapon.position.x += Math.sin( prog ) * 5 - 4;
+				passive_weapon.position.z += Math.cos( prog ) * 5;
+			}
+		}
 
 
 
@@ -1648,10 +2031,50 @@ class sdCharacter
 			{
 				active_weapon.parent.remove( active_weapon );
 				main.main_camera.add( active_weapon );
+				
+				active_weapon.scale.x = active_weapon.scale.y = active_weapon.scale.z = 0.5;
 			}
 
-			active_weapon.position.set( 2.5, -6.5, -5 + c.recoil * 5 );
-			active_weapon.rotation.set( 0, -Math.PI * 0.5, 0 - c.recoil * 0.1 );
+			active_weapon.position.set( 2.75, -5.25, -4.5 + c.recoil * 3 );
+			
+			if ( main.zoom_intensity < 1 )
+			{
+				active_weapon.position.set( 0, -3.25, -4.5 + c.recoil * 3 );
+			}
+			
+			active_weapon.rotation.set( 0, -Math.PI * 0.5, 0 - Math.pow( c.recoil * 0.5, 2 ) * 3 );
+			
+			
+			if ( c.curwea === main.WEAPON_SNIPER )
+			{
+				const sniper_reload_offset = -5;
+				if ( c.reload_timer + sniper_reload_offset > 0 && c.reload_timer + sniper_reload_offset < Math.PI * 2 )
+				active_weapon.position.z += Math.sin( c.reload_timer + sniper_reload_offset ) * 0.2;
+			}
+		}
+		
+		if ( c.time_to_reload > 0 )
+		{
+			var turn = 1 - Math.cos( c.time_to_reload );
+
+			active_weapon.rotation.z -= ( 1 - Math.pow( 1 - turn / 2, 4 ) ) * 2 * 0.5;
+
+			var shake_time = -8;
+			if ( c.time_to_reload * 4 + shake_time > 0 && c.time_to_reload * 4 + shake_time < Math.PI * 2 )
+			{
+				var shake = 1 - Math.cos( c.time_to_reload * 4 + shake_time );
+				active_weapon.position.x += shake * 0.25;
+
+				active_weapon.rotation.x -= shake * 0.2;
+			}
+
+			c.time_to_reload -= GSPEED * 0.25;
+			
+			if ( c.time_to_reload <= 0 )
+			{
+				c.ammo[ c.curwea ] = sdCharacter.weapon_ammo_per_clip[ c.curwea ];
+				c._UpdateAmmoBarIfNeeded();
+			}
 		}
 
 		c.recoil = main.MorphWithTimeScale( c.recoil, 0, 0.9, GSPEED );
@@ -1760,6 +2183,9 @@ class sdCharacter
 		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_LEG2B ], c.leg2b, c );
 		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_ROCKET ], c.rocket, c );
 		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_RIFLE ], c.rifle, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_SNIPER ], c.sniper, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_SHOTGUN ], c.shotgun, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_SPARK ], c.spark, c );
 	}
 
 	static ThinkNow( GSPEED )

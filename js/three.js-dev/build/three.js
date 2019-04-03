@@ -37783,7 +37783,7 @@
 			return this.volume; // Custom
 		},
 
-		setVolume: function ( value ) {
+		setVolume: function ( value, smooth=0.05 ) {
 
 			//this.gain.gain.value = value;
 			this.value = value; // Custom

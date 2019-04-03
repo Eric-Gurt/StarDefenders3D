@@ -57,6 +57,7 @@ class sdSync
 		sdSync.COMMAND_I_DIRECT_HIT_ATOM = UniqueTest('h');
 		sdSync.COMMAND_I_RESSURECT = UniqueTest('u');
 		sdSync.COMMAND_I_SAY = UniqueTest('y');
+		sdSync.COMMAND_I_RELOAD = UniqueTest('l');
 	}
 	
 	static MP_SendEvent( command, ... args )

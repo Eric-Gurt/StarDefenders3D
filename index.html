@@ -261,14 +261,17 @@
 	    
 	    <!-- Crosshair -->
 	    <!--<img src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -8px;margin-top: -8px;top: 50%;">-->
-	    <img src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -6px;margin-top: -6px;top: 50%;width:12px;height:12px">
+	    <img id="crosshair" src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -6px;margin-top: -6px;top: 50%;width:12px;height:12px">
 
 	    <!-- Healthbar -->
 	    <span class="r_conteiner" style="position:fixed;left:50%;width:40vh;margin-left:-20vh;bottom:0.5vh;padding:0.25vh;border-radius:1.5vh;background-color:rgba(0,0,0,0.5);">
 		<span class="r_conteiner" style="width:100%;display:inline-block;padding:0px;border-radius:1vh;">
-		    <span id="hp_bar" class="r_conteiner" style="width:50%;background-color:rgba(100,255,100,0.9);padding:0.1vh;text-align:center;border-radius:1vh;color:#ffffff;font-size:1vh;line-height:0vh;text-shadow: 0px 0px 1vh rgba(0,0,0,4);"></span>
+		    <span id="hp_bar" class="r_conteiner" style="width:50%;background-color:rgba(91, 160, 91, 0.5);padding:0vh;text-align:center;border-radius:1vh;color:#ffffff;font-size:0.8vh;text-shadow: 0px 0px 1vh rgba(0,0,0,4);"></span>
 		</span>
 	    </span>
+	    
+	    <!-- Ammo -->
+	    <span id="ammo_bar" class="r_conteiner" style="position:fixed;bottom:3vh;display:block;left:50%;width: 18vh;margin-left: -9vh;text-align:center;font-size: 1vh;font-family:courier">100 | 100</span>
 
 	    <!-- Leaderboard -->
 	    <div id="leader_board" style="display:none">
@@ -308,7 +311,7 @@
 	    </input>
 	
 	    <span id="menu" class="r_conteiner clickable" style="position:fixed;left:50%;width:50vh;margin-left:-25vh;top:60%;margin-top:-25vh;background-color: rgba(0,0,0,0.5);">
-		<a href="javascript:document.getElementById('menu').style.display='none';main.GoFullscreen();" class="r_conteiner" style="margin-bottom:1vh">Continue</a>
+		<a href="javascript:document.getElementById('menu').style.display='none';main.ingame_menu_visible=false;main.GoFullscreen();" class="r_conteiner" style="margin-bottom:1vh">Continue</a>
 		<!--<a href="javascript:1" class="r_conteiner" style="margin-bottom:1vh">Settings</a>-->
 		
 		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Sensitivity:</span><input id="sensitivity" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="0.01" step="0.0001" onchange="localStorage.setItem('stardefenders_sensitivity', this.value ); main.sensitivity = Number( this.value ); main.ShowSliderNumber( this, 0 );" onfocus="main.ShowSliderNumber( this, 1 );" onblur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
@@ -365,42 +368,45 @@
 		</div>
 	    </span>
 
-	    <span class="r_conteiner clickable" style="position:fixed;left:64vh;top:11vh;width:65vh;height:80vh;color:rgba(230,255,230,0.4)">
+	    <span class="r_conteiner clickable" style="position:fixed;left:64vh;top:11vh;width:40vh;height:20vh;color:rgba(230,255,230,0.4);text-align: justify;overflow-y: auto;">
+		Star Defenders 3D news:<br>
+		<br>
+		<span style="color:white">1 April 2019</span> - Some big updates. New weapons, optimizations, new world generation logic, effects, sounds, improved AI.<br>
+		<br>
+		<span style="color:white">11 July 2018</span> - First upload.
+	    </span>
+	    <span class="r_conteiner clickable" style="position:fixed;left:64vh;top:32vh;width:40vh;height:59vh;color:rgba(230,255,230,0.4);text-align: justify;overflow-y: auto;">
 		Hi!<br>
 		<br>
-		I made this game just to see how my custom camera movement algorithm can work and feel.<br>
-		Also I was testing P2P multiplayer and some other stuff. Should work best in Chrome web browser.<br>
+		This is a peer-to-peer arena-like shooter game built around destructive world. Should work best in Chrome web browser.<br>
 		<br>
-		It intentionally keeps no identification nor other personal info just in case if you'd like to stay incognito when connecting directly to other people (it is easy to discover connected player's IP address).<br>
 		There are few game modes:<br>
 		> Free for all - you are against everyone else;<br>
 		> Team vs Team - your team against enemy team;<br>
-		> As One - multiple teams that contain only 2 players.<br>
+		> As One - multiple teams, 2 players per each.<br>
 		<br>
-		All game modes are endless, have timer and 2 weapons:<br>
-		> Rifle - shoots team-colored lasers on primary fire, shotgun pellets on alternate fire;<br>
-		> Rocket Launcher - shoots rockets on primary fire, sniper shots on alternate fire.<br>
+		All game modes are endless, have timer and 4 weapons:<br>
+		> Rifle<br>
+		> Spark gun<br>
+		> Shotgun<br>
+		> Sniper rifle<br>
+		> Rocket launcher<br>
 		<br>
-		Weapons have different stats such as knockback, self-knockback, damage, speed, count and spread which are, to be honest, are very easy to change. Would not wonder if somebody will start playing with them.<br>
+		Weapons have different stats such as knockback, self-knockback, damage, speed, projectile count and spread.<br>
 		<br>
-		This game/website has no lobby chat because I feel like I've already spend more time than I was hoping to dedicate to it. So you might use <a href='https://www.plazmaburst2.com/chat2'>Plazma Burst 2 chat</a> since there is no lobby chat.<br>
 		<br>
-		Anyway this game was built in ~6 days using Star Defender assets from my long-ago-never-released game which you probably already heard about by now (if you're happened to check <a href='https://www.plazmaburst2.com'>Plazma Burst 2</a> website from time to time).<br>
+		First prototype of this game was built in ~6 days using Star Defender assets from my long-ago-and-never-released game which you probably already heard about by now (if you're happened to check <a href='https://www.plazmaburst2.com'>Plazma Burst 2</a> website from time to time).<br>
 		<br>
-		So that is pretty much it - I'm <a href='http://www.gevanni.com'>Eric Gurt</a> and this is a test project. I don't think I'm ever going to continue work on it, if you want to - you can even continue it.<br>
+		So that is pretty much it - I'm <a href='http://www.gevanni.com'>Eric Gurt</a> and this is a rather unfinished project. I don't think I'm ever going to continue work on it myself, if you want to - you can  ask me for my public permission to continue this project.<br>
 		<a href="https://github.com/Eric-Gurt/StarDefenders3D">https://github.com/Eric-Gurt/StarDefenders3D</a><br>
 		<br>
-		Other than that - feel free to check it out, maybe you'll find some of it's mechanics cool and must have for today's gaming in general (such as this very important mechanic easily described as motion sickness for example. It's intention was to make a rare case of vertical combats into somewhat more intuitive. Actually would probably never be able to test how it works without project like this).<br>
+		Game might require special network/firewall/ISP configuration in order to be able to connect with other players (since it is peer-to-peer).<br>
 		<br>
-		Don't expect there to be much improvements, ban lists or anti-hack detections - it most probably will stay as is. Have fun, even if you'll need some cheating for that.<br>
+		Also it might take some time while it is building world. FFA is quickest one once at least 2 players are looking for match within this mode.<br>
 		<br>
-		Might require special network/firewall/ISP configuration in order to be able to connect with other players (it is peer-to-peer and there is no TURN server). In else case it should give you an error message, through I have never been able to catch this yet.<br>
+		Be sure that it will search forever if you'll add players to your group while searching in mode that has no teammates like FFA, or if you have more temmates than allowed (usually 4 in TvT and 2 in As One).<br>
 		<br>
-		Also it might take some time while it is building world and quick play has no indication of server making match. FFA is quickest one once at least 2 players are looking for match with this mode.<br>
-		<br>
-		Also make sure that it will search forever if you'll add players to your group while searching in mode that has no teammates like FFA, or if you have more temmates than allowed (usually 4 in TvT and 2 in As One).<br>
-		<br>
-		Keys: W, S, A, D, 1, 2, Left Mouse Button, Right Mouse Button, Space, Ctrl, Esc, Enter and Tab.<br>
+		Keys: W, S, A, D, 1, 2, 3, 4, Left Mouse Button, Right Mouse Button, Space, Ctrl, Esc, Enter and Tab.<br>
 		<br>
 		It does use <a href='https://threejs.org'>three.js</a>, <a href='https://peerjs.com'>peer.js</a>, <a href='https://www.bfxr.net/'>bfxr.net</a>, <a href='http://pieroxy.net/blog/pages/lz-string/index.html'>lz-string.js</a> and <a href='https://github.com/ftlabs/ftscroller'>ftscroller.js</a>.
 	    </span>
@@ -495,7 +501,7 @@
 		    'Today will be a good day',
 		    '16%',
 		    'No need to wait',
-		    'This is my 16th shark today',
+		    'This is my 16th shark for today',
 		    'I wonder if somebody would like to continue this game',
 		    'I kind of wish to work on this game but my people need me~',
 		    'Woosh',
@@ -522,7 +528,7 @@
 		    'Do you know artists who use Neural Networks to speedup their working process?',
 		    'Always remember to save. In fact, you should have image/copy of your hard drive by now~',
 		    'JavaScript should have been typed from the beginning',
-		    'It is fine to keep shooting at everything until only floor left. It is more fun to do it together',
+		    'It is fine to keep shooting at everything until only floor is left. It is more fun to do it together too',
 		    'Why start wars if we can just sit and play free games?~',
 		    'Star Defenders! Game where you defend... Stars?',
 		    'Now with special effects!',
