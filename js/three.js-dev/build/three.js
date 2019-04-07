@@ -20,7 +20,7 @@
 
 	const three_enable_string_naming_and_typing = false; // Custom
 
-	const matrix_compose_transform_cache_through_hashing = true; // Gives few percents during rendering. Might cause weird glitches but this never happened
+	const matrix_compose_transform_cache_through_hashing = false; // Gives few percents during rendering. Might cause weird glitches but this never happened
 
 	const use_float32_matrix_elements = true; // Custom. Seems like it has no effect as in else case multiplication just becomes a heavy operation
 	const three_custom_culling = false;

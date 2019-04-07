@@ -7,6 +7,8 @@ class sdCharacter
 {
 	static init_class()
 	{
+		sdCharacter.first_person_view = true;
+		
 		sdCharacter.ATOMS_BODY = 0;
 		sdCharacter.ATOMS_HEAD = 1;
 		sdCharacter.ATOMS_ARM1 = 2;
@@ -20,6 +22,7 @@ class sdCharacter
 		sdCharacter.ATOMS_SNIPER = 10;
 		sdCharacter.ATOMS_SHOTGUN = 11;
 		sdCharacter.ATOMS_SPARK = 12;
+		sdCharacter.ATOMS_BUILD1 = 13;
 		
 		sdCharacter.characters = [];
 		
@@ -43,24 +46,25 @@ class sdCharacter
 		sdCharacter.arm_cross_left = 0.6; // how much arms are rotated towards each other
 		sdCharacter.arm_cross_right = 0.0; // how much arms are rotated towards each other
 		
-		//										[ rifle,	rocket,		shotgun,	sniper,		spark ]
-		sdCharacter.weapon_ammo_per_clip =		[ 25,		Infinity,	8,			Infinity,	15 ];
-		sdCharacter.weapon_reload_times =		[ 2,		25,			30 * 0.2,	30,			5 ];
-		sdCharacter.weapon_self_knockbacks =	[ 0.1,		0.5,		0.35,		0.5,		0.2 ];
-		sdCharacter.weapon_is_rocket =			[ false,	true,		false,		false,		true ];
-		sdCharacter.weapon_is_sniper =			[ false,	false,		false,		true,		false ];
-		sdCharacter.weapon_is_plasma =			[ false,	false,		false,		false,		true ];
+		//										[ rifle,	rocket,		shotgun,	sniper,		spark,		build1 ]
+		sdCharacter.weapon_ammo_per_clip =		[ 25,		Infinity,	8,			Infinity,	15,			15 ];
+		sdCharacter.weapon_reload_times =		[ 2,		25,			30 * 0.2,	30,			5,			5 ];
+		sdCharacter.weapon_self_knockbacks =	[ 0.1,		0.5,		0.35,		0.5,		0.2,		0 ];
+		sdCharacter.weapon_is_rocket =			[ false,	true,		false,		false,		true,		false ];
+		sdCharacter.weapon_is_sniper =			[ false,	false,		false,		true,		false,		false ];
+		sdCharacter.weapon_is_plasma =			[ false,	false,		false,		false,		true,		false ];
 
-		sdCharacter.weapon_speed =				[ 40,		4,			30,			80/*60*/,	40/*8*/ ];
-		sdCharacter.weapon_knock_power =		[ 0.02,		0.1,		0.0075,		0.04,		0.04/*0.1*/ ];
-		sdCharacter.weapon_hp_damage =			[ 30,		115,		10,			90,			40 ];
-		sdCharacter.weapon_hp_damage_head =		[ 60,		115,		20,			180,		45 ];
-		sdCharacter.weapon_knock_count =		[ 1,		1,			15,			1,			1 ];
-		sdCharacter.weapon_knock_spread =		[ 0,		0,			5,			0.5,		0 ];
-		sdCharacter.weapon_spread_from_recoil =	[ 5,		0,			0,			0,			5 ];
-		sdCharacter.weapon_splash_radius =		[ null,		8,			null,		null,		4 ];
-		sdCharacter.weapon_spawn_shell =		[ true,		false,		true,		false,		false ];
-		sdCharacter.weapon_switch_time = 15;
+		sdCharacter.weapon_speed =				[ 40,		4,			30,			80,			40,			0 ];
+		sdCharacter.weapon_knock_power =		[ 0.02,		0.1,		0.0075,		0.04,		0.1,		9 ]; // Splash damage depends on this value too, besides hp_damage
+		sdCharacter.weapon_hp_damage =			[ 30,		115,		10,			90,			20/*40*/,	0 ];
+		sdCharacter.weapon_hp_damage_head =		[ 60,		115,		20,			180,		22/*45*/,	0 ];
+		sdCharacter.weapon_knock_count =		[ 1,		1,			15,			1,			1,			0 ];
+		sdCharacter.weapon_knock_spread =		[ 0,		0,			5,			0.5,		0,			0 ];
+		sdCharacter.weapon_spread_from_recoil =	[ 5,		0,			0,			0,			5,			0 ];
+		sdCharacter.weapon_splash_radius =		[ null,		8,			null,		null,		4,			4 ];
+		sdCharacter.weapon_spawn_shell =		[ true,		false,		true,		false,		false,		false ];
+		sdCharacter.weapon_zeros =				[ 0,		0,			0,			0,			0,			0 ]; // Used as copy source for starter reload times per weapon
+		sdCharacter.weapon_switch_time = 7; // 15
 		
 		sdCharacter.collision_dots = [];
 		sdCharacter.collision_normals = [];
@@ -109,8 +113,6 @@ class sdCharacter
 			
 			this.time_to_reload = Math.PI * 2;
 			
-			sdSound.PlaySound({ sound: lib.reload, parent_mesh: this.mesh, volume: 1.5 });
-			
 			if ( main.my_character === this )
 			sdSync.MP_SendEvent( sdSync.COMMAND_I_RELOAD );
 		}
@@ -158,6 +160,18 @@ class sdCharacter
 		}
 	}
 	
+	ApplyLimbImmortalityIfNeeded()
+	{
+		if ( !sdNet.MP_mode )
+		if ( main.my_character === this )
+		{
+			for ( var g = 0; g < this.atoms.length; g++ )
+			{
+				this.atoms[ g ].hp = 99999999;
+			}
+		}
+	}
+	
 	Ressurect( was_me )
 	{
 		var old_char = this;
@@ -195,11 +209,18 @@ class sdCharacter
 				}
 			}*/
 			
+			if ( !old_char.atoms[ g ][ i ].removed )
+			{
+				sdAtom.pseudo_atoms.push( new PseudoAtom( old_char.atoms[ g ][ i ] ) );
+			}
+			
 			old_char.atoms[ g ][ i ].removed = false;
 			old_char.atoms[ g ][ i ].material = old_char.atoms[ g ][ i ].material_initial;
 			old_char.atoms[ g ][ i ].r = old_char.atoms[ g ][ i ].r_initial;
 			old_char.atoms[ g ][ i ].g = old_char.atoms[ g ][ i ].g_initial;
 			old_char.atoms[ g ][ i ].b = old_char.atoms[ g ][ i ].b_initial;
+			old_char.atoms[ g ][ i ].glowing = old_char.atoms[ g ][ i ].glowing_initial;
+			old_char.atoms[ g ][ i ].bleed_timer = 0;
 			
 			old_char.atoms[ g ][ i ].hp = sdAtom.atom_hp;
 
@@ -258,6 +279,8 @@ class sdCharacter
 		
 		this.last_attacker = null;
 		this.last_attacker_time = 0;
+		
+		this.ApplyLimbImmortalityIfNeeded();
 	}
 	
 	DealDamage( d, from=null, x=0, y=0, z=0 )
@@ -355,6 +378,11 @@ class sdCharacter
 				main.ScoreForTeam( this.team, -1 );
 				else
 				main.ScoreForTeam( from.team, 1 );
+				
+				var limbs = this.atoms;
+				var limb_to_bleed = limbs[ ~~( Math.random() * ( sdCharacter.ATOMS_LEG2B + 1 ) ) ];
+				var atom_to_bleed = limb_to_bleed[ ~~( Math.random() * limb_to_bleed.length ) ];
+				atom_to_bleed.bleed_timer = 9;
 		
 				this.remove();
 			}
@@ -368,15 +396,10 @@ class sdCharacter
 			
 			a.material = m;
 			
-			if ( m === sdAtom.MATERIAL_GIB )
+			if ( m === sdAtom.MATERIAL_GIB || m === sdAtom.MATERIAL_GIB_GUN )
 			{
-				if ( a.r_initial !== a.g_initial || a.r_initial !== a.b_initial || a.g_initial !== a.b_initial ) // Darken non-gray parts only
-				{
-					var av = ( a.r + a.g + a.b ) / 3;
-					a.r = a.r * 0.25 + av * 0.25;
-					a.g = a.g * 0.25 + av * 0.25;
-					a.b = a.b * 0.25 + av * 0.25;
-				}
+				if ( a.glowing > 0 )
+				a.glowing = -7; // brightness / ( 1 + (-a.glowing) )
 			}
 			
 			if ( initial )
@@ -419,19 +442,20 @@ class sdCharacter
 				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_SNIPER ], sdAtom.MATERIAL_GIB_GUN );
 				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_SHOTGUN ], sdAtom.MATERIAL_GIB_GUN );
 				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_SPARK ], sdAtom.MATERIAL_GIB_GUN );
+				this.SetBodyPartMaterial( this.atoms[ sdCharacter.ATOMS_BUILD1 ], sdAtom.MATERIAL_GIB_GUN );
 				
 				
 
 				function ConnectAToBAtBOriginAt( all, all2, x, y, z )
 				{
-					for ( var i = 0; i < all.length; i++ )
+					for ( var i = 0; i < all.length; i+=8 )
 					{
 						var a = all[ i ];
 
 						if ( a.removed )
 						continue;
 
-						for ( var i2 = 0; i2 < all2.length; i2++ )
+						for ( var i2 = 0; i2 < all2.length; i2+=8 )
 						{
 							var b = all2[ i2 ];
 
@@ -442,7 +466,7 @@ class sdCharacter
 							var di_pow2 = main.Dist3D_Vector_pow2( a.x-b.x, a.y-b.y, a.z-b.z );
 
 							//if ( di <= 1 )
-							if ( di_pow2 <= 1 )
+							//if ( di_pow2 <= 8 )
 							{
 								var di = Math.sqrt( di_pow2 );
 								
@@ -461,14 +485,17 @@ class sdCharacter
 				var leg1b = this.atoms[ sdCharacter.ATOMS_LEG1B ];
 				var leg2b = this.atoms[ sdCharacter.ATOMS_LEG2B ];
 
-				ConnectAToBAtBOriginAt( body, head, this.head.position.x, this.head.position.y-2, 0 );
-				ConnectAToBAtBOriginAt( body, arm1, this.arm1.position.x, this.arm1.position.y, this.arm1.position.z );
-				ConnectAToBAtBOriginAt( body, arm2, this.arm2.position.x, this.arm2.position.y, this.arm2.position.z );
-				ConnectAToBAtBOriginAt( body, leg1a, this.leg1a.position.x, this.leg1a.position.y, this.leg1a.position.z );
-				ConnectAToBAtBOriginAt( body, leg2a, this.leg2a.position.x, this.leg2a.position.y, this.leg2a.position.z );
+				if ( !main.mobile )
+				{
+					ConnectAToBAtBOriginAt( body, head, this.head.position.x, this.head.position.y-2, 0 );
+					ConnectAToBAtBOriginAt( body, arm1, this.arm1.position.x, this.arm1.position.y, this.arm1.position.z );
+					ConnectAToBAtBOriginAt( body, arm2, this.arm2.position.x, this.arm2.position.y, this.arm2.position.z );
+					ConnectAToBAtBOriginAt( body, leg1a, this.leg1a.position.x, this.leg1a.position.y, this.leg1a.position.z );
+					ConnectAToBAtBOriginAt( body, leg2a, this.leg2a.position.x, this.leg2a.position.y, this.leg2a.position.z );
 
-				ConnectAToBAtBOriginAt( leg1a, leg1b, this.leg1b.position.x, this.leg1b.position.y, this.leg1b.position.z );
-				ConnectAToBAtBOriginAt( leg2a, leg2b, this.leg2b.position.x, this.leg2b.position.y, this.leg2b.position.z );
+					ConnectAToBAtBOriginAt( leg1a, leg1b, this.leg1b.position.x, this.leg1b.position.y, this.leg1b.position.z );
+					ConnectAToBAtBOriginAt( leg2a, leg2b, this.leg2b.position.x, this.leg2b.position.y, this.leg2b.position.z );
+				}
 
 				var old_char = this;
 				
@@ -517,6 +544,14 @@ class sdCharacter
 	set toy( v ) { if ( Math.abs( v - this._toy ) > 300 ) throw new Error('Too rapid velocity change?'); this._toy = v; }
 	set toz( v ) { if ( Math.abs( v - this._toz ) > 5 ) throw new Error('Too rapid velocity change?'); this._toz = v; }
 	*/
+	get reload_timer()
+	{
+		return this.reload_timers[ this.curwea ];
+	}
+	set reload_timer( v )
+	{
+		this.reload_timers[ this.curwea ] = v;
+	}
 	constructor( params )
 	{
 		this.uid = sdCharacter.characters.length; // keeps original uid so peers can reference this user using it
@@ -527,7 +562,12 @@ class sdCharacter
 		this.y = params.y;
 		this.z = params.z;
 		
+		this.last_out_of_bounds_timer = 0;
+		
+		
 		this.time_to_reload = 0;
+		
+		//this.glow_color = new THREE.Color( 0xff0000 );
 		
 		this.ammo = sdCharacter.weapon_ammo_per_clip.slice(); // Copy
 		
@@ -550,6 +590,7 @@ class sdCharacter
 		this.toz = 0;
 		
 		this.stand = false;
+		this.stand_timer = 0; // Whenever above 0 - player can play walk animation
 		
 		this.act_x = 0;
 		this.act_y = 0;
@@ -562,7 +603,8 @@ class sdCharacter
 		
 		this.sit = 0;
 		
-		this.reload_timer = 0; // <= 0 means can shoot
+		this.reload_timers = sdCharacter.weapon_zeros.slice(); // Arry for each gun. Can shoot if <= 0
+		//this.reload_timer = 0; // is getter now
 		
 		var bmp = params.bmp;
 		
@@ -572,11 +614,13 @@ class sdCharacter
 		this.team = params.team || 0;
 		
 		this.walk_phase = 0;
+		this.idle_phase = 0;
 		this.look_direction = new THREE.Vector3( 1, 0, 0 );
 		
 		this.curwea = 0; // 0 is rifle, 1 is rocket
 		this.act_weapon = 0; // 
 		this.act_fire = 0;
+		this.weapon_change_tim = 0; // Value grows whenever weapon needs to be changed. Once it reaches certain ponit - weapon switched and value goes down.
 		
 		this.mesh = new THREE.Object3D();
 		this.mesh.scale.set( sdAtom.atom_scale, sdAtom.atom_scale, sdAtom.atom_scale );
@@ -639,6 +683,9 @@ class sdCharacter
 		this.spark = new THREE.Object3D();
 		this.mesh.add( this.spark );
 		
+		this.build1 = new THREE.Object3D();
+		this.mesh.add( this.build1 );
+		
 		var f = new THREE.Object3D();
 		f.position.x = -8;
 		f.position.y = 3;
@@ -663,6 +710,11 @@ class sdCharacter
 		f.position.x = -9;
 		f.position.y = 2;
 		this.spark.add( f );
+		
+		var f = new THREE.Object3D();
+		f.position.x = -8;
+		f.position.y = 3;
+		this.build1.add( f );
 		//
 		
 		var max_chain_length = sdCharacter.max_chain_length;
@@ -680,6 +732,8 @@ class sdCharacter
 			var r = rgba.r / 255;
 			var g = rgba.g / 255;
 			var b = rgba.b / 255;
+			
+			var glowing = ( bmp.getPixel32( x, y + 32 ).r > 127 ) ? 0.25 : 0;
 
 			rgba = bmp.getPixel32( x, y + 16 );
 			
@@ -694,7 +748,8 @@ class sdCharacter
 					-x,
 					-y,
 					z / tolerance_ceil * tolerance,
-					this ) );
+					this,
+					glowing ) );
 
 				if ( z !== 0 )
 				sdAtom.atoms.push( new sdAtom( x * sdAtom.atom_scale + offset_x, 
@@ -704,7 +759,8 @@ class sdCharacter
 					-x,
 					-y,
 					-z / tolerance_ceil * tolerance,
-					this ) );
+					this,
+					glowing  ) );
 			}
 		}
 
@@ -799,7 +855,7 @@ class sdCharacter
 				a.model_z = a.model_z - z;
 			}
 		}
-		var body,head,arm1,arm2,leg1a,leg2a,leg1b,leg2b,rifle,rocket,sniper,shotgun,spark;
+		var body,head,arm1,arm2,leg1a,leg2a,leg1b,leg2b,rifle,rocket,sniper,shotgun,spark,build1;
 		this.atoms = [];
 		this.atoms[ sdCharacter.ATOMS_BODY ] = body = ConnectBodyPart( 0, 0, 7, 11 ); // body
 		this.atoms[ sdCharacter.ATOMS_HEAD ] = head = ConnectBodyPart( 19, 6, 7, 6 ); // head
@@ -814,6 +870,7 @@ class sdCharacter
 		this.atoms[ sdCharacter.ATOMS_SNIPER ] = sniper = ConnectBodyPart( 32, 0, 10, 4 ); // sniper
 		this.atoms[ sdCharacter.ATOMS_SHOTGUN ] = shotgun = ConnectBodyPart( 43, 0, 14, 5 ); // shotgun
 		this.atoms[ sdCharacter.ATOMS_SPARK ] = spark = ConnectBodyPart( 27, 5, 12, 5 ); // spark
+		this.atoms[ sdCharacter.ATOMS_BUILD1 ] = build1 = ConnectBodyPart( 40, 6, 7, 7 ); // build1
 		
 		
 		this.SetBodyPartMaterial( head, sdAtom.MATERIAL_ALIVE_PLAYER_HEAD, true );
@@ -837,6 +894,12 @@ class sdCharacter
 		SetOrigin( sniper, 35, 3, 0 );
 		SetOrigin( shotgun, 49, 3, 0 );
 		SetOrigin( spark, 31, 8, 0 );
+		SetOrigin( build1, 42, 12, 0 );
+		
+		/*sdCharacter.ApplyTeamColorToObject( this.glow_color, this.team );
+		this.glow_color.r *= 0.1;
+		this.glow_color.g *= 0.1;
+		this.glow_color.b *= 0.1;*/
 		
 		for ( var i = context_atoms_from; i < sdAtom.atoms.length; i++ )
 		{
@@ -1243,6 +1306,9 @@ class sdCharacter
 	
 	HideForFPS()
 	{
+		if ( !sdCharacter.first_person_view )
+		return;
+		
 		this.UpdateWeaponVisibilityFPS( true );
 		
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_HEAD ], false );
@@ -1263,18 +1329,22 @@ class sdCharacter
 	
 	UpdateWeaponVisibilityFPS( for_fps )
 	{
-		for_fps = !for_fps;
-		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_RIFLE ], for_fps || this.curwea === main.WEAPON_RIFLE );
-		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ROCKET ], for_fps || this.curwea === main.WEAPON_ROCKET );
-		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SNIPER ], for_fps || this.curwea === main.WEAPON_SNIPER );
-		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SHOTGUN ], for_fps || this.curwea === main.WEAPON_SHOTGUN );
-		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SPARK ], for_fps || this.curwea === main.WEAPON_SPARK );
+		if ( sdCharacter.first_person_view )
+		{
+			for_fps = !for_fps;
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_RIFLE ], for_fps || this.curwea === main.WEAPON_RIFLE );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ROCKET ], for_fps || this.curwea === main.WEAPON_ROCKET );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SNIPER ], for_fps || this.curwea === main.WEAPON_SNIPER );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SHOTGUN ], for_fps || this.curwea === main.WEAPON_SHOTGUN );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SPARK ], for_fps || this.curwea === main.WEAPON_SPARK );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_BUILD1 ], for_fps || this.curwea === main.WEAPON_BUILD1 );
+		}
 	}
 	
 	PlayShotSound( curwea )
 	{
 		var c = this;
-		if ( c === main.my_character )
+		if ( c === main.my_character && sdCharacter.first_person_view )
 		{
 			if ( curwea === main.WEAPON_RIFLE )
 			sdSound.PlaySound({ sound: lib.rifle_fire, parent_mesh: c.mesh, volume: 0.25 });
@@ -1287,6 +1357,9 @@ class sdCharacter
 			else
 			if ( curwea === main.WEAPON_SPARK )
 			sdSound.PlaySound({ sound: lib.spark2, parent_mesh: c.mesh, volume: 1 });
+			else
+			if ( curwea === main.WEAPON_BUILD1 )
+			sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 1 });
 			else
 			sdSound.PlaySound({ sound: lib.rocket_fire, parent_mesh: c.mesh, volume: 0.25 });
 		}
@@ -1304,13 +1377,18 @@ class sdCharacter
 			if ( curwea === main.WEAPON_SPARK )
 			sdSound.PlaySound({ sound: lib.spark2, parent_mesh:c.body, volume: 1 });
 			else
+			if ( curwea === main.WEAPON_BUILD1 )
+			sdSound.PlaySound({ sound: lib.player_step, parent_mesh:c.body, volume: 1 });
+			else
 			sdSound.PlaySound({ sound: lib.rocket_fire, parent_mesh:c.body, volume: 0.25 });
 		}
 	}
 	
 	UpdateCharacter( GSPEED, teleport_limb_mode )
 	{
-		function MoveLimbTo( atoms_group, mesh, c )
+		//main.DrawDynamicLight( this.x, this.y, this.z, this.glow_color.r, this.glow_color.g, this.glow_color.b );
+		
+		function MoveLimbTo( atoms_group, mesh, c ) // Should move atoms no matter whether they are .removed or not - because in else case damaged played would not be able to rocket-jump
 		{
 			mesh.parent.updateMatrixWorld();
 			mesh.updateMatrixWorld();
@@ -1328,7 +1406,7 @@ class sdCharacter
 				
 				if ( teleport_limb_mode )
 				{
-					a.lx = a.x
+					a.lx = a.x;
 					a.ly = a.y;
 					a.lz = a.z;
 				}
@@ -1459,6 +1537,7 @@ class sdCharacter
 			}
 			
 			var dir = new THREE.Vector2( dir_unscaled.x, dir_unscaled.y );
+			if ( dir.length() > 1 )
 			dir.normalize();
 			
 			if ( stand )
@@ -1497,13 +1576,20 @@ class sdCharacter
 			c.stand = stand;
 			
 			if ( stand )
+			c.stand_timer = 15;
+			else
+			c.stand_timer -= GSPEED;
+			
+			if ( c.stand_timer > 0 )
 			{
+				GSPEED *= c.stand_timer / 15;
+				
 				if ( dir.x !== 0 || dir.y !== 0 )
 				{
 					var old_phase = c.walk_phase;
 					
 					if ( c.act_sprint )
-					c.walk_phase += GSPEED * 0.25;
+					c.walk_phase += GSPEED * 0.3;
 					else
 					c.walk_phase += GSPEED * 0.5;
 					
@@ -1529,6 +1615,8 @@ class sdCharacter
 				}
 				else
 				c.walk_phase += Math.sin( c.walk_phase ) * 0.5 * GSPEED;
+
+				GSPEED = undefined; // Disallow work with this variable in this method because it was changed and is no longer correct
 			}
 			else
 			{
@@ -1539,32 +1627,52 @@ class sdCharacter
 		
 		function WeaponLogic( c, GSPEED, active_weapon )
 		{
-			if ( c.reload_timer > 0 )
+			if ( c === main.my_character )
 			{
-				c.reload_timer -= GSPEED;
+				c.act_weapon = main.action_weapon;
+				c.act_fire = main.hold_fire;
 			}
-			else
+
+			if ( c.curwea !== c.act_weapon )
 			{
-				if ( c === main.my_character )
+				if ( c.weapon_change_tim < sdCharacter.weapon_switch_time )
 				{
-					c.act_weapon = main.action_weapon;
-					c.act_fire = main.hold_fire;
+					c.weapon_change_tim = Math.min( c.weapon_change_tim + GSPEED, sdCharacter.weapon_switch_time );
 				}
-				
-				if ( c.curwea !== c.act_weapon )
+				else
 				{
 					c.curwea = c.act_weapon;
-					
+
 					c._UpdateAmmoBarIfNeeded();
-					
+
 					if ( c === main.my_character )
 					c.UpdateWeaponVisibilityFPS( true );
 
-					c.reload_timer = sdCharacter.weapon_switch_time;
-					
+					//c.reload_timer = sdCharacter.weapon_switch_time;
+
 					c.time_to_reload = 0; // Reset reload
 				}
-				
+			}
+			else
+			{
+				if ( c.weapon_change_tim > 0 )
+				c.weapon_change_tim = Math.max( c.weapon_change_tim - GSPEED, 0 );
+			}
+			
+			for ( var i = 0; i < c.reload_timers.length; i++ )
+			{
+				if ( c.reload_timers[ i ] > 0 )
+				c.reload_timers[ i ] -= GSPEED;
+			}
+
+
+			/*if ( c.reload_timer > 0 )
+			{
+				c.reload_timer -= GSPEED;
+			}
+			else*/
+			if ( c.weapon_change_tim <= 0 )
+			{	
 				if ( c.reload_timer <= 0 )
 				{
 					if ( c.act_fire > 0 )
@@ -1572,16 +1680,7 @@ class sdCharacter
 					{
 						if ( c.ammo[ c.curwea ] > 0 )
 						{
-							c.ammo[ c.curwea ] -= 1;
-							
-							c._UpdateAmmoBarIfNeeded();
-						
 							var curwea = c.curwea;
-
-							/*if ( c.act_fire === 2 )
-							{
-								curwea += 2;
-							}*/
 
 							c.reload_timer = sdCharacter.weapon_reload_times[ curwea ];
 
@@ -1663,8 +1762,56 @@ class sdCharacter
 										sdSync.MP_SendEvent( sdSync.COMMAND_I_SPAWN_BULLET, bullet, curwea, p );
 									}
 								}
-
+								
+								if ( curwea === main.WEAPON_BUILD1 )
+								{
+									var rad = sdCharacter.weapon_splash_radius[ curwea ];
+									
+									var new_x = c.x - c.look_direction.x * ( rad + sdCharacter.player_half_height + 1 );
+									var new_y = c.y + sdCharacter.shoot_offset_y - c.look_direction.y * ( rad + sdCharacter.player_half_height + 1 );
+									var new_z = c.z - c.look_direction.z * ( rad + sdCharacter.player_half_height + 1 );
+									
+									new_x -= c.x;
+									new_y -= c.y;
+									new_z -= c.z;
+									
+									var di = main.Dist3D( 0, 0, 0, new_x, new_y, new_z );
+									
+									new_x /= di / ( rad + sdCharacter.player_half_height + 1 );
+									new_y /= di / ( rad + sdCharacter.player_half_height + 1 );
+									new_z /= di / ( rad + sdCharacter.player_half_height + 1 );
+									
+									new_x += c.x;
+									new_y += c.y;
+									new_z += c.z;
+									
+									new_x = Math.round( new_x );
+									new_y = Math.round( new_y );
+									new_z = Math.round( new_z );
+									
+									if ( main.WorldPaintDamage( 
+													new_x,
+													new_y, 
+													new_z, 
+											rad, 2, 1,1,1 ) // mode: cutter=0, gore_paiter=1, gore_builder=2
+										)
+									{
+										// Can build here
+										if ( main.MP_mode )
+										sdSync.MP_SendEvent( sdSync.COMMAND_I_BUILD, new_x, new_y, new_z, rad, 1,1,1 );
+									}
+									else
+									{
+										// Nothing was changed, return bullet
+										c.ammo[ c.curwea ] += 1;
+									}
+								}
 							}
+							
+							c.ammo[ c.curwea ] -= 1;
+							
+							c._UpdateAmmoBarIfNeeded();
+						
 
 							c.recoil += sdCharacter.weapon_self_knockbacks[ curwea ];
 						}
@@ -1678,8 +1825,44 @@ class sdCharacter
 		}
 		function CanClimb( c )
 		{
-			return ( main.TraceLine( c.x, c.y + sdCharacter.shoot_offset_y, c.z, c.x - c.look_direction.x * 8, c.y + sdCharacter.shoot_offset_y + 2 - c.look_direction.y * 8, c.z - c.look_direction.z * 8, null, 1, 0 ) === 1 &&
-					 main.TraceLine( c.x, c.y + sdCharacter.shoot_offset_y, c.z, c.x - c.look_direction.x * 8, c.y + sdCharacter.shoot_offset_y - 8 - c.look_direction.y * 8, c.z - c.look_direction.z * 8, null, 1, 0 ) < 1 );
+			var look_direction_flat_x = -c.look_direction.x;
+			var look_direction_flat_z = -c.look_direction.z;
+			
+			var di = main.Dist3D( look_direction_flat_x, look_direction_flat_z, 0, 0,0,0 );
+			
+			if ( di < 0.01 )
+			return false;
+			
+			look_direction_flat_x /= di;
+			look_direction_flat_z /= di;
+			
+			for ( var depth = 1.5; depth <= 2.5; depth += 1 )
+			for ( var hei = -sdCharacter.player_half_height + 2; hei <= sdCharacter.player_half_height; hei += 1 )
+			{
+				if ( main.TraceLine( c.x, 
+									 c.y + hei, 
+									 c.z, 
+									 c.x + look_direction_flat_x * sdCharacter.player_half_width * depth, 
+									 c.y + hei, 
+									 c.z + look_direction_flat_z * sdCharacter.player_half_width * depth, 
+									 null, 1, 0 ) === 1 )
+				{
+					var prog_last = main.TraceLine( c.x + look_direction_flat_x * sdCharacter.player_half_width * depth, 
+										 c.y + hei, 
+										 c.z + look_direction_flat_z * sdCharacter.player_half_width * depth, 
+										 c.x + look_direction_flat_x * sdCharacter.player_half_width * depth, 
+										 c.y + hei - 2, 
+										 c.z + look_direction_flat_z * sdCharacter.player_half_width * depth, 
+										 null, 1, 0 );
+					if ( prog_last > 0 && prog_last < 1 )
+					return true;
+				}
+			}
+	
+			return false;
+			
+			/*return ( main.TraceLine( c.x, c.y + sdCharacter.shoot_offset_y, c.z, c.x - c.look_direction.x * 8, c.y + sdCharacter.shoot_offset_y + 2 - c.look_direction.y * 8, c.z - c.look_direction.z * 8, null, 1, 0 ) === 1 &&
+					 main.TraceLine( c.x, c.y + sdCharacter.shoot_offset_y, c.z, c.x - c.look_direction.x * 8, c.y + sdCharacter.shoot_offset_y - 8 - c.look_direction.y * 8, c.z - c.look_direction.z * 8, null, 1, 0 ) < 1 );*/
 		}
 		
 		var c = this;
@@ -1712,13 +1895,72 @@ class sdCharacter
 			}
 		}
 
-		if ( c.y < main.world_end_y )
+		/*if ( c.y < main.world_end_y )
 		if ( !main.MP_mode || c === main.my_character )
 		{
 			c.DealDamage( 1000, null, c.x, c.y, c.z );
 
 			sdSync.MP_SendEvent( sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER, c, 1000, 0,0,0, c.x,c.y,c.z );
+		}*/
+		
+		if ( c.last_out_of_bounds_timer > 0 )
+		c.last_out_of_bounds_timer -= GSPEED;
+	
+		if ( c.x < 0 || c.z < 0 || c.x > main.level_chunks_x * main.chunk_size || c.z > main.level_chunks_z * main.chunk_size )
+		{
+			var in_game_x = Math.max( 0, Math.min( c.x, main.level_chunks_x * main.chunk_size ) );
+			var in_game_z = Math.max( 0, Math.min( c.z, main.level_chunks_z * main.chunk_size ) );
+			
+			var di_out = main.Dist3D( in_game_x, in_game_z, 0, c.x, c.z, 0 );
+			
+			if ( c.y < di_out )
+			{
+				var dx = in_game_x - c.x;
+				var dz = in_game_z - c.z;
+
+				var di = main.Dist3D( dx, dz, 0, 0, 0, 0 );
+				if ( di > 0.01 )
+				{
+					dx /= di;
+					dz /= di;
+
+					c.tox = main.MorphWithTimeScale( c.tox, 0, 0.9, GSPEED );
+					c.toy = main.MorphWithTimeScale( c.toy, 0, 0.9, GSPEED );
+					c.toz = main.MorphWithTimeScale( c.toz, 0, 0.9, GSPEED );
+
+					if ( c.y < 16 )
+					c.toy = ( 16 - c.y ) * 0.15;
+
+					c.toy += 1 * GSPEED;
+					
+					c.tox += ( 1 ) * dx * GSPEED;
+					c.toz += ( 1 ) * dz * GSPEED;
+
+					if ( c.last_out_of_bounds_timer <= 0 )
+					{
+						c.last_out_of_bounds_timer = 10;
+						
+						if ( !main.MP_mode || c === main.my_character )
+						{
+							c.DealDamage( 15, null, c.x, c.y, c.z );
+
+							sdSync.MP_SendEvent( sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER, c, 15, 0,0,0, c.x,c.y,c.z );
+						}
+						
+						for ( var x = -2; x <= 2; x++ )
+						for ( var y = -2; y <= 2; y++ )
+						if ( main.Dist3D( x,y,0, 0,0,0 ) < 2.5 )
+						{
+							var sx = c.x + 2 * ( dx * x * 0.71 - dz * y ) * 3;
+							var sy = c.y - 2 * ( x * 0.71 ) * 3;
+							var sz = c.z + 2 * ( dz * x * 0.71 + dx * y ) * 3;
+							sdSprite.CreateSprite({ type: sdSprite.TYPE_SNIPER_TRAIL, x:sx, y:sy, z:sz, r:0.4, g:0.6, b:1.0 });
+						}
+					}
+				}
+			}
 		}
+		
 
 		correct_mesh_rotation_ang = 0;
 
@@ -1735,13 +1977,23 @@ class sdCharacter
 		var last_trace_line_percentage = trace_line_percentage;
 
 		if ( c.act_jump )
+		if ( !c.stand )
 		if ( CanClimb( c ) )
 		{
-			c.toy = main.MorphWithTimeScale( c.toy, 1, 0.7, GSPEED );
-			c.tox = main.MorphWithTimeScale( c.tox, 0, 0.7, GSPEED );
-			c.toz = main.MorphWithTimeScale( c.toz, 0, 0.7, GSPEED );
+			if ( c.act_y > 0 )
+			{
+				c.toy = Math.max( c.toy, main.MorphWithTimeScale( c.toy, 0.5, 0.7, GSPEED ) );
+				c.tox = main.MorphWithTimeScale( c.tox, -c.look_direction.x, 0.99, GSPEED );
+				c.toz = main.MorphWithTimeScale( c.toz, -c.look_direction.z, 0.99, GSPEED );
+			}
+			else
+			{
+				c.toy = Math.max( c.toy, main.MorphWithTimeScale( c.toy, 0.175, 0.5, GSPEED ) );
+				c.tox = main.MorphWithTimeScale( c.tox, 0, 0.8, GSPEED );
+				c.toz = main.MorphWithTimeScale( c.toz, 0, 0.8, GSPEED );
+			}
 		}
-
+		
 		if ( morph === 1 )
 		{
 			c.x += tx;
@@ -1765,22 +2017,42 @@ class sdCharacter
 			if ( dot_product < 0 )
 			{
 				if ( c.act_jump )
+				if ( !c.stand )
 				{
 					if ( CanClimb( c ) )
 					{
 					}
 					else
 					{
-						// walljump
-						dot_product -= 0.7;
-						c.toy += 0.7;
+						var di = main.Dist3D(
+							-last_direction.x,
+							-last_direction.y,
+							-last_direction.z,
+							c.walk_vector_xz.x * c.act_y - c.walk_vector_xz.y * c.act_x,
+							0,
+							c.walk_vector_xz.y * c.act_y + c.walk_vector_xz.x * c.act_x
+						);
 
-						sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 0.5 });
+						//main.DrawDebugPoint( c.x, c.y, c.z, 0xFF0000, 1, 1, 3000 );
+						//main.DrawDebugPoint( c.x - last_direction.x, c.y - last_direction.y, c.z - last_direction.z, 0x00FF00, 1, 1, 3000 );
+						//main.DrawDebugPoint( c.x + c.walk_vector_xz.x * c.act_y - c.walk_vector_xz.y * c.act_x, c.y, c.z + c.walk_vector_xz.y * c.act_y + c.walk_vector_xz.x * c.act_x, 0x0000FF, 1, 1, 3000 );
+
+						//console.log( di );
+
+						if ( di > 1 )
+						{
+							// walljump
+							dot_product -= 0.7;
+							c.toy += 0.7;
+
+							sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 0.5 });
+						}
 					}
 				}
 				c.tox = c.tox - dot_product * last_direction.x;
 				c.toy = c.toy - dot_product * last_direction.y;
 				c.toz = c.toz - dot_product * last_direction.z;
+
 			}
 
 			var GSPEED2 = ( 1 - morph ) * GSPEED;
@@ -1938,6 +2210,7 @@ class sdCharacter
 		if ( c.curwea === main.WEAPON_SHOTGUN ) active_weapon = c.shotgun; else passive_weapons.push( c.shotgun );
 		if ( c.curwea === main.WEAPON_SNIPER ) active_weapon = c.sniper; else passive_weapons.push( c.sniper );
 		if ( c.curwea === main.WEAPON_SPARK ) active_weapon = c.spark; else passive_weapons.push( c.spark );
+		if ( c.curwea === main.WEAPON_BUILD1 ) active_weapon = c.build1; else passive_weapons.push( c.build1 );
 		//
 		WeaponLogic( c, GSPEED, active_weapon );
 
@@ -1947,13 +2220,13 @@ class sdCharacter
 			c.arm2.add( active_weapon );
 		}
 		
-		active_weapon.position.x = -10;
-		active_weapon.position.y = 0;
-		active_weapon.position.z = 0 - c.recoil;
+		active_weapon.position.x = -10 - c.recoil * 0.5;
+		active_weapon.position.y = 0 + c.recoil * 1;
+		active_weapon.position.z = 0;
 
 		active_weapon.rotation.x = 0;
 		active_weapon.rotation.y = -sdCharacter.arm_cross_right;
-		active_weapon.rotation.z = 0;
+		active_weapon.rotation.z = 0 - c.recoil * 0.2;
 		
 		
 		for ( var p = 0; p < passive_weapons.length; p++ )
@@ -1993,63 +2266,139 @@ class sdCharacter
 
 		if ( c === main.my_character )
 		{
+			main.main_camera.updateMatrixWorld();
 
 			var front_vector = new THREE.Vector3( 0, 0, 1 );
-			main.main_camera.updateMatrixWorld();
 			front_vector.transformDirection( main.main_camera.matrixWorld );
 
+			var right_vector = new THREE.Vector3( 1, 0, 0 );
+			right_vector.transformDirection( main.main_camera.matrixWorld );
 
 			// fps
-			//main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x, 0.7, GSPEED );
-			//main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + sdCharacter.shoot_offset_y, 0.7, GSPEED );
-			//main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z, 0.7, GSPEED );
-			main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x, 0, GSPEED );
-			main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + sdCharacter.shoot_offset_y, 0, GSPEED );
-			main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z, 0, GSPEED );
-			// fps
-			/*main.main_camera.position.x = c.x;
-			main.main_camera.position.y = c.y + sdCharacter.shoot_offset_y;
-			main.main_camera.position.z = c.z;*/
-			/*
-			main.main_camera.position.x = c.x + front_vector.x * 25;
-			main.main_camera.position.y = c.y + front_vector.y * 25 + sdCharacter.shoot_offset_y;
-			main.main_camera.position.z = c.z + front_vector.z * 25;
-			*/
-			/*
-			main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x + front_vector.x * 25, 0.9, GSPEED );
-			main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + front_vector.y * 25 + sdCharacter.shoot_offset_y, 0.9, GSPEED );
-			main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z + front_vector.z * 25, 0.9, GSPEED );*/
+			if ( sdCharacter.first_person_view )
+			{
+				main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x, 0, GSPEED );
+				main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + sdCharacter.shoot_offset_y, 0, GSPEED );
+				main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z, 0, GSPEED );
+			}
+			else
+			{
+				// fps
+				/*main.main_camera.position.x = c.x;
+				main.main_camera.position.y = c.y + sdCharacter.shoot_offset_y;
+				main.main_camera.position.z = c.z;*/
+				/*
+				main.main_camera.position.x = c.x + front_vector.x * 25;
+				main.main_camera.position.y = c.y + front_vector.y * 25 + sdCharacter.shoot_offset_y;
+				main.main_camera.position.z = c.z + front_vector.z * 25;
+				*/
+
+				main.main_camera.position.x = main.MorphWithTimeScale( main.main_camera.position.x, c.x + front_vector.x * 8 + right_vector.x * 6, 0.7, GSPEED );
+				main.main_camera.position.y = main.MorphWithTimeScale( main.main_camera.position.y, c.y + front_vector.y * 8 + right_vector.y * 6 + sdCharacter.shoot_offset_y, 0.7, GSPEED );
+				main.main_camera.position.z = main.MorphWithTimeScale( main.main_camera.position.z, c.z + front_vector.z * 8 + right_vector.z * 6, 0.7, GSPEED );
+				
+				var depth = main.TraceLine( c.x, (c.y+sdCharacter.shoot_offset_y), c.z, 
+					 c.x+( front_vector.x * 8 + right_vector.x * 6 ),
+					 c.y+( front_vector.y * 8 + right_vector.y * 6 )+sdCharacter.shoot_offset_y,
+					 c.z+( front_vector.z * 8 + right_vector.z * 6 ), null, 1, 0
+				);
+				if ( depth < 1 )
+				{
+					if ( depth < 0.4 )
+					depth = -0.4;
+					main.main_camera.position.x = c.x + ( front_vector.x * 8 + right_vector.x * 6 ) * depth;
+					main.main_camera.position.y = c.y + ( front_vector.y * 8 + right_vector.y * 6 ) * depth + sdCharacter.shoot_offset_y;
+					main.main_camera.position.z = c.z + ( front_vector.z * 8 + right_vector.z * 6 ) * depth;
+				}
+			}
 
 
 			main.speed.x = c.tox;
 			main.speed.y = c.toy;
 			main.speed.z = c.toz;
 
+			if ( sdCharacter.first_person_view )
 			look_direction.set( front_vector.x, front_vector.y, front_vector.z );
-
-			if ( active_weapon.parent !== main.main_camera )
+			else
 			{
-				active_weapon.parent.remove( active_weapon );
-				main.main_camera.add( active_weapon );
+				var depth = main.TraceLine( main.main_camera.position.x,main.main_camera.position.y,main.main_camera.position.z, 
+					main.main_camera.position.x-front_vector.x*1000,
+					main.main_camera.position.y-front_vector.y*1000,
+					main.main_camera.position.z-front_vector.z*1000, null, 1, 0
+				);
+		
+				look_direction.x = -(main.main_camera.position.x - front_vector.x*1000 * depth - c.x);
+				look_direction.y = -(main.main_camera.position.y - front_vector.y*1000 * depth - c.y - sdCharacter.shoot_offset_y);
+				look_direction.z = -(main.main_camera.position.z - front_vector.z*1000 * depth - c.z);
+
+				/*main.DrawDebugPoint( 
+				main.main_camera.position.x - front_vector.x*1000 * depth, 
+				main.main_camera.position.y - front_vector.y*1000 * depth, 
+				main.main_camera.position.z - front_vector.z*1000 * depth, 0xFF0000, 3, 1, 1000 );*/
 				
-				active_weapon.scale.x = active_weapon.scale.y = active_weapon.scale.z = 0.5;
+				look_direction.normalize();
 			}
 
-			active_weapon.position.set( 2.75, -5.25, -4.5 + c.recoil * 3 );
-			
-			if ( main.zoom_intensity < 1 )
+			if ( sdCharacter.first_person_view )
 			{
-				active_weapon.position.set( 0, -3.25, -4.5 + c.recoil * 3 );
-			}
-			
-			active_weapon.rotation.set( 0, -Math.PI * 0.5, 0 - Math.pow( c.recoil * 0.5, 2 ) * 3 );
-			
-			
-			if ( c.curwea === main.WEAPON_SNIPER )
-			{
-				const sniper_reload_offset = -5;
-				if ( c.reload_timer + sniper_reload_offset > 0 && c.reload_timer + sniper_reload_offset < Math.PI * 2 )
-				active_weapon.position.z += Math.sin( c.reload_timer + sniper_reload_offset ) * 0.2;
+				if ( active_weapon.parent !== main.main_camera )
+				{
+					active_weapon.parent.remove( active_weapon );
+					main.main_camera.add( active_weapon );
+
+					active_weapon.scale.x = active_weapon.scale.y = active_weapon.scale.z = 0.5;
+				}
+
+				if ( main.zoom_intensity === 1 )
+				active_weapon.position.set( 
+					2.75, 
+					-5.25, 
+					-4.5 + c.recoil * 3 
+				);
+				else
+				if ( main.zoom_intensity === 0.5 )
+				active_weapon.position.set( 
+					0, 
+					-3.25, 
+					-4.5 + c.recoil * 3 
+				);
+				else
+				{
+					var morph = main.zoom_intensity * 2 - 1;
+					var m_morph = 1 - morph;
+
+					active_weapon.position.set( 
+						2.75 * morph + 0 * m_morph, 
+						(-5.25) * morph + (-3.25) * m_morph, 
+						(-4.5 + c.recoil * 3) * morph + (-4.5 + c.recoil * 3) * m_morph
+					);
+				}
+
+				active_weapon.rotation.set( 0, -Math.PI * 0.5, 0 - Math.pow( c.recoil * 0.5, 2 ) * 3 );
+
+				if ( c.curwea === main.WEAPON_SNIPER )
+				{
+					const sniper_reload_offset = -5;
+					if ( c.reload_timer + sniper_reload_offset > 0 && c.reload_timer + sniper_reload_offset < Math.PI * 2 )
+					active_weapon.position.z += Math.sin( c.reload_timer + sniper_reload_offset ) * 0.2;
+				}
+				else
+				if ( c.curwea === main.WEAPON_BUILD1 )
+				{
+					if ( c.reload_timer > 0 && c.reload_timer < Math.PI * 2 )
+					{
+						active_weapon.position.z -= Math.sin( c.reload_timer * 0.5 );
+
+						active_weapon.rotation.y += Math.sin( c.reload_timer * 0.5 ) * 0.2;
+						active_weapon.rotation.z += Math.sin( c.reload_timer * 0.5 ) * 0.2;
+					}
+				}
+
+				active_weapon.position.y -= Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 4 ) * 7;
+
+				active_weapon.rotation.x -= Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 2 ) * 1;
+				active_weapon.rotation.y -= Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 2 ) * 0.5;
+				active_weapon.position.x += Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 2 ) * 4;
 			}
 		}
 		
@@ -2066,15 +2415,25 @@ class sdCharacter
 				active_weapon.position.x += shake * 0.25;
 
 				active_weapon.rotation.x -= shake * 0.2;
+				
+				
+				if ( c.ammo[ c.curwea ] < sdCharacter.weapon_ammo_per_clip[ c.curwea ] )
+				{
+					sdSound.PlaySound({ sound: lib.reload, parent_mesh: this.mesh, volume: 1.5 });
+					
+					c.ammo[ c.curwea ] = sdCharacter.weapon_ammo_per_clip[ c.curwea ];
+					c._UpdateAmmoBarIfNeeded();
+				}
 			}
 
+			if ( c.curwea === c.act_weapon ) // if not switching
 			c.time_to_reload -= GSPEED * 0.25;
 			
-			if ( c.time_to_reload <= 0 )
+			/*if ( c.time_to_reload <= 0 )
 			{
 				c.ammo[ c.curwea ] = sdCharacter.weapon_ammo_per_clip[ c.curwea ];
 				c._UpdateAmmoBarIfNeeded();
-			}
+			}*/
 		}
 
 		c.recoil = main.MorphWithTimeScale( c.recoil, 0, 0.9, GSPEED );
@@ -2124,17 +2483,39 @@ class sdCharacter
 		// Main rotation
 		c.head.quaternion.setFromRotationMatrix( look_at_m );
 
+		c.idle_phase += GSPEED * 0.1;
 
 		// Decrease head rotation by 2 (as it given to all parent objects of head)
 		var rot = new THREE.Quaternion();
-		rot.setFromEuler( new THREE.Euler( 0, Math.PI * 0.5, 0 ) );
+		if ( c.weapon_change_tim > 0 )
+		{
+			var prog = Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 0.5 );
+			rot.setFromEuler( new THREE.Euler( 0 + prog * 0.5, Math.PI * 0.5 - prog * 0.5, 0 - prog * 0.25 ) );
+		}
+		else
+		if ( c.time_to_reload > 0 )
+		{
+			var turn = 1 - Math.cos( c.time_to_reload );
+			turn *= 0.2;
+			rot.setFromEuler( new THREE.Euler( 0 + turn, Math.PI * 0.5 + turn, 0 - turn ) );
+		}
+		else
+		{
+			var breath1 = Math.round( Math.sin( c.idle_phase ) * 0.05 * 50 ) / 50;
+			var breath2 = Math.round( Math.cos( c.idle_phase ) * 0.05 * 50 ) / 50;
+			var breath3 = Math.round( Math.sin( c.idle_phase ) * 0.05 * 50 ) / 50;
+			rot.setFromEuler( new THREE.Euler( 0 + breath1, Math.PI * 0.5 + breath2, 0 - breath3 ) );
+		}
 		c.head.quaternion.slerp( rot, 0.5 ); // decrease head transform by 2
 
 
 		// Body
 		c.body.quaternion.copy( c.head.quaternion );
 		var rot = new THREE.Quaternion();
-		rot.setFromEuler( new THREE.Euler( 0, -Math.PI * 0.5, 0 ) );
+		{
+			var breath4 = Math.round( Math.cos( c.idle_phase ) * 0.04 * 100 ) / 200;
+			rot.setFromEuler( new THREE.Euler( 0, -Math.PI * 0.5, 0 + breath4 ) );
+		}
 		c.body.quaternion.multiply( rot );
 
 
@@ -2149,17 +2530,46 @@ class sdCharacter
 		c.arm1.quaternion.copy( c.head.quaternion );
 		c.arm2.quaternion.copy( c.head.quaternion );
 
-		var rot = new THREE.Quaternion();
-		rot.setFromEuler( new THREE.Euler( 0, -sdCharacter.arm_cross_left, 0 ) );
-		c.arm1.quaternion.premultiply( rot );
-		var rot = new THREE.Quaternion();
-		rot.setFromEuler( new THREE.Euler( 0, sdCharacter.arm_cross_right, 0 ) );
-		c.arm2.quaternion.premultiply( rot );
+		if ( c.weapon_change_tim > 0 )
+		{
+			var prog = Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 2 );
 
-		c.leg1a.rotation.z = Math.PI * 0.5 + Math.sin( c.walk_phase ) * 0.5;
-		c.leg2a.rotation.z = Math.PI * 0.5 - Math.sin( c.walk_phase ) * 0.5;
-		c.leg1b.rotation.z = 0;
-		c.leg2b.rotation.z = 0;
+			var rot = new THREE.Quaternion();
+			rot.setFromEuler( new THREE.Euler( 0, -sdCharacter.arm_cross_left, prog ) );
+			c.arm1.quaternion.premultiply( rot );
+			//
+			var rot = new THREE.Quaternion();
+			rot.setFromEuler( new THREE.Euler( 0 + prog*0.5, sdCharacter.arm_cross_right, prog * 2 ) );
+			c.arm2.quaternion.premultiply( rot );
+		}
+		else
+		if ( c.time_to_reload > 0 )
+		{
+			var turn = 1 - Math.cos( c.time_to_reload );
+			
+			var rot = new THREE.Quaternion();
+			rot.setFromEuler( new THREE.Euler( 0, -sdCharacter.arm_cross_left, -turn * 0.2 ) );
+			c.arm1.quaternion.premultiply( rot );
+			//
+			var rot = new THREE.Quaternion();
+			rot.setFromEuler( new THREE.Euler( turn*0.3, sdCharacter.arm_cross_right, -turn * 0.2 ) );
+			c.arm2.quaternion.premultiply( rot );
+		}
+		else
+		{
+			var rot = new THREE.Quaternion();
+			rot.setFromEuler( new THREE.Euler( 0, -sdCharacter.arm_cross_left, -c.recoil * 0.1 ) );
+			c.arm1.quaternion.premultiply( rot );
+			//
+			var rot = new THREE.Quaternion();
+			rot.setFromEuler( new THREE.Euler( 0, sdCharacter.arm_cross_right, -c.recoil * 0.1 ) );
+			c.arm2.quaternion.premultiply( rot );
+		}
+
+		c.leg1a.rotation.z = Math.PI * 0.5 + Math.sin( c.walk_phase ) * 0.5 - 0.25;
+		c.leg2a.rotation.z = Math.PI * 0.5 - Math.sin( c.walk_phase ) * 0.5 - 0.25;
+		c.leg1b.rotation.z = ( Math.cos( c.walk_phase - Math.PI * 0.25 ) * 0.5 + 1 ) * 1;
+		c.leg2b.rotation.z = ( Math.cos( c.walk_phase ) * 0.5 + 1 ) * 1;
 
 		if ( c.sit > 0 )
 		{
@@ -2186,6 +2596,7 @@ class sdCharacter
 		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_SNIPER ], c.sniper, c );
 		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_SHOTGUN ], c.shotgun, c );
 		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_SPARK ], c.spark, c );
+		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_BUILD1 ], c.build1, c );
 	}
 
 	static ThinkNow( GSPEED )

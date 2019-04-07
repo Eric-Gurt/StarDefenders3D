@@ -444,7 +444,7 @@ class sdByteShifter
 			let hit_y = args[ 6 ];
 			let hit_z = args[ 7 ];
 			
-			if ( dmg !== ~~dmg )
+			if ( dmg !== this.approx( dmg ) )
 			throw new Error('Damage is not rounded - might be source of alive/dead desync (dmg = '+dmg+')');
 			
 			message = 
@@ -466,7 +466,8 @@ class sdByteShifter
 			 command === sdSync.COMMAND_I_BULLET_HIT_WORLD || 
 			 command === sdSync.COMMAND_I_DIRECT_HIT_ATOM ||
 			 command === sdSync.COMMAND_I_RESSURECT ||
-			 command === sdSync.COMMAND_I_RELOAD )
+			 command === sdSync.COMMAND_I_RELOAD ||
+			 command === sdSync.COMMAND_I_BUILD )
 		{
 			message = 
 				command;
@@ -668,7 +669,7 @@ class sdByteShifter
 			let tx = Number( parts[ 1 ] );
 			let ty = Number( parts[ 2 ] );
 			let tz = Number( parts[ 3 ] );
-			let is_sniper = Boolean( parts[ 4 ] );
+			let is_sniper = ( parts[ 4 ] === '1' );
 			let vol = Number( parts[ 5 ] );
 			
 			
@@ -680,8 +681,21 @@ class sdByteShifter
 			main.WorldPaintDamage( tx, ty, tz, 1.5 );
 		
 			sdSprite.CreateSprite({ type: is_sniper ? sdSprite.TYPE_SNIPER_HIT : sdSprite.TYPE_SPARK, x:tx, y:ty, z:tz });
-				
+			
 			return true;
+		}
+		else
+		if ( command === sdSync.COMMAND_I_BUILD )
+		{
+			let new_x = Number( parts[ 1 ] );
+			let new_y = Number( parts[ 2 ] );
+			let new_z = Number( parts[ 3 ] );
+			let rad = Number( parts[ 4 ] );
+			let r = Number( parts[ 5 ] );
+			let g = Number( parts[ 6 ] );
+			let b = Number( parts[ 7 ] );
+			
+			main.WorldPaintDamage( new_x, new_y, new_z, rad, 2, r,g,b );
 		}
 		else
 		if ( command === sdSync.COMMAND_I_REMOVE_BULLET )

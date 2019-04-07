@@ -4,7 +4,7 @@
 
 */
 	
-/* global THREE, sdShaderMaterial, sdCharacter, sdBullet, sdAtom, sdChain, sdSync, sdNet, sdSound, sdRandomPattern, sdSprite, Infinity */
+/* global THREE, sdShaderMaterial, sdCharacter, sdBullet, sdAtom, sdChain, sdSync, sdNet, sdSound, sdRandomPattern, sdSprite, Infinity, sdLamp */
 
 class main
 {
@@ -31,10 +31,54 @@ class main
 			clearInterval( t.myTimer );
 		}
 	}
+	static get sound_volume()
+	{
+		return sdSound.MASTER_SOUND_VOLUME;
+	}
+	static set sound_volume( v )
+	{
+		sdSound.MASTER_SOUND_VOLUME = v;
+	}
+	static get music_volume()
+	{
+		return main._music_volume;
+	}
+	static set music_volume( v )
+	{
+		main._music_volume = v;
+		
+		main.PlaySongIfNeeded();
+		
+		sdSound.SetSoundVolume( main.song_channel, v );
+	}
+	static PlaySongIfNeeded( rand )
+	{
+		if ( main._music_volume > 0 )
+		if ( main.song_channel === null )
+		{
+			main.song_channel = new SimplePanVolumeDriver();
+			let song_id = ~~( rand * main.songs.length );
+			LateLoadFileIfNeeded( main.songs[ song_id ]+'.mp3', function ()
+			{
+				if ( main.game_loop_started )
+				{
+					main.onChatMessage( '', 'Now playing song: <br>'+main.song_titles[ song_id ], null, '255,255,255' );
+					sdSound.PlaySound({ sound: lib[ main.songs[ song_id ] ], parent_mesh: main.main_camera, channel:main.song_channel, volume: main.music_volume, loop: true });
+				}
+			});
+		}
+	}
 	static init_class()
 	{
 		main.base_resolution_x = 1920;
 		main.base_resolution_y = 1080;
+		
+		main.mobile = false;
+		
+		main.next_dynamic_lamp_id = 0;
+		main.dynamic_lamp_cam_distances = [];
+		main.dynamic_lamp_cam_angles = [];
+		main.dynamic_lamp_max_value = [];
 		
 		main.DisplayedScreen = null;
 		
@@ -43,6 +87,7 @@ class main
 		main.WEAPON_SHOTGUN = 2;
 		main.WEAPON_SNIPER = 3;
 		main.WEAPON_SPARK = 4;
+		main.WEAPON_BUILD1 = 5;
 		
 		main.date_match_started = new Date();
 		
@@ -53,6 +98,7 @@ class main
 		main.ingame_menu_visible = false;
 		
 		main.mouse_move_sequence = []; // Should prevent Chrome bug when movement input is random
+		main.mouse_move_any_movement = false;
 		
 		main.hold_w = 0;
 		main.hold_s = 0;
@@ -87,6 +133,8 @@ class main
 		main.mp_character = null;
 		
 		main.walk_vector_xz = new THREE.Vector2( 0, 1 );
+		main.zoom_intensity_target = 1; // When right click is held
+		main.zoom_intensity = 1; // When right click is held, but slower
 		
 		main.sensitivity = localStorage.getItem('stardefenders_sensitivity');
 		if ( main.sensitivity === null )
@@ -94,6 +142,7 @@ class main
 		else
 		main.sensitivity = Number( main.sensitivity );
 		
+		/* 0 = freely, 1 = xy mouse, 2 = device orientation */
 		main.turn_method = localStorage.getItem('stardefenders_turn_method');
 		if ( main.turn_method === null )
 		main.turn_method = 1;
@@ -106,7 +155,12 @@ class main
 		main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 2.26 );
 	
 		main.fov = Number( localStorage.getItem( 'stardefenders_fov' ) || 103 ); // 90
-		main.zoom_intensity = 1; // When right click is held
+		
+		main.dynamic_light_intensity = Number( localStorage.getItem( 'stardefenders_dynamic_light_intensity' ) || 0.2 );
+		
+		main.sound_volume = Number( localStorage.getItem( 'stardefenders_sound_volume' ) || 0.1 ); // Getter
+		
+		main._music_volume = Number( localStorage.getItem( 'stardefenders_music_volume' ) || 0.4 ); // Getter
 		
 		setTimeout( function()
 		{
@@ -128,11 +182,24 @@ class main
 		{
 			document.getElementById('fov').value = main.fov;
 		}, 1000 );
+		setTimeout( function()
+		{
+			document.getElementById('dynamic_light_intensity').value = main.dynamic_light_intensity;
+		}, 1000 );
+		setTimeout( function()
+		{
+			document.getElementById('sound_volume').value = main.sound_volume;
+		}, 1000 );
+		setTimeout( function()
+		{
+			document.getElementById('music_volume').value = main.music_volume;
+		}, 1000 );
 		
 		
 		
 		main.ang = 0;
 		main.ang2 = 0;
+		main.ang3 = 0;
 		
 		main.speed = new THREE.Vector3( 0, 0, 0 );
 		
@@ -167,6 +234,7 @@ class main
 		main.team_scores = [];
 		
 		main.recalc_brightness_tasks = [];
+		main.recalc_brightness_hash = 0; // Grows by 1 every time new .recalc_brightness_tasks items is added. And whenever some chunk cluster is updated - this value is saved so other scheduled .recalc_brightness_tasks won't be recalculated for no reason.
 		
 		main.pb3driver = null;
 		main.pb3driver_channel = null;
@@ -305,11 +373,14 @@ class main
 		main.renderer = new THREE.WebGLRenderer({ 
 			debug_webgl: false, 
 			fragDepth:true, 
-			precision:'lowp', 
+			precision:'lowp',
 			stencil:false, 
 			powerPreference:'high-performance' 
 		});
-	
+		sdShaderMaterial.EXT_frag_depth = ( main.renderer.extensions.get('EXT_frag_depth') !== null );
+		
+		sdAtom.material = sdShaderMaterial.CreateMaterial( null, 'particle' );
+		
 		main.SetPixelRatio( main.pixel_ratio, false );
 
 		main.renderer.setSize( window.innerWidth, window.innerHeight );
@@ -323,6 +394,208 @@ class main
 		main.main_camera.position.z = -5;
 		
 		main.scene.add( main.main_camera );
+		
+		main.device_orientation_control = null;
+		window.ondeviceorientation = function( e )
+		{
+			if ( e.alpha === null )
+			return;
+			
+			window.ondeviceorientation = null;
+			
+			main.mobile = true;
+			
+			// Lag prevention
+			{
+				sdCharacter.weapon_hp_damage[ 2 ] *= 3;
+				sdCharacter.weapon_hp_damage_head[ 2 ] *= 3;
+				sdCharacter.weapon_knock_count[ 2 ] /= 3;
+			}
+			
+			main.device_orientation_control = new THREE.DeviceOrientationControls( main.main_camera );
+			/*
+			var unfiltered_xx = 0;
+			var unfiltered_yy = 0;
+			var unfiltered_zz = 0;
+			
+			// Current (last) velocity
+			var xx_vel = 0;
+			var yy_vel = 0;
+			var zz_vel = 0;
+			
+			main.device_orientation_control = {};
+			main.device_orientation_control.update = function( GSPEED )
+			{
+				unfiltered_xx += xx_vel * GSPEED * 32; // 32
+				unfiltered_yy += yy_vel * GSPEED * 16; // 16
+				unfiltered_zz += zz_vel * GSPEED;
+				
+				xx_vel /= 2;
+				yy_vel /= 2;
+				zz_vel /= 2;
+				
+				var dec_unfill_xx = main.MorphWithTimeScale( 0, unfiltered_xx, 0.8, GSPEED );
+				var dec_unfill_yy = main.MorphWithTimeScale( 0, unfiltered_yy, 0.8, GSPEED );
+				var dec_unfill_zz = main.MorphWithTimeScale( 0, unfiltered_zz, 0, GSPEED );
+				
+				main.ang -= dec_unfill_xx;
+				main.ang2 -= dec_unfill_yy;
+				main.ang3 -= dec_unfill_zz;
+				
+				unfiltered_xx -= dec_unfill_xx;
+				unfiltered_yy -= dec_unfill_yy;
+				unfiltered_zz -= dec_unfill_zz;
+
+				if ( main.ang2 > Math.PI/2 )
+				main.ang2 = Math.PI/2;
+				if ( main.ang2 < -Math.PI/2 )
+				main.ang2 = -Math.PI/2;
+
+				if ( main.ang3 > Math.PI/2 )
+				main.ang3 = Math.PI/2;
+				if ( main.ang3 < -Math.PI/2 )
+				main.ang3 = -Math.PI/2;
+
+				var m = new THREE.Matrix4();
+				var q = new THREE.Quaternion();
+				q.setFromAxisAngle( new THREE.Vector3( 0, 1, 0 ), main.ang );
+				m.makeRotationFromQuaternion( q );
+
+				var m2 = new THREE.Matrix4();
+				var q2 = new THREE.Quaternion();
+				q2.setFromAxisAngle( new THREE.Vector3( 1, 0, 0 ), main.ang2 );
+				m2.makeRotationFromQuaternion( q2 );
+			
+				var m3 = new THREE.Matrix4();
+				var q3 = new THREE.Quaternion();
+				q3.setFromAxisAngle( new THREE.Vector3( 0, 0, 1 ), main.ang3 );
+				m3.makeRotationFromQuaternion( q3 );
+				
+				m.multiply( m2 );
+				
+				m.multiply( m3 );
+
+				main.main_camera.rotation.setFromRotationMatrix( m );
+				
+				main.ang3 = main.MorphWithTimeScale( main.ang3, 0, 0.95, GSPEED );
+			};
+			window.ondevicemotion = function( e )
+			{
+				//console.log( e );
+				//var orbital_intens = ( 1 / 180 * Math.PI / 60 );
+				//var orbital_intens = ( 1 / 180 * Math.PI / 60 / 4 / 4 ) * ( main.sensitivity / 0.0016 );
+				var orbital_intens = ( 1 / 180 * Math.PI / 60 );
+				
+				xx_vel += -e.rotationRate.alpha * orbital_intens * ( main.sensitivity / 0.0016 ) * main.zoom_intensity;
+				yy_vel += e.rotationRate.beta * orbital_intens * ( main.sensitivity / 0.0016 ) * main.zoom_intensity;
+				zz_vel += -e.rotationRate.gamma * orbital_intens;
+			};
+			*/
+			
+			document.ontouchstart = start_handler;
+			document.ontouchmove = move_handler;
+
+			document.ontouchcancel = end_handler;
+			document.ontouchend = end_handler;
+
+			var buttons = [];
+			function RegisterButton( element_id, radius_mult, action_hold, action_release=null ) // action_hold( dx, dy, button_radius ) is called on tap and during move
+			{
+				buttons.push({ 
+								element: document.getElementById( element_id ),
+								radius_mult: radius_mult,
+								action_hold: action_hold,
+								action_release: action_release,
+								touch_id: -1
+							});
+			}
+			
+			setTimeout( function()
+			{
+				document.getElementById('mobile_ui').style.display = 'block';
+			
+				RegisterButton( 'mobile_move_button', 1.2, function( dx, dy, button_radius ){
+					main.hold_d = 0;
+					main.hold_s = 0;
+					main.hold_d = dx / button_radius * 1.5; // act_x
+					main.hold_w = -dy / button_radius * 1.5; // act_y
+				}, function() {
+					main.hold_w = 0;
+					main.hold_d = 0;
+				});
+
+				RegisterButton( 'mobile_shoot_button', 1.2, function(){ main.hold_fire = 1; }, function() { main.hold_fire = 0; });
+
+				RegisterButton( 'mobile_jump_button', 1, function(){ main.hold_space = 1; }, function() { main.hold_space = 0; });
+				RegisterButton( 'mobile_zoom_button', 1, function(){ main.zoom_intensity_target = 0.5; }, function() { main.zoom_intensity_target = 1; });
+				RegisterButton( 'mobile_crouch_button', 1, function(){ main.hold_ctrl = 1; }, function() { main.hold_ctrl = 0; });
+				RegisterButton( 'mobile_reload_button', 1, function(){ if ( main.my_character !== null ) main.my_character.ReloadIfPossible(); });
+				RegisterButton( 'mobile_1_button', 1, function(){ main.action_weapon = main.WEAPON_RIFLE; });
+				RegisterButton( 'mobile_2_button', 1, function(){ main.action_weapon = main.WEAPON_SPARK; });
+				RegisterButton( 'mobile_3_button', 1, function(){ main.action_weapon = main.WEAPON_SHOTGUN; });
+				RegisterButton( 'mobile_4_button', 1, function(){ main.action_weapon = main.WEAPON_SNIPER; });
+				RegisterButton( 'mobile_5_button', 1, function(){ main.action_weapon = main.WEAPON_ROCKET; });
+				RegisterButton( 'mobile_x_button', 1, function(){ main.OpenEscMenu(); });
+				
+			}, 100 );
+			
+			function start_handler( e )
+			{
+				if ( document.getElementById( 'ingame_hud' ).style.display === 'none' )
+				return;
+				
+				for ( var i = 0; i < buttons.length; i++ )
+				{
+					var button_rect = buttons[ i ].element.getBoundingClientRect();
+					var button_x = ( button_rect.right + button_rect.left ) / 2;
+					var button_y = ( button_rect.top + button_rect.bottom ) / 2;
+					var button_radius = ( button_rect.right - button_rect.left ) / 2;
+					
+					if ( main.Dist3D( e.changedTouches[ 0 ].pageX, e.changedTouches[ 0 ].pageY, 0, button_x, button_y, 0 ) <= button_radius * buttons[ i ].radius_mult )
+					{
+						buttons[ i ].touch_id = e.changedTouches[ 0 ].identifier;
+						buttons[ i ].action_hold( e.changedTouches[ 0 ].pageX - button_x, e.changedTouches[ 0 ].pageY - button_y, button_radius );
+						break;
+					}
+				}
+			}
+
+			function end_handler( e )
+			{
+				for ( var i = 0; i < buttons.length; i++ )
+				{
+					if ( e.changedTouches[ 0 ].identifier === buttons[ i ].touch_id )
+					{
+						buttons[ i ].touch_id = -1;
+						if ( buttons[ i ].action_release !== null )
+						buttons[ i ].action_release();
+						break;
+					}
+				}
+			}
+
+			function move_handler( e )
+			{
+				if ( document.getElementById( 'ingame_hud' ).style.display === 'none' )
+				return;
+			
+				for ( var i = 0; i < buttons.length; i++ )
+				{
+					if ( buttons[ i ].touch_id === e.changedTouches[ 0 ].identifier )
+					{
+						var button_rect = buttons[ i ].element.getBoundingClientRect();
+						var button_x = ( button_rect.right + button_rect.left ) / 2;
+						var button_y = ( button_rect.top + button_rect.bottom ) / 2;
+						var button_radius = ( button_rect.right - button_rect.left ) / 2;
+
+						buttons[ i ].action_hold( e.changedTouches[ 0 ].pageX - button_x, e.changedTouches[ 0 ].pageY - button_y, button_radius );
+						break;
+					}
+				}
+			}
+			
+			main.turn_method = 2;
+		};
 		
 		main.composer = new THREE.EffectComposer( main.renderer );
 		
@@ -441,6 +714,13 @@ class main
 		{
 			if ( main.my_character !== null )
 			main.my_character.ReloadIfPossible();
+		
+			if ( e.ctrlKey )
+			if ( !e.shiftKey )
+			{
+				e.preventDefault();
+				return false;
+			}
 		}
 		else
 		if ( e.keyCode === 49 ) // 1
@@ -457,6 +737,9 @@ class main
 		else
 		if ( e.keyCode === 53 ) // 5
 		main.action_weapon = main.WEAPON_ROCKET;
+		else
+		if ( e.keyCode === 54 ) // 6
+		main.action_weapon = main.WEAPON_BUILD1;
 		else
 		if ( e.keyCode === 9 ) // Tab
 		{
@@ -495,26 +778,7 @@ class main
 		else
 		if ( e.keyCode === 27 ) // Esc
 		{
-			if ( document.getElementById('menu').style.display !== 'inherit' )
-			{
-				document.getElementById('menu').style.display = 'inherit';
-				main.ingame_menu_visible = true;
-
-				function Fractally( e )
-				{
-					if ( e.type === 'range' )
-					main.ShowSliderNumber( e, 0 );
-					
-					for ( var i = 0; i < e.childNodes.length; i++ )
-					Fractally( e.childNodes[ i ] );
-				}
-				Fractally( document.getElementById('menu') );
-			}
-			else
-			{
-				document.getElementById('menu').style.display = 'none';
-				main.ingame_menu_visible = false;
-			}
+			main.OpenEscMenu();
 		}
 		
 		if ( e.keyCode === 90 ) // Z
@@ -534,6 +798,29 @@ class main
 			return false;
 		}
 	}
+	static OpenEscMenu()
+	{
+		if ( document.getElementById('menu').style.display !== 'inherit' )
+		{
+			document.getElementById('menu').style.display = 'inherit';
+			main.ingame_menu_visible = true;
+
+			function Fractally( e )
+			{
+				if ( e.type === 'range' )
+				main.ShowSliderNumber( e, 0 );
+
+				for ( var i = 0; i < e.childNodes.length; i++ )
+				Fractally( e.childNodes[ i ] );
+			}
+			Fractally( document.getElementById('menu') );
+		}
+		else
+		{
+			document.getElementById('menu').style.display = 'none';
+			main.ingame_menu_visible = false;
+		}
+	}
 	static SetActiveCharacter( c )
 	{
 		if ( c === main.my_character )
@@ -551,6 +838,9 @@ class main
 			c._UpdateHealthBarIfNeeded();
 			
 			c._UpdateAmmoBarIfNeeded();
+			
+			c.ApplyLimbImmortalityIfNeeded();
+
 		}
 	}
 	static onKeyUp( e )
@@ -587,7 +877,7 @@ class main
 		main.hold_fire = 1;
 	
 		if ( e.which === 3 )
-		main.zoom_intensity = 0.5;
+		main.zoom_intensity_target = 0.5;
 		//main.hold_fire = 2;
 	}
 	static onMouseUp( e )
@@ -595,39 +885,223 @@ class main
 		main.hold_fire = 0;
 		
 		if ( e.which === 3 )
-		main.zoom_intensity = 1;
+		main.zoom_intensity_target = 1;
 	}
-	static onMouseMove( e ) // Apparently this solves Chrome bug?
+	/*static onMouseMove( e ) // Apparently this solves Chrome bug?
 	{
 		if ( main.ingame_menu_visible )
 		return;
 	
-		main.mouse_move_sequence.push( e ); // Perhaps e.movementX/Y values are not set yet?
-	}
-	static WorkWithMouseMovements()
+		main.mouse_move_sequence.push( { movementX:e.movementX, movementY:e.movementY, screenX:e.screenX, screenY:e.screenY, executed:false, filtered:false } ); // Perhaps e.movementX/Y values are not set yet?
+		main.mouse_move_any_movement = true;
+	}*/
+	static WorkWithMouseMovements() // Delay it makes is unforgivable. Probably will remove soon.
 	{
+		for ( var i = 0; i < main.mouse_move_sequence.length; i++ )
+		{
+			var e = main.mouse_move_sequence[ i ];
+
+			if ( main.Dist3D( e.movementX, e.movementY, 0, 0,0,0) > 400 ) // Catch
+			{
+				let copie = main.mouse_move_sequence.slice();
+				setTimeout( function()
+				{
+					main.mouse_move_sequence = copie;
+					trace('//');
+					for ( var i = 0; i < main.mouse_move_sequence.length; i++ )
+					{
+						var e = main.mouse_move_sequence[ i ];
+						//trace( e.movementX + ', ' + e.movementY );
+						trace( e.screenX + ', ' + e.screenY + ' ::::::::::: ' + e.movementX + ', ' + e.movementY );
+					}
+					trace('//');
+					debugger;
+					main.mouse_move_sequence = [];
+				}, 1000 );
+			}
+		}
+		
+		while ( main.mouse_move_sequence.length > 0 )
+		{
+			main._onMouseMove( main.mouse_move_sequence[ 0 ] );
+			main.mouse_move_sequence.shift();
+		}
+		//main.mouse_move_sequence = [];
+		return;
+		
 		/*if ( main.mouse_move_sequence.length > 5 )
 		{
 			main.mouse_move_sequence.shi
 		}*/
 		
-		if ( main.mouse_move_sequence.length > 0 )
+		var buffer_length = 3;
+		
+		/*if ( !main.mouse_move_any_movement )
+		{
+			main.mouse_move_sequence.push( { movementX:0, movementY:0, executed:false, filtered:false } );
+		}
+		main.mouse_move_any_movement = false;*/
+		
+		if ( main.mouse_move_sequence.length >= buffer_length )
 		{
 			//console.log( main.mouse_move_sequence );
+			/*
+				// Test code: ( apparently bugged movement is surrounded with zero X/Y movements
+				for ( var i = 0; i < main.mouse_move_sequence.length; i++ )
+				{
+					var e = main.mouse_move_sequence[ i ];
+					trace( e.timeStamp + ' :: ' + e.movementX + ', ' + e.movementY );
+				}
+			
+				// Results:
+					-63, -9 :: 147482.31999995187
+					-12, -1	:: 147483.8949998375 
+					-11, -2 :: 147488.14499983564
+					0, 0 :: 147488.53500001132
+					-685, -136 :: 147488.6899997946 
+					0, 0 :: 147488.90999983996
+				//
+					-427, 36 :: 437072.18499993905
+				//
+					-763, -122 :: 635868.254999863
+					-11, -2 :: 635870.3149999492
+				//
+					29, -442
+					1, -14
+				//
+					680, 18
+					1, 0
+					1, 0
+					1, -1
+				//
+					42, -11
+					5, -2
+					5, -2
+					5, -1
+					5, -2
+					4, -2
+					5, -2
+					680, 227
+					4, -2
+					3, -1
+					3, -1
+				//
+			
+			
+			
+			*/
+		   
+			/*for ( var i = 0; i < main.mouse_move_sequence.length - 1; i++ )
+			{
+				var e = main.mouse_move_sequence[ i ];
+				var e2 = main.mouse_move_sequence[ i + 1 ];
+				
+				var delta = main.Dist3D( e.movementX, e.movementY, 0, e2.movementX, e2.movementY, 0 );
+				
+				if ( i < main.mouse_move_sequence.length - 2 )
+				{
+					e.filtered = true;
+					e2.filtered = true;
+					
+					var e3 = main.mouse_move_sequence[ i + 2 ];
+					
+					var delta_skip = main.Dist3D( e.movementX, e.movementY, 0, e3.movementX, e3.movementY, 0 );
 
+					if ( delta > 10 )
+					if ( delta_skip < delta * 0.25 )
+					{
+						e2.movementX = 0;//( e.movementX + e3.movementX ) / 2;
+						e2.movementY = 0;//( e.movementY + e3.movementY ) / 2;
+						
+						//console.log('fixing mouse move event...');
+					}
+				}
+			}*/
+			
+			
+			// Check ALL delta sums for case of removal of [ i ]
+			var best_i = -1;
+			var best_delta = -1;
+			var best_mov_x = 0;
+			var best_mov_y = 0;
+			
+			for ( var i = 1; i < main.mouse_move_sequence.length - 1; i++ )
+			{
+				var test_pattern = main.mouse_move_sequence.slice();
+				
+				test_pattern[ i ] = { movementX:test_pattern[ i ].movementX, movementY:test_pattern[ i ].movementY, executed:test_pattern[ i ].executed, filtered:test_pattern[ i ].filtered }; // Clone
+				
+
+				var average_movement_x = 0;
+				var average_movement_y = 0;
+				for ( var av = 0; av < main.mouse_move_sequence.length; av++ )
+				if ( av !== i )
+				{
+					average_movement_x += main.mouse_move_sequence[ av ].movementX;
+					average_movement_y += main.mouse_move_sequence[ av ].movementY;
+				}
+				average_movement_x /= main.mouse_move_sequence.length - 1;
+				average_movement_y /= main.mouse_move_sequence.length - 1;
+				
+				
+				test_pattern[ i ].movementX = average_movement_x;
+				test_pattern[ i ].movementY = average_movement_y;
+				
+				var deltas_sum = 0;
+				
+				for ( var i2 = 0; i2 < test_pattern.length - 1; i2++ )
+				{
+					var e = test_pattern[ i2 ];
+					var e2 = test_pattern[ i2 + 1 ];
+					var delta = main.Dist3D( e.movementX, e.movementY, 0, e2.movementX, e2.movementY, 0 );
+					
+					deltas_sum += delta;
+				}
+				
+				if ( deltas_sum > best_delta )
+				{
+					best_delta = deltas_sum;
+					best_i = i;
+					best_mov_x = average_movement_x;
+					best_mov_y = average_movement_y;
+				}
+			}
+			
+			main.mouse_move_sequence[ best_i ].movementX = best_mov_x;
+			main.mouse_move_sequence[ best_i ].movementY = best_mov_y;
+			
 			for ( var i = 0; i < main.mouse_move_sequence.length; i++ )
-			main._onMouseMove( main.mouse_move_sequence[ i ] );
-
-			main.mouse_move_sequence = [];
+			{
+				if ( i < main.mouse_move_sequence.length - 1 )
+				{
+					main.mouse_move_sequence[ i ].executed = true;
+				}
+			}
+			
+			for ( var i = 0; i < main.mouse_move_sequence.length; i++ )
+			{
+				if ( main.mouse_move_sequence[ 0 ].executed )
+				{
+					main._onMouseMove( main.mouse_move_sequence[ 0 ] );
+					main.mouse_move_sequence.shift();
+				}
+				else
+				break;
+			}
+				
+			//main.mouse_move_sequence = [];
 		}
 	}
-	static _onMouseMove( e )
+	//static _onMouseMove( e )
+	static onMouseMove( e )
 	{
 		if ( main.ingame_menu_visible )
 		return;
 	
-		/*if ( main.Dist3D( e.movementX, e.movementY, 0, 0,0,0) > 400 ) // Chrome MouseLock bug (cursor thrown in random direction when cursor leaves browser window
+		/*if ( main.Dist3D( e.movementX, e.movementY, 0, 0,0,0) > 400 ) // Chrome MouseLock bug (cursor thrown in random direction when cursor leaves browser window, or something like that
 		{
+			trace( e ); // e.movementX and e.movementY are bugged
+			debugger;
 			return;
 		}*/
 		
@@ -671,67 +1145,6 @@ class main
 			var q1 = new THREE.Quaternion();
 			q1.setFromAxisAngle( new THREE.Vector3( -1, 0, 0 ), yy * orbital_intens );
 			main.main_camera.quaternion.multiply( q1 );
-
-			/*xx /= 32;
-			yy /= 32;
-
-			// Small restore
-			for ( var step = 0; step < 32; step++ )
-			{
-				main.main_camera.updateMatrixWorld();
-
-				var front_vector = new THREE.Vector3( 0, 0, 1 );
-				front_vector.transformDirection( main.main_camera.matrixWorld );
-
-				var up_vector = new THREE.Vector3( 0, 1, 0 );
-				up_vector.transformDirection( main.main_camera.matrixWorld );
-
-
-
-				//var XY_intens = Math.pow( 1 - Math.abs( front_vector.y ), 2 );
-				//var XY_intens = 1 - Math.pow( front_vector.y, 2 );
-				var XY_intens = 1 - Math.abs( front_vector.y );
-
-				//x
-				var q1 = new THREE.Quaternion();
-				q1.setFromAxisAngle( new THREE.Vector3( 0, -1, 0 ), xx * XY_intens );
-				main.main_camera.quaternion.premultiply( q1 );
-
-				//y
-				var q1 = new THREE.Quaternion();
-				q1.setFromAxisAngle( new THREE.Vector3( -1, 0, 0 ).applyQuaternion( main.main_camera.quaternion ), yy * XY_intens );
-				main.main_camera.quaternion.premultiply( q1 );
-
-				//z
-				main.main_camera.updateMatrixWorld();
-
-				front_vector = new THREE.Vector3( 0, 0, 1 );
-				front_vector.transformDirection( main.main_camera.matrixWorld );
-
-				var look_at_m = new THREE.Matrix4();
-				look_at_m.lookAt( front_vector, new THREE.Vector3(), new THREE.Vector3( 0, 1, 0 ) );
-
-				var old_quaternion = new THREE.Quaternion();
-				old_quaternion.setFromRotationMatrix( look_at_m );
-
-				var di = main.Dist3D( xx, yy, 0, 0,0,0 );
-				main.main_camera.quaternion.slerp( old_quaternion, di * 3 * XY_intens ); // 1 // 3 // 5 // 10
-
-				// orbital
-				main.main_camera.updateMatrixWorld();
-
-				var orbital_intens = 1 - XY_intens;
-				
-				orbital_intens = orbital_intens * 0.777; // Because orbital feels faster
-				
-				var q1 = new THREE.Quaternion();
-				q1.setFromAxisAngle( new THREE.Vector3( 0, -1, 0 ), xx * orbital_intens );
-				main.main_camera.quaternion.multiply( q1 );
-
-				var q1 = new THREE.Quaternion();
-				q1.setFromAxisAngle( new THREE.Vector3( -1, 0, 0 ), yy * orbital_intens );
-				main.main_camera.quaternion.multiply( q1 );
-			}*/
 		}
 		
 	}
@@ -764,7 +1177,9 @@ class main
 	}
 	static UpdateScreenSize()
 	{
-		
+		if ( main.mobile )
+		main.base_resolution_x = window.innerWidth / window.innerHeight * main.base_resolution_y;
+
 		main.renderer.setSize( window.innerWidth, window.innerHeight, true );
 		
 		var DisplayedScreen = main.DisplayedScreen = { x:0, y:0, width:window.innerWidth, height:window.innerHeight };
@@ -827,7 +1242,7 @@ class main
 		}
 		vec.pop();
 	}
-	static DestroyLevel()
+	static DestroyLevel() // DestroyWorld
 	{
 		main.game_loop_started = false;
 		window.cancelAnimationFrame( main.anim_frame );
@@ -857,10 +1272,13 @@ class main
 		sdCharacter.characters.length = 0;
 		sdBullet.bullets.length = 0;
 		sdAtom.atoms.length = 0;
+		sdAtom.pseudo_atoms.length = 0;
 		sdChain.chains.length = 0;
 		
 		main.material_lod = [];
 		main.voxel_static = [];
+		
+		sdLamp.lamps = [];
 		
 		if ( main.pb3driver !== null )
 		{
@@ -880,10 +1298,19 @@ class main
 			main.wind_channel = null;
 		}
 		
+		
 	}
 	static BuildLevel( seed )
 	{
+		EnableHistoryHashProtection();
+		
 		sdRandomPattern.SetSeed( seed ); // 43223
+		
+		var old_rand = Math.random;
+		Math.random = function()
+		{
+			throw new Error('Potential seed corruption'); // Another source of problem is setting... Like when music was random, but wasn't touching seed unless loaded.
+		};
 		
 		main.crosshair = document.getElementById('crosshair');
 		
@@ -899,18 +1326,7 @@ class main
 		
 		sdSound.PlaySound({ sound: lib.pb3_spoiler, parent_mesh: main.pb3driver, channel:main.pb3driver_channel, volume: 0, loop: true });
 		
-		
-		main.song_channel = new SimplePanVolumeDriver();
-		let song_id = ~~( sdRandomPattern.random() * main.songs.length );
-		LateLoadFileIfNeeded( main.songs[ song_id ]+'.mp3', function ()
-		{
-			if ( main.game_loop_started )
-			{
-				main.onChatMessage( '', 'Now playing song: <br>'+main.song_titles[ song_id ], null, '255,255,255' );
-				//sdSound.PlaySound({ sound: lib[ main.songs[ song_id ] ], parent_mesh: main.main_camera, channel:main.song_channel, volume: 0.8, loop: true });
-				sdSound.PlaySound({ sound: lib[ main.songs[ song_id ] ], parent_mesh: main.main_camera, channel:main.song_channel, volume: 0.4, loop: true });
-			}
-		});
+		main.PlaySongIfNeeded( sdRandomPattern.random() );
 
 		var radius = 32;
 		var bmp = new BitmapData( radius, radius, true );
@@ -931,13 +1347,20 @@ class main
 		var chunk_size = 32; // 16
 		main.chunk_size = chunk_size;
 		/*
-		var level_chunks_x = ~~( 8 * 32 / chunk_size ); // 190
-		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 32
-		var level_chunks_z = ~~( 7 * 32 / chunk_size ); // 190
+		var level_chunks_x = ~~( 10 * 32 / chunk_size ); // 10
+		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
+		var level_chunks_z = ~~( 4 * 32 / chunk_size ); // 4
 		*/
-		var level_chunks_x = ~~( 10 * 32 / chunk_size ); // 190
-		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 32
-		var level_chunks_z = ~~( 4 * 32 / chunk_size ); // 190
+		var level_chunks_x = ~~( 14 * 32 / chunk_size ); // 10
+		var level_chunks_y = ~~( 2 * 32 / chunk_size ); // 3
+		var level_chunks_z = ~~( 8 * 32 / chunk_size ); // 4
+		/*
+		if ( confirm('Build simple world? (not for multiplayer)') )
+		{
+			level_chunks_x = 1;
+			level_chunks_y = 2;
+			level_chunks_z = 1;
+		}*/
 		
 		
 		var block_height = 16;
@@ -948,13 +1371,26 @@ class main
 			var max_y = size_y / block_height - 1;
 			var max_z = size_z / 32 - 1;
 			
+			if ( x === 0 || z === 0 || x === max_x || z === max_z )
+			{
+				return false;
+			}
+			else
+			if ( x === 1 || z === 1 || x === max_x - 1 || z === max_z - 1 )
+			{
+				if ( y <= 0 + ( sdRandomPattern.random() < 0.5 ? 1 : 0 ) )
+				return true;
+			
+				return false;
+			}
+			
 			if ( y === max_y )
 			return false;
 		
-			if ( x < 4 )
+			if ( x < 5 )
 			return true;
 		
-			if ( x >= level_chunks_x - 1 - 4 )
+			if ( x >= level_chunks_x - 1 - 5 )
 			return true;
 		
 			if ( y < max_y - 2 )
@@ -1338,7 +1774,9 @@ class main
 		var m = sdShaderMaterial.CreateMaterial( main.world_end_texture, 'sprite' );
 		m.uniforms.fog.value = new THREE.Color( main.fog_color );
 		m.uniforms.fog_intensity.value = 1;
-		m.uniforms.brightness.value = 1;
+		m.uniforms.brightness_r.value = 1;
+		m.uniforms.brightness_g.value = 1;
+		m.uniforms.brightness_b.value = 1;
 		main.ground_mesh = new THREE.Mesh( g, m );
 		main.ground_mesh.rotation.x = -Math.PI * 0.5;
 		main.ground_mesh.position.x = size_x / 2;
@@ -1408,6 +1846,7 @@ class main
 				this.is_wall = v;
 				this.is_stairs = false;
 				this.is_door = false;
+				this.is_lamp = false;
 			}
 		}
 		
@@ -1423,12 +1862,13 @@ class main
 				
 				for ( var z = 0; z < level_grid[ x ][ y ].length; z++ )
 				{
-					level_grid[ x ][ y ][ z ] = new Entry( AllowLevelBuildingAt( x, y, z, true ) && ( sdRandomPattern.random() < 0.5 ) ); // No highest blocks
+					level_grid[ x ][ y ][ z ] = new Entry( AllowLevelBuildingAt( x, y, z, true ) && ( sdRandomPattern.random() < 0.5 ) ); // 0.25
 				}
 			}
 		}
 		
 		// Evolute step
+		//if ( false )
 		for ( var x = 0; x < level_grid.length; x++ )
 		for ( var y = 0; y < level_grid[ x ].length; y++ )
 		for ( var z = 0; z < level_grid[ x ][ y ].length; z++ )
@@ -1437,7 +1877,7 @@ class main
 			{
 				// Make corridors higher
 				if ( !WallExists( x, y-1, z ) && WallExists( x, y-2, z ) )
-				if ( sdRandomPattern.random() < 0.5 )
+				if ( sdRandomPattern.random() < 0.125 )
 				level_grid[ x ][ y ][ z ].is_wall = false;
 			}
 			else
@@ -1445,20 +1885,24 @@ class main
 			{
 				// Prevent some open ceilings
 				if ( !WallExists( x, y-1, z ) && !WallExists( x, y-2, z ) )
-				//if ( sdRandomPattern.random() < 0.5 )
-				level_grid[ x ][ y ][ z ].is_wall = true;
+				{
+					if ( sdRandomPattern.random() < 0.2 )
+					level_grid[ x ][ y ][ z ].is_wall = true;
+				}
 				else
-				if ( sdRandomPattern.random() < 0.8 )
-				if ( WallExists( x, y+1, z ) )
-				if ( !WallExists( x-1, y, z ) )
-				if ( !WallExists( x+1, y, z ) )
-				if ( !WallExists( x, y, z-1 ) )
-				if ( !WallExists( x, y, z+1 ) )
-				if ( !WallExists( x-1, y, z-1 ) )
-				if ( !WallExists( x+1, y, z-1 ) )
-				if ( !WallExists( x-1, y, z+1 ) )
-				if ( !WallExists( x+1, y, z+1 ) )
-				level_grid[ x ][ y ][ z ].is_wall = true;
+				{
+					if ( WallExists( x, y+1, z ) )
+					if ( !WallExists( x-1, y, z ) )
+					if ( !WallExists( x+1, y, z ) )
+					if ( !WallExists( x, y, z-1 ) )
+					if ( !WallExists( x, y, z+1 ) )
+					if ( !WallExists( x-1, y, z-1 ) )
+					if ( !WallExists( x+1, y, z-1 ) )
+					if ( !WallExists( x-1, y, z+1 ) )
+					if ( !WallExists( x+1, y, z+1 ) )
+					if ( sdRandomPattern.random() < 0.2 )
+					level_grid[ x ][ y ][ z ].is_wall = true;
+				}
 			}
 		}
 		
@@ -1468,6 +1912,7 @@ class main
 		var MAT_DOOR = 1;
 		var MAT_STAIRS = 2;
 		var MAT_BORDER = 3;
+		var MAT_LAMP = 4;
 		
 		function WallExists( x, y, z )
 		{
@@ -1486,6 +1931,24 @@ class main
 			return false;
 		
 			return level_grid[ x ][ y ][ z ].is_wall;
+		}
+		function LampExists( x, y, z )
+		{
+			if ( x < 0 )
+			return false;
+			if ( y < 0 )
+			return false; // !
+			if ( z < 0 )
+			return false;
+		
+			if ( x >= level_grid.length )
+			return false;
+			if ( y >= level_grid[ x ].length )
+			return false;
+			if ( z >= level_grid[ x ][ y ].length )
+			return false;
+		
+			return level_grid[ x ][ y ][ z ].is_lamp;
 		}
 		
 		function StairsExists( x, y, z )
@@ -1547,6 +2010,7 @@ class main
 			{
 				if ( WallExists( x, y - 1, z ) && // Doors require floor, but no ceiling
 				     !WallExists( x, y + 1, z ) ) // Nothing above potential door spawn point (bottom part)
+				if ( !LampExists( x, y + 1, z ) )
 				{
 					if ( WallExists( x - 1, y, z ) && WallExists( x + 1, y, z ) && !WallExists( x, y, z - 1 ) && !WallExists( x, y, z + 1 ) &&
 						 WallExists( x - 1, y + 1, z ) && WallExists( x + 1, y + 1, z ) && !WallExists( x, y + 1, z - 1 ) && !WallExists( x, y + 1, z + 1 ) )
@@ -1583,12 +2047,61 @@ class main
 						
 						cut_ops.push({ mat:MAT_DOOR, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 						level_grid[ x ][ y ][ z ].is_door = true;
+						level_grid[ x ][ y+1 ][ z ].is_door = true;
 						continue;
 					}
 				}
 				
-				// Stairs
+				// Spawn lamps
+				if ( sdRandomPattern.random() < 0.666 )
+				if ( y > 0 )
+				if ( !level_grid[ x ][ y ][ z ].is_door )
+				if ( WallExists( x, y+1, z ) )
+				{
+					var x1 = x * 32;
+					var x2 = x1 + 32;
+					var y1 = y * block_height;
+					var y2 = y1 + block_height;
+					var z1 = z * 32;
+					var z2 = z1 + 32;
+					
+					if ( sdRandomPattern.random() < 0.5 )
+					{
+						var cx = ( x1 + x2 ) / 2;
+						x1 = ~~( cx - 1 );
+						x2 = ~~( cx + 1 );
 
+						var cz = ( z1 + z2 ) / 2;
+						z1 = ~~( cz - 1 );
+						z2 = ~~( cz + 1 );
+
+						y1 = y2 - 1;
+
+						cut_ops.push({ mat:MAT_LAMP, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+						level_grid[ x ][ y ][ z ].is_lamp = true;
+
+						sdLamp.CreateLamp({ x:cx, y:y1, z:cz, collision_radius:1, glow_radius:20, ceiling:true });
+					}
+					else
+					{
+						var cx = ( x1 + x2 ) / 2;
+						x1 = ~~( cx - 3 );
+						x2 = ~~( cx + 3 );
+
+						var cz = ( z1 + z2 ) / 2;
+						z1 = ~~( cz - 3 );
+						z2 = ~~( cz + 3 );
+
+						y1 = y2 - 1;
+
+						cut_ops.push({ mat:MAT_LAMP, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+						level_grid[ x ][ y ][ z ].is_lamp = true;
+
+						sdLamp.CreateLamp({ x:cx, y:y1, z:cz, collision_radius:3, glow_radius:20, ceiling:true });
+					}
+				}
+				
+				// Stairs
 				if ( !WallExists( x, y+1, z ) ) // Nothing on top
 				if ( WallExists( x, y-1, z ) ) // Anything under
 				{
@@ -1601,8 +2114,9 @@ class main
 
 					y2 += block_height / 2; // Potential border
 
-					if ( WallExists( x + 1, y, z ) && !WallExists( x + 1, y + 1, z )/* && !WallExists( x - 1, y, z ) && !StairsExists( x - 1, y, z ) && WallExists( x - 1, y - 1, z ) */ &&
-						 !StairsExists( x, y, z + 1 ) && !StairsExists( x, y, z - 1 ) && !StairsExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z - 1 ) ) // x+
+					if ( WallExists( x + 1, y, z ) && !WallExists( x + 1, y + 1, z ) /*&&
+						 !StairsExists( x, y, z + 1 ) && !StairsExists( x, y, z - 1 ) && !StairsExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z - 1 )*/ ) // x+
+					if ( sdRandomPattern.random() < 0.666 )
 					{
 						cut_ops.push({ mat:MAT_STAIRS, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
 							riseZInc:!WallExists( x, y, z+1 ) && !WallExists( x, y-1, z+1 ) && !StairsExists( x, y-1, z+1 ), 
@@ -1612,9 +2126,10 @@ class main
 						level_grid[ x ][ y ][ z ].is_stairs = true;
 						//continue;
 					}
-					else
-					if ( WallExists( x - 1, y, z ) && !WallExists( x - 1, y + 1, z )/* && !WallExists( x + 1, y, z ) && !StairsExists( x + 1, y, z ) && WallExists( x + 1, y - 1, z )*/ && 
-						 !StairsExists( x, y, z + 1 ) && !StairsExists( x, y, z - 1 ) && !StairsExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z - 1 ) ) // x-
+					//else
+					if ( WallExists( x - 1, y, z ) && !WallExists( x - 1, y + 1, z ) /*&& 
+						 !StairsExists( x, y, z + 1 ) && !StairsExists( x, y, z - 1 ) && !StairsExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z - 1 )*/ ) // x-
+					if ( sdRandomPattern.random() < 0.666 )
 					{
 						cut_ops.push({ mat:MAT_STAIRS, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
 							riseZInc:!WallExists( x, y, z+1 ) && !WallExists( x, y-1, z+1 ) && !StairsExists( x, y-1, z+1 ), 
@@ -1625,8 +2140,9 @@ class main
 						//continue;
 					}
 					//else
-					if ( WallExists( x, y, z + 1 ) && !WallExists( x, y + 1, z + 1 )/* && !WallExists( x, y, z - 1 ) && !StairsExists( x, y, z - 1 ) && WallExists( x, y - 1, z - 1 )*/ && 
-						 !StairsExists( x + 1, y, z ) && !StairsExists( x - 1, y, z ) && !StairsExists( x + 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z ) ) // z+
+					if ( WallExists( x, y, z + 1 ) && !WallExists( x, y + 1, z + 1 ) /*&& 
+						 !StairsExists( x + 1, y, z ) && !StairsExists( x - 1, y, z ) && !StairsExists( x + 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z )*/ ) // z+
+					if ( sdRandomPattern.random() < 0.666 )
 					{
 						cut_ops.push({ mat:MAT_STAIRS, orientation:2, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
 							riseXInc:!WallExists( x+1, y, z ) && !WallExists( x+1, y-1, z ) && !StairsExists( x+1, y-1, z ), 
@@ -1636,9 +2152,10 @@ class main
 						level_grid[ x ][ y ][ z ].is_stairs = true;
 						//continue;
 					}
-					else
-					if ( WallExists( x, y, z - 1 ) && !WallExists( x, y + 1, z - 1 )/* && !WallExists( x, y, z + 1 ) && !StairsExists( x, y, z + 1 ) && WallExists( x, y - 1, z + 1 )*/ && 
-						 !StairsExists( x + 1, y, z ) && !StairsExists( x - 1, y, z ) && !StairsExists( x + 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z ) ) // z-
+					//else
+					if ( WallExists( x, y, z - 1 ) && !WallExists( x, y + 1, z - 1 ) /*&& 
+						 !StairsExists( x + 1, y, z ) && !StairsExists( x - 1, y, z ) && !StairsExists( x + 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z )*/ ) // z-
+					if ( sdRandomPattern.random() < 0.666 )
 					{
 						cut_ops.push({ mat:MAT_STAIRS, orientation:3, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
 							riseXInc:!WallExists( x+1, y, z ) && !WallExists( x+1, y-1, z ) && !StairsExists( x+1, y-1, z ), 
@@ -1656,7 +2173,7 @@ class main
 			}
 		}
 		
-		// Solve stairs conflicts regarding borders being spawned between perpendicular		stairs
+		// Solve stairs conflicts regarding borders being spawned between perpendicular stairs
 		for ( var i = 0; i < cut_ops.length; i++ )
 		for ( var i2 = 0; i2 < cut_ops.length; i2++ )
 		if ( i !== i2 )
@@ -1725,7 +2242,7 @@ class main
 				
 				y2 -= block_height / 2;
 				
-				if ( !WallExists( x + 1, y, z ) && !WallExists( x + 1, y - 1, z ) && !StairsExists( x + 1, y - 1, z ) )
+				if ( !WallExists( x + 1, y, z ) && !WallExists( x + 1, y - 1, z ) && ( !WallExists( x + 1, y - 2, z ) || sdRandomPattern.random() < 0.333 ) && !StairsExists( x + 1, y - 1, z ) )
 				{
 					var x1 = x * 32;
 					var x2 = x1 + 32;
@@ -1736,7 +2253,7 @@ class main
 					
 					cut_ops.push({ mat:MAT_BORDER, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 				}
-				if ( !WallExists( x - 1, y, z ) && !WallExists( x - 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z ) )
+				if ( !WallExists( x - 1, y, z ) && !WallExists( x - 1, y - 1, z ) && ( !WallExists( x - 1, y - 2, z ) || sdRandomPattern.random() < 0.333 ) && !StairsExists( x - 1, y - 1, z ) )
 				{
 					var x1 = x * 32;
 					var x2 = x1 + 32;
@@ -1747,7 +2264,7 @@ class main
 					
 					cut_ops.push({ mat:MAT_BORDER, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 				}
-				if ( !WallExists( x, y, z + 1 ) && !WallExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z + 1 ) )
+				if ( !WallExists( x, y, z + 1 ) && !WallExists( x, y - 1, z + 1 ) && ( !WallExists( x, y - 2, z + 1 ) || sdRandomPattern.random() < 0.333 ) && !StairsExists( x, y - 1, z + 1 ) )
 				{
 					var x1 = x * 32;
 					var x2 = x1 + 32;
@@ -1758,7 +2275,7 @@ class main
 					
 					cut_ops.push({ mat:MAT_BORDER, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 				}
-				if ( !WallExists( x, y, z - 1 ) && !WallExists( x, y - 1, z - 1 ) && !StairsExists( x, y - 1, z - 1 ) )
+				if ( !WallExists( x, y, z - 1 ) && !WallExists( x, y - 1, z - 1 ) && ( !WallExists( x, y - 2, z - 1 ) || sdRandomPattern.random() < 0.333 ) && !StairsExists( x, y - 1, z - 1 ) )
 				{
 					var x1 = x * 32;
 					var x2 = x1 + 32;
@@ -1770,6 +2287,38 @@ class main
 					cut_ops.push({ mat:MAT_BORDER, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 				}
 			}
+		}
+		
+		// On-border lights
+		for ( var i = 0; i < cut_ops.length; i++ )
+		if ( cut_ops[ i ].mat === MAT_BORDER )
+		if ( sdRandomPattern.random() < 0.25 )
+		{
+			var x1 = cut_ops[ i ].x1;
+			var x2 = cut_ops[ i ].x2;
+			var y1 = cut_ops[ i ].y1 + 2;
+			var y2 = cut_ops[ i ].y2 - 2;
+			var z1 = cut_ops[ i ].z1;
+			var z2 = cut_ops[ i ].z2;
+
+			var cx = ( x2 + x1 ) / 2;
+			var cz = ( z2 + z1 ) / 2;
+			
+			if ( x2 - x1 > z2 - z1 )
+			{
+				x1 = cx - 1;
+				x2 = cx + 1;
+			}
+			else
+			{
+				z1 = cz - 1;
+				z2 = cz + 1;
+			}
+			
+			cut_ops.push({ mat:MAT_LAMP, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
+			//level_grid[ x ][ y ][ z ].is_lamp = true;
+
+			sdLamp.CreateLamp({ x:cx, y:(y2+y1)/2, z:cz, collision_radius:(y2-y1)/2, glow_radius:16, ceiling:false });
 		}
 		
 		/*
@@ -1799,7 +2348,26 @@ class main
 			cut_ops.push({ mat_x:~~(sdRandomPattern.random()*2) * 32, mat_y:~~(sdRandomPattern.random()*2) * 32, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 		}*/
 		
-		sdRandomPattern.RestoreSeed();
+		var level_bitmap_pixels = [];
+		level_bitmap_pixels.length = main.level_bitmap.width;
+		for ( var x = 0; x < main.level_bitmap.width; x++ )
+		{
+			level_bitmap_pixels[ x ] = [];
+			level_bitmap_pixels[ x ].length = main.level_bitmap.height;
+			for ( var y = 0; y < main.level_bitmap.height; y++ )
+			{
+				var rgba = main.level_bitmap.getPixel32( x, y );
+				var rgb_unique = new sdRGB();
+				rgb_unique.r = rgba.r;
+				rgb_unique.g = rgba.g;
+				rgb_unique.b = rgba.b;
+				level_bitmap_pixels[ x ][ y ] = rgb_unique;
+			}
+		}
+		function GetPixelFromLevelBitmap( x, y )
+		{
+			return level_bitmap_pixels[ x ][ y ];
+		}
 		
 		var c = 0;
 		for ( x = 0; x < size_x; x++ )
@@ -1835,28 +2403,42 @@ class main
 				continue;
 			}
 			
-			if ( !add_concrete )
+			if ( fill[ i ] > 0 )
 			{
-				// Ground
-				world_rgb[ c++ ] = terrain_color.r * 255;
-				world_rgb[ c++ ] = terrain_color.g * 255;
-				world_rgb[ c++ ] = terrain_color.b * 255;
-				continue;
+				if ( !add_concrete )
+				{
+					// Ground
+					world_rgb[ c++ ] = terrain_color.r * 255;
+					world_rgb[ c++ ] = terrain_color.g * 255;
+					world_rgb[ c++ ] = terrain_color.b * 255;
+					continue;
+				}
+				world_rgb[ c   ] = terrain_color.r * 255;
+				world_rgb[ c+1 ] = terrain_color.g * 255;
+				world_rgb[ c+2 ] = terrain_color.b * 255;
 			}
-			
-			world_rgb[ c   ] = terrain_color.r * 255;
-			world_rgb[ c+1 ] = terrain_color.g * 255;
-			world_rgb[ c+2 ] = terrain_color.b * 255;
-
+			c += 3;
+		}
+		// Other way
+		//if ( false )
+		{
+			var reusable_rgba = new sdRGB();
 			for ( var op = 0; op < cut_ops.length; op++ )
 			{
-				if ( x >= cut_ops[ op ].x1 )
+				/*if ( x >= cut_ops[ op ].x1 )
 				if ( x < cut_ops[ op ].x2 )
 				if ( z >= cut_ops[ op ].z1 )
 				if ( z < cut_ops[ op ].z2 )
 				if ( y >= cut_ops[ op ].y1 )
-				if ( y < cut_ops[ op ].y2 )
+				if ( y < cut_ops[ op ].y2 )*/
+				
+				for ( x = cut_ops[ op ].x1; x < cut_ops[ op ].x2; x++ )
+				for ( y = cut_ops[ op ].y1; y < cut_ops[ op ].y2; y++ )
+				for ( z = cut_ops[ op ].z1; z < cut_ops[ op ].z2; z++ )
 				{
+					var i = Coord( x,y,z );
+					var c = i * 3;
+					
 					var fill_power = 1;
 					/*
 					world_rgb[ c   ] = ~~( 127 + Math.sin( op ) * 50 );
@@ -1870,16 +2452,38 @@ class main
 						var off_x = 0;
 						var off_y = 0;
 						
-						if ( x === cut_ops[ op ].x1 || z === cut_ops[ op ].z2-1 )
-						rgba = main.level_bitmap.getPixel32( ( x + z ) % 32 + off_x, ( 31 - ( y % 32 ) ) + off_y );
+						var on_border = ( x === cut_ops[ op ].x1 || x === cut_ops[ op ].x2-1 || z === cut_ops[ op ].z1 || z === cut_ops[ op ].z2-1 );
+						var on_deeper = ( x === cut_ops[ op ].x1+1 || x === cut_ops[ op ].x2-2 || z === cut_ops[ op ].z1+1 || z === cut_ops[ op ].z2-2 );
+						
+						/*if ( x === cut_ops[ op ].x1 || z === cut_ops[ op ].z2-1 )
+						rgba = GetPixelFromLevelBitmap( ( x + z ) % 32 + off_x, ( 31 - ( y % 32 ) ) + off_y );
 						else
 						if ( x === cut_ops[ op ].x2-1 || z === cut_ops[ op ].z1 )
-						rgba = main.level_bitmap.getPixel32( ( 31 - ( ( x + z ) % 32 ) ) + off_x, ( 31 - ( y % 32 ) ) + off_y );
+						rgba = GetPixelFromLevelBitmap( ( 31 - ( ( x + z ) % 32 ) ) + off_x, ( 31 - ( y % 32 ) ) + off_y );*/
+						if ( on_border || on_deeper )
+						{
+							var bit_x;
+							var bit_y = ( 15 - ( y % 16 ) );
+							//var bit_y = ( 31 - ( y % 32 ) );
+							if ( Math.abs( ( cut_ops[ op ].x1 + cut_ops[ op ].x2 ) / 2 - x ) > Math.abs( ( cut_ops[ op ].z1 + cut_ops[ op ].z2 ) / 2 - z ) )
+							{
+								bit_x = z % 32;
+							}
+							else
+							{
+								bit_x = x % 32;
+							}
+							
+							if ( on_deeper || bit_x < 2 || bit_x >= 30 || bit_y < 2 || bit_y >= 30 || ( bit_y >= 14 && bit_y < 18 ) || ( bit_x >= 3 && bit_y >= 3 && bit_x < 29 && bit_y < 13 ) )
+							rgba = GetPixelFromLevelBitmap( bit_x, bit_y );
+							else
+							fill_power = 0;
+						}
 						else
 						{
 							var off_x = 32;
 							var off_y = 0;
-							rgba = main.level_bitmap.getPixel32( ( x % 32 ) + off_x, ( z % 32 ) + off_y );
+							rgba = GetPixelFromLevelBitmap( ( x % 32 ) + off_x, ( z % 32 ) + off_y );
 						}
 					}
 					else
@@ -1892,18 +2496,18 @@ class main
 						{
 							if ( x === cut_ops[ op ].x1 )
 							{
-								rgba = main.level_bitmap.getPixel32( ( z - cut_ops[ op ].z1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
+								rgba = GetPixelFromLevelBitmap( ( z - cut_ops[ op ].z1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
 							}
 							else
 							if ( x === cut_ops[ op ].x2 - 1 )
 							{
-								rgba = main.level_bitmap.getPixel32( 31 - ( z - cut_ops[ op ].z1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
+								rgba = GetPixelFromLevelBitmap( 31 - ( z - cut_ops[ op ].z1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
 							}
 							else // Cap
 							{
 								var off_x = 32;
 								var off_y = 32;
-								rgba = main.level_bitmap.getPixel32( x % 32 + off_x, z % 32 + off_y );
+								rgba = GetPixelFromLevelBitmap( x % 32 + off_x, z % 32 + off_y );
 							}
 						}
 						else
@@ -1911,18 +2515,18 @@ class main
 						{
 							if ( z === cut_ops[ op ].z1 )
 							{
-								rgba = main.level_bitmap.getPixel32( 31 - ( x - cut_ops[ op ].x1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
+								rgba = GetPixelFromLevelBitmap( 31 - ( x - cut_ops[ op ].x1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
 							}
 							else
 							if ( z === cut_ops[ op ].z2 - 1 )
 							{
-								rgba = main.level_bitmap.getPixel32( ( x - cut_ops[ op ].x1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
+								rgba = GetPixelFromLevelBitmap( ( x - cut_ops[ op ].x1 ) % 32 + off_x, ( 31 - ( ( y + cut_ops[ op ].y1 ) % 32 ) ) + off_y );
 							}
 							else // Cap
 							{
 								var off_x = 32;
 								var off_y = 32;
-								rgba = main.level_bitmap.getPixel32( x % 32 + off_x, z % 32 + off_y );
+								rgba = GetPixelFromLevelBitmap( x % 32 + off_x, z % 32 + off_y );
 							}
 						}
 					}
@@ -1942,40 +2546,22 @@ class main
 						if ( cut_ops[ op ].orientation === 0 )
 						{
 							elevation = ( x - cut_ops[ op ].x1 ) * 0.75 - 8;
-							
-							//if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation ||
-							//	 elevation < 0 )
-							//fill_power = 0;
 						}
 						else
 						if ( cut_ops[ op ].orientation === 1 )
 						{
 							elevation = -( x - cut_ops[ op ].x2 + 1 ) * 0.75 - 8;
-							
-							//if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation || // + 1 because in else case stair will be higher than floor by 1 voxel
-							//	 elevation < 0 )
-							//fill_power = 0;
 						}
 						else
 						if ( cut_ops[ op ].orientation === 2 )
 						{
 							elevation = ( z - cut_ops[ op ].z1 ) * 0.75 - 8;
-							
-							//if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation ||
-							//	 elevation < 0 )
-							//fill_power = 0;
 						}
 						else
 						if ( cut_ops[ op ].orientation === 3 )
 						{
 							elevation = -( z - cut_ops[ op ].z2 + 1 ) * 0.75 - 8;
-							
-							//if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation || // + 1 because in else case stair will be higher than floor by 1 voxel
-							//	 elevation < 0 )
-							//fill_power = 0;
 						}
-						//else
-						//fill_power = 0;
 					
 						if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation || // + 1 because in else case stair will be higher than floor by 1 voxel
 							 elevation < 0 )
@@ -1986,19 +2572,13 @@ class main
 						{
 							if ( rise_potential > 0 )
 							{
-								/*world_rgb[ c   ] = 255;
-								world_rgb[ c+1 ] = 0;
-								world_rgb[ c+2 ] = 0;*/
-								
 								var off_x = 32;
 								var off_y = 32;
 								
-								//elevation = elevation;
-
 								if ( cut_ops[ op ].orientation >= 2 )
-								rgba = main.level_bitmap.getPixel32( ~~((y-cut_ops[ op ].y2+34 - elevation)*0.25 + 1 ) % 32 + off_x, ~~(z*0.25) % 32 + off_y );
+								rgba = GetPixelFromLevelBitmap( ~~((y-cut_ops[ op ].y2+34 - elevation)*0.25 + 1 ) % 32 + off_x, ~~(z*0.25) % 32 + off_y );
 								else
-								rgba = main.level_bitmap.getPixel32( ~~((y-cut_ops[ op ].y2+34 - elevation)*0.25 + 1 ) % 32 + off_x, ~~(x*0.25) % 32 + off_y );
+								rgba = GetPixelFromLevelBitmap( ~~((y-cut_ops[ op ].y2+34 - elevation)*0.25 + 1 ) % 32 + off_x, ~~(x*0.25) % 32 + off_y );
 					
 								if ( rgba.r < 30 )
 								fill_power = 0;
@@ -2008,28 +2588,35 @@ class main
 								var off_x = 32;
 								var off_y = 32;
 								if ( cut_ops[ op ].orientation < 2 )
-								rgba = main.level_bitmap.getPixel32( x % 32 + off_x, z % 32 + off_y );
+								rgba = GetPixelFromLevelBitmap( x % 32 + off_x, z % 32 + off_y );
 								else
-								rgba = main.level_bitmap.getPixel32( z % 32 + off_x, x % 32 + off_y );
+								rgba = GetPixelFromLevelBitmap( z % 32 + off_x, x % 32 + off_y );
 							}
 						}
 					}
 					else
 					if ( cut_ops[ op ].mat === MAT_BORDER )
 					{
-						/*world_rgb[ c   ] = 255;
-						world_rgb[ c+1 ] = 0;
-						world_rgb[ c+2 ] = 0;*/
-						
 						var off_x = 32;
 						var off_y = 32;
 						if ( cut_ops[ op ].orientation === 0 )
-						rgba = main.level_bitmap.getPixel32( ~~((y-cut_ops[ op ].y2+34)*0.25) % 32 + off_x, ~~(z*0.25) % 32 + off_y );
+						rgba = GetPixelFromLevelBitmap( ~~((y-cut_ops[ op ].y2+34)*0.25) % 32 + off_x, ~~(z*0.25) % 32 + off_y );
 						else
-						rgba = main.level_bitmap.getPixel32( ~~((y-cut_ops[ op ].y2+34)*0.25) % 32 + off_x, ~~(x*0.25) % 32 + off_y );
+						rgba = GetPixelFromLevelBitmap( ~~((y-cut_ops[ op ].y2+34)*0.25) % 32 + off_x, ~~(x*0.25) % 32 + off_y );
 					
 						if ( rgba.r < 30 )
-						fill_power = 0;
+						fill_power = -10;
+						//fill_power = 0;
+					}
+					else
+					if ( cut_ops[ op ].mat === MAT_LAMP )
+					{
+						rgba = reusable_rgba;
+						rgba.r = 255;
+						rgba.g = 255;
+						rgba.b = 255;
+						
+						noise_tex[ i ] = 1;
 					}
 
 					if ( rgba !== null )
@@ -2042,7 +2629,6 @@ class main
 					fill[ i ] += fill_power;
 				}
 			}
-			c += 3;
 		}
 		
 		
@@ -2102,6 +2688,11 @@ class main
 			}
 		}
 		
+		
+									
+		Math.random = old_rand;
+		sdRandomPattern.RestoreSeed(); ////////////////////////////////////////////////// END OF SEED ///////////
+		
 		main.lightmap_rays_per_direction = 2;
 		main.lightmap_beam_power = 0.1;
 		main.lightmap_rare_scale = 3;
@@ -2109,6 +2700,11 @@ class main
 		main.lightmap_hit_power_multiplier = 0.5;
 		main.lightmap_non_existent_power = 0.025;
 		main.lightmap_ambient = 0.2;
+		
+		var global_brightness = ( Math.max( main.fog_color_color.r, main.fog_color_color.g, main.fog_color_color.b ) + ( main.fog_color_color.r + main.fog_color_color.g + main.fog_color_color.b ) / 3 ) / 2;
+		
+		main.lightmap_ambient *= global_brightness;
+		main.lightmap_beam_power *= global_brightness;
 		
 		// Shadows
 		for ( x = 0; x < size_x; x++ )
@@ -2176,6 +2772,38 @@ class main
 				}
 				
 				brightness[ i ] += main.lightmap_ambient; // Ambient
+			}
+		}
+		
+		for ( var p = 0; p < sdLamp.lamps.length; p++ )
+		{
+			var m = sdLamp.lamps[ p ];
+			
+			var x1 = m.minx = Math.max( m.minx, 0 );
+			var y1 = m.miny = Math.max( m.miny, 0 );
+			var z1 = m.minz = Math.max( m.minz, 0 );
+			
+			var x2 = m.maxx = Math.min( m.maxx, size_x );
+			var y2 = m.maxy = Math.min( m.maxy, size_y );
+			var z2 = m.maxz = Math.min( m.maxz, size_z );
+			
+			for ( x = x1; x < x2; x++ )
+			for ( y = y1; y < y2; y++ )
+			for ( z = z1; z < z2; z++ )
+			{
+				var i = Coord( x,y,z );
+				if ( brightness[ i ] !== -1 )
+				if ( fill[ i ] > edge_density )
+				{
+					var di = main.Dist3D( x, y*m.any_distance_y_scale, z, m.x, m.y*m.any_distance_y_scale, m.z );
+					if ( di < m.glow_radius )
+					{
+						if ( di < m.collision_radius ) 
+						brightness[ i ] += 2;
+						else
+						brightness[ i ] += ( 1 - di / m.glow_radius ) * 2;
+					}
+				}
 			}
 		}
 		
@@ -2247,6 +2875,11 @@ class main
 			
 			chunk.rgba = rgba;
 			chunk.uvs2 = uvs2;
+			
+			chunk.recalc_brightness_current_update_hash = [];
+			chunk.recalc_brightness_current_update_hash.length = chunk_size * chunk_size * chunk_size;
+			for ( var i = 0; i < chunk.recalc_brightness_current_update_hash.length; i++ )
+			chunk.recalc_brightness_current_update_hash[ i ] = main.recalc_brightness_hash;
 			
 			chunk.GenerateLODModels();
 			
@@ -2371,11 +3004,11 @@ class main
 		return x;
 	}
 	
-	static WorldPaintDamage( x, y, z, radius, mode=0/*is_gore_painter=false*/,red=0,green=0,blue=0 ) // mode: cutter=0, gore_paiter=1, gore_builder=2
+	static WorldPaintDamage( x, y, z, radius, mode=0/*is_gore_painter=false*/,red=0,green=0,blue=0 ) // mode: cutter=0, gore_paiter=1, builder=2
 	{
 		const MODE_CUTTER = 0;
 		const MODE_GORE_PAINTER = 1;
-		const MODE_GORE_BUILDER = 2;
+		const MODE_BUILDER = 2;
 		
 		var chunk_size = main.chunk_size;
 		
@@ -2396,6 +3029,27 @@ class main
 		{
 			if ( chunk_updates.indexOf( chunk ) === -1 )
 			chunk_updates.push( chunk );
+		}
+		
+		if ( mode === MODE_CUTTER )
+		{
+			for ( var i = 0; i < sdLamp.lamps.length; i++ )
+			{
+				var m = sdLamp.lamps[ i ];
+				
+				//console.log( 'di = ' + Math.sqrt( main.Dist3D_Vector_pow2( m.x-x, m.y-y, m.z-z ) ) + ' ( required less than '+(m.collision_radius + radius)+' ) ' );
+				
+				if ( main.Dist3D_Vector_pow2( m.x-x, m.y-y, m.z-z ) <= Math.pow( m.collision_radius + radius, 2 ) )
+				{
+					//console.log('Lights out!');
+					sdLamp.lamps.splice( i, 1 );
+					i--;
+					
+					main.RecalcBrightness( ~~( m.x ), ~~( m.y ), ~~( m.z ), ~~( m.glow_radius ) );
+					
+					continue;
+				}
+			}
 		}
 		
 		// Smallest voxel
@@ -2475,21 +3129,25 @@ class main
 
 					if ( chunk.rgba[ i * 4 + 3 ] > 0 )
 					{
-						anything_done = true;
-
 						if ( mode === MODE_GORE_PAINTER )
 						{
+							anything_done = true;
 							chunk.rgba[ i * 4 + 0 ] = Math.max( 0, chunk.rgba[ i * 4 + 0 ] * ( 1 - 0.2 * 0.75 ) );
 							chunk.rgba[ i * 4 + 1 ] = Math.max( 0, chunk.rgba[ i * 4 + 1 ] * ( 1 - 0.2 * 2 ) );
 							chunk.rgba[ i * 4 + 2 ] = Math.max( 0, chunk.rgba[ i * 4 + 2 ] * ( 1 - 0.2 * 2 ) );
 						}
 						else
+						if ( mode === MODE_CUTTER )
 						{
+							anything_done = true;
+							
+							chunk.dots_total--;
+							
 							chunk.rgba[ i * 4 + 3 ] = 0;
 							geometry_changed = true;
 
 							//if ( Math.random() < 0.05 )
-							if ( Math.random() < 0.1 )
+							if ( ( main.mobile && Math.random() < 0.05 ) || ( !main.mobile && Math.random() < 0.1 ) )
 							{
 								var power = -1 / Math.max( 1, di ) * ( radius - di );
 								//var r_x = ( Math.random() - 0.5 );
@@ -2512,15 +3170,20 @@ class main
 						}
 					}
 					else
-					if ( mode === MODE_GORE_BUILDER )
+					if ( mode === MODE_BUILDER )
 					{
+						chunk.dots_total++;
+						
 						chunk.rgba[ i * 4 + 0 ] = red;
 						chunk.rgba[ i * 4 + 1 ] = green;
 						chunk.rgba[ i * 4 + 2 ] = blue;
 
 						chunk.rgba[ i * 4 + 3 ] = 1;
 						
-						chunk.uvs2[ i ] = Math.random();	
+						if ( di >= radius - 1 )
+						chunk.uvs2[ i ] = Math.random();
+						else
+						chunk.uvs2[ i ] = -1;	
 						
 						geometry_changed = true;
 						anything_done = true;
@@ -2568,6 +3231,7 @@ class main
 				chunk_updates[ i ].UpdateChunk( false, true, true );
 			}
 		}
+		return anything_done;
 	}
 						
 	static SetAsRandom3D( v )
@@ -2593,6 +3257,48 @@ class main
 			return main.GetEntityBrightness_lr;
 		}
 		
+		function IncludeLamps( brightness )
+		{
+			for ( var p = 0; p < sdLamp.lamps.length; p++ )
+			{
+				var m = sdLamp.lamps[ p ];
+				/*
+				var x1 = m.minx;
+				var y1 = m.miny;
+				var z1 = m.minz;
+
+				var x2 = m.maxx;
+				var y2 = m.maxy;
+				var z2 = m.maxz;
+				*/
+				if ( x > m.x - m.glow_radius && x < m.x + m.glow_radius )
+				if ( y > m.y - m.glow_radius/m.any_distance_y_scale && y < m.y + m.glow_radius/m.any_distance_y_scale_above )
+				if ( z > m.z - m.glow_radius && z < m.z + m.glow_radius )
+				{
+					//var i = Coord( x,y,z );
+					//if ( brightness[ i ] !== -1 )
+					//if ( fill[ i ] > edge_density )
+					{
+						var di;
+
+						if ( y < m.y )
+						di = main.Dist3D_Vector_pow2( m.x-x,(m.y-y)*m.any_distance_y_scale,m.z-z );
+						else
+						di = main.Dist3D_Vector_pow2( m.x-x,(m.y-y)*m.any_distance_y_scale_above,m.z-z );
+
+						if ( di < m.glow_radius * m.glow_radius )
+						{
+							//if ( di < m.collision_radius ) 
+							//brightness += 2;
+							//else
+							brightness += ( 1 - Math.sqrt( di ) / m.glow_radius ) * 2;
+						}
+					}
+				}
+			}
+			return brightness;
+		}
+		
 		var chunk_size = main.chunk_size;
 		
 		var size_x = main.level_chunks_x * chunk_size;
@@ -2604,10 +3310,10 @@ class main
 		z = ~~z;
 		
 		if ( x < 0 || y < 0 || z < 0 )
-		return 1;
+		return IncludeLamps( main.lightmap_ambient + main.lightmap_rays_per_direction * main.lightmap_beam_power * 4 );
 	
 		if ( x > size_x-1 || y > size_y-1 || z > size_z-1 )
-		return 1;
+		return IncludeLamps( main.lightmap_ambient + main.lightmap_rays_per_direction * main.lightmap_beam_power * 4 );
 		
 		var chunk_xx = ~~( x / chunk_size );
 		var chunk_yy = ~~( y / chunk_size );
@@ -2750,6 +3456,8 @@ class main
 				if ( !was_stopped )
 				brightness += beam_power;
 			}
+			
+			brightness = IncludeLamps( brightness );
 
 			brightness += main.lightmap_ambient; // Ambient
 
@@ -2762,15 +3470,16 @@ class main
 	}
 	static RecalcBrightness( ux, uy, uz, radius_int=Infinity ) 
 	{
-		var arr = [ ux, uy, uz, radius_int ];
-		
+		var arr = [ ux, uy, uz, radius_int, -1, 0, 0, 0, 0, 0, null, 0 ]; // All except first 4 are  "local variables" that change until whole height is done
+		/*
+		// Let's see if it can be carried by hashing updates instead. These are quite inaccurate anyway...
 		if ( radius_int === Infinity )
 		{
 			main.recalc_brightness_tasks = [ arr ];
 			return;
 		}
 		
-		for ( var i = i; i < main.recalc_brightness_tasks.length; i++ )
+		for ( var i = 0; i < main.recalc_brightness_tasks.length; i++ )
 		{
 			var arr2 = main.recalc_brightness_tasks[ i ];
 			if ( arr2[ 3 ] === Infinity )
@@ -2778,6 +3487,33 @@ class main
 				return;
 			}
 			
+			// Inclusion: New in scheduled
+			if ( ux - radius_int >= arr2[ 0 ] - arr2[ 3 ] )
+			if ( ux + radius_int < arr2[ 0 ] + arr2[ 3 ] )
+			if ( uy - radius_int >= arr2[ 1 ] - arr2[ 3 ] )
+			if ( uy + radius_int < arr2[ 1 ] + arr2[ 3 ] )
+			if ( uz - radius_int >= arr2[ 2 ] - arr2[ 3 ] )
+			if ( uz + radius_int < arr2[ 2 ] + arr2[ 3 ] )
+			{
+				//console.log('New is in scheduled so cancel '+arr2[ 3 ] );
+				return;
+			}
+			
+			// Inclusion: Scheduled in new
+			if ( ux - radius_int < arr2[ 0 ] - arr2[ 3 ] )
+			if ( ux + radius_int >= arr2[ 0 ] + arr2[ 3 ] )
+			if ( uy - radius_int < arr2[ 1 ] - arr2[ 3 ] )
+			if ( uy + radius_int >= arr2[ 1 ] + arr2[ 3 ] )
+			if ( uz - radius_int < arr2[ 2 ] - arr2[ 3 ] )
+			if ( uz + radius_int >= arr2[ 2 ] + arr2[ 3 ] )
+			{
+				main.recalc_brightness_tasks[ i ] = arr;
+				//console.log('Smaller scheduled is overriden '+radius_int );
+				return;
+			}
+			
+			// Some collision
+			if ( false ) // Let's see if it can be carried by hashing updates instead
 			if ( Math.abs( ux - arr2[ 0 ] ) <= radius_int + arr2[ 3 ] )
 			if ( Math.abs( uy - arr2[ 1 ] ) <= radius_int + arr2[ 3 ] )
 			if ( Math.abs( uz - arr2[ 2 ] ) <= radius_int + arr2[ 3 ] )
@@ -2787,16 +3523,90 @@ class main
 				arr2[ 2 ] = ~~( ( uz + arr2[ 2 ] ) / 2 );
 				
 				arr2[ 3 ] += radius_int;
+				//console.log('Merge with already scheduled '+arr2[ 3 ]);
 				return;
 			}
 		}
+		*/
+	   
+		var insert_at = main.recalc_brightness_tasks.length;
+	   
+		// Try to insert before smallest that collide with this one (so lamps breaking is done in one step when shot with shotgun)
+		for ( var i = 0; i < main.recalc_brightness_tasks.length; i++ )
+		{
+			var arr2 = main.recalc_brightness_tasks[ i ];
+			
+			// Some collision
+			if ( Math.abs( ux - arr2[ 0 ] ) <= radius_int + arr2[ 3 ] )
+			if ( Math.abs( uy - arr2[ 1 ] ) <= radius_int + arr2[ 3 ] )
+			if ( Math.abs( uz - arr2[ 2 ] ) <= radius_int + arr2[ 3 ] )
+			{
+				if ( arr2[ 3 ] < radius_int )
+				{
+					insert_at = i;
+					break;
+				}
+			}
+		}
 		
-		main.recalc_brightness_tasks.push( arr );
+		main.recalc_brightness_tasks.splice( insert_at, 0, arr );
+		
+		//main.recalc_brightness_tasks.push( arr );
+		
+		main.recalc_brightness_hash++;
 	}
 	
 	
-	static _RecalcBrightness( ux, uy, uz, radius_int ) 
+	//static _RecalcBrightness( ux, uy, uz, radius_int, current_y ) 
+	static _RecalcBrightness( arr ) 
 	{
+		var ux = arr[ 0 ];
+		var uy = arr[ 1 ];
+		var uz = arr[ 2 ];
+		var radius_int = arr[ 3 ];
+		
+		// Restore old values
+		function TryToRestoreVariables()
+		{
+			if ( arr[ 4 ] !== -1 ) // If ever saved
+			{
+				y = arr[ 4 ]; // -1 by default
+				y_rare_spread_inc = arr[ 5 ];
+				from_x = arr[ 6 ];
+				from_z = arr[ 7 ];
+				to_x = arr[ 8 ];
+				to_z = arr[ 9 ];
+				chunk_updates = arr[ 10 ];
+				next_y_for_chunk_update_flush = arr[ 11 ];
+			}
+		}
+		//
+		
+		// Save back
+		function SaveVariables() // "return false;" after this
+		{
+			arr[ 4 ] = y;
+			arr[ 5 ] = y_rare_spread_inc;
+			arr[ 6 ] = from_x;
+			arr[ 7 ] = from_z;
+			arr[ 8 ] = to_x;
+			arr[ 9 ] = to_z;
+			arr[ 10 ] = chunk_updates;
+			arr[ 11 ] = next_y_for_chunk_update_flush;
+		}
+		//
+		
+		function FlushChunks( final )
+		{
+			for ( var i = 0; i < chunk_updates.length; i++ )
+			chunk_updates[ i ].UpdateChunk( false, false, true );
+		
+			if ( !final )
+			chunk_updates.length = 0;
+		}
+		
+		
+		
 		var chunk_updates = [];
 		
 		var chunk_size = main.chunk_size;
@@ -2831,9 +3641,36 @@ class main
 		
 		var y_rare_spread_inc = 0;
 		
-		for ( y = highest_y - 1; y >= 0; y-- )
+		y = highest_y - 1;
+		
+		var next_y_for_chunk_update_flush = ( ~( y / chunk_size ) ) * chunk_size - 1;
+		
+		TryToRestoreVariables(); ////////
+		
+		var y_steps_to_do = 8;
+		//var y_steps_to_do = 16 * 16*16 / ( (to_x-from_x)*(to_z-from_z) );
+		
+		for ( y; y >= 0; y-- )
 		{
-			var anything_on_this_level = ( radius_int === Infinity || y > highest_y - radius_int * 2 );
+			if ( y === next_y_for_chunk_update_flush )
+			{
+				FlushChunks( false );
+				next_y_for_chunk_update_flush = ( ~( y / chunk_size ) ) * chunk_size - 1;
+			}
+			
+			y_steps_to_do--;
+			if ( y_steps_to_do < 0 )
+			{
+				/*for ( x = from_x; x < to_x; x++ )
+				for ( z = from_z; z < to_z; z++ )
+				main.DrawDebugPoint( x, y, z, 0x0000FF, 2, 1, 3000 );*/
+				
+				SaveVariables(); ////////
+				return false;
+			}
+			
+			
+			//var anything_on_this_level = ( radius_int === Infinity || y > highest_y - radius_int * 2 );
 			
 			y_rare_spread_inc++;
 			
@@ -2849,6 +3686,9 @@ class main
 				if ( to_z < size_z )
 				to_z += 1;
 			}
+			
+			var fills_on_this_level = 0;
+			var fills_on_this_level_to_stop = ( to_x - from_x ) * ( to_z - from_z );
 			
 			for ( x = from_x; x < to_x; x++ )
 			for ( z = from_z; z < to_z; z++ )
@@ -2869,12 +3709,24 @@ class main
 
 				var anything_done = false;
 
+				var i = av_x * chunk_size * chunk_size + av_y * chunk_size + av_z;
+				
+				
+				if ( chunk.rgba[ i * 4 + 3 ] > 0 )
+				//if ( chunk.uvs2[ i ] !== -1 )
+				//if ( chunk.recalc_brightness_current_update_hash[ i ] < main.recalc_brightness_hash )
 				{
-					var i = av_x * chunk_size * chunk_size + av_y * chunk_size + av_z;
-
-					if ( chunk.uvs2[ i ] !== -1 )
+					//var i = av_x * chunk_size * chunk_size + av_y * chunk_size + av_z;
+					
+					fills_on_this_level++;
+					
+					//if ( chunk.uvs2[ i ] !== -1 )
+					if ( chunk.recalc_brightness_current_update_hash[ i ] < main.recalc_brightness_hash )
 					{
-						if ( chunk.rgba[ i * 4 + 3 ] <= 0 )
+						chunk.recalc_brightness_current_update_hash[ i ] = main.recalc_brightness_hash;
+					
+						//if ( chunk.rgba[ i * 4 + 3 ] <= 0 )
+						if ( chunk.uvs2[ i ] === -1 )
 						continue;
 
 						var orig_beam_power = main.lightmap_beam_power;
@@ -3004,14 +3856,51 @@ class main
 						}
 
 						chunk.uvs2[ i ] += main.lightmap_ambient; // Ambient
+						
+						
+						for ( var p = 0; p < sdLamp.lamps.length; p++ )
+						{
+							var m = sdLamp.lamps[ p ];
+
+							var x1 = m.minx;
+							var y1 = m.miny;
+							var z1 = m.minz;
+
+							var x2 = m.maxx;
+							var y2 = m.maxy;
+							var z2 = m.maxz;
+
+							if ( x >= x1 && x < x2 )
+							if ( y >= y1 && y < y2 )
+							if ( z >= z1 && z < z2 )
+							{
+								//var i = Coord( x,y,z );
+								//if ( brightness[ i ] !== -1 )
+								//if ( fill[ i ] > edge_density )
+								{
+									var di = main.Dist3D_Vector_pow2( m.x-x,(m.y-y)*m.any_distance_y_scale,m.z-z );
+									if ( di < m.glow_radius * m.glow_radius )
+									{
+										if ( di < m.collision_radius * m.collision_radius )
+										chunk.uvs2[ i ] += 2;
+										else
+										chunk.uvs2[ i ] += ( 1 - Math.sqrt( di ) / m.glow_radius ) * 2;
+									}
+								}
+							}
+						}
 
 						if ( old_uvs2 !== chunk.uvs2[ i ] )
 						{
 							anything_done = true;
-							anything_on_this_level = true;
+							//anything_on_this_level = true;
 						}
 
 					}
+				}
+				else
+				{
+					//main.DrawDebugPoint( x, y, z, 0x00FF00, 3, 1, 500 );
 				}
 
 				if ( anything_done )
@@ -3031,13 +3920,38 @@ class main
 					}
 				}
 			}
-			
+			/*
+			// Not very good as it breaks in mid-air (holes in to ceiling are not doing any light)
 			if ( !anything_on_this_level )
 			break;
+			*/
+			
+			if ( fills_on_this_level === fills_on_this_level_to_stop ) // Stop only when wall is one the way
+			if ( y < uy ) // Stop only if below
+			{
+				/*for ( x = from_x; x < to_x; x++ )
+				for ( z = from_z; z < to_z; z++ )
+				main.DrawDebugPoint( x, y, z, 0x00FF00, 3, 1, 3000 );*/
+				
+				break;
+			}
+			
+			y_steps_to_do--;
+			if ( y_steps_to_do <= 0 )
+			{
+				/*for ( x = from_x; x < to_x; x++ )
+				for ( z = from_z; z < to_z; z++ )
+				main.DrawDebugPoint( x, y, z, 0x0000FF, 2, 1, 3000 );*/
+				
+				SaveVariables(); ////////
+				return false;
+			}
+			
 		}
 		
-		for ( var i = 0; i < chunk_updates.length; i++ )
-		chunk_updates[ i ].UpdateChunk( false, false, true );
+		FlushChunks( true );
+		
+		return true;
 	}
 	
 	/*static _RecalcBrightness( ux, uy, uz, radius_int ) 
@@ -3422,9 +4336,109 @@ class main
 		else
 		main.hit_pulse = Math.max( 0.5, main.hit_pulse + v / 100 * 0.75 );
 	}
+	static EraseAllDynamicLights()
+	{
+		for ( var i = 0; i < main.material_lod.length; i++ )
+		{
+			for ( var m = 0; m < sdShaderMaterial.max_lamps; m++ )
+			{
+				var c = main.material_lod[ i ].uniforms[ 'lamp' + m + '_color' ].value;
+				c.r = 0;
+				c.g = 0;
+				c.b = 0;
+			}
+			
+		}
+		main.next_dynamic_lamp_id = 0;
+	}
+	static SetSameLampUniforms( mat )
+	{
+		for ( var m = 0; m < sdShaderMaterial.max_lamps; m++ )
+		{
+			mat.uniforms[ 'lamp' + m + '_color' ] = main.material_lod[ 0 ].uniforms[ 'lamp' + m + '_color' ];
+			mat.uniforms[ 'lamp' + m + '_pos' ] = main.material_lod[ 0 ].uniforms[ 'lamp' + m + '_pos' ];
+		}
+	}
+	static DrawDynamicLight( x, y, z, r, g, b )
+	{
+		r *= main.dynamic_light_intensity;
+		g *= main.dynamic_light_intensity;
+		b *= main.dynamic_light_intensity;
+		
+		if ( r <= 0 && g <= 0 && b <= 0 )
+		return;
+		
+		var delta_pos = new THREE.Vector3( x-main.main_camera.position.x, y-main.main_camera.position.y, z-main.main_camera.position.z );
+		
+		var di = main.Dist3D( x,y,z, main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z );
+		var an;
+		if ( delta_pos.x === 0 && delta_pos.y === 0 && delta_pos.z === 0 )
+		an = 0;
+		else
+		an = new THREE.Vector3( 0, 0, -1 ).applyQuaternion( main.main_camera.quaternion ).angleTo( delta_pos );
+		
+		var max_val = Math.max( r,g,b );
+		
+		var insert_at = main.next_dynamic_lamp_id;
+		
+		if ( main.next_dynamic_lamp_id >= sdShaderMaterial.max_lamps )
+		{
+			var ok = true;
+			
+			// Try to discard new one
+			if ( di > sdShaderMaterial.lamp_range )
+			if ( an > Math.PI / 2 )
+			return;
+			
+			// Try to replace ones that are not visible
+			if ( ok )
+			for ( var i = 0; i < sdShaderMaterial.max_lamps; i++ )
+			if ( main.dynamic_lamp_cam_distances[ i ] > sdShaderMaterial.lamp_range )
+			if ( main.dynamic_lamp_cam_angles[ i ] > Math.PI / 2 )
+			{
+				insert_at = i;
+				ok = false;
+				break;
+			}
+			
+			// Try to replace ones that are further
+			if ( ok )
+			for ( var i = 0; i < sdShaderMaterial.max_lamps; i++ )
+			if ( main.dynamic_lamp_cam_distances[ i ] * max_val > di * main.dynamic_lamp_max_value[ i ] )
+			{
+				insert_at = i;
+				ok = false;
+				break;
+			}
+			
+			if ( insert_at === main.next_dynamic_lamp_id )
+			return;
+		}
+	
+	
+		main.dynamic_lamp_cam_distances[ insert_at ] = di;
+		main.dynamic_lamp_cam_angles[ insert_at ] = an;
+		main.dynamic_lamp_max_value[ insert_at ] = max_val;
+		//console.log('angleto = '+main.dynamic_lamp_cam_angles[ insert_at ] );
+		
+		for ( var i = 0; i < main.material_lod.length; i++ )
+		{
+			var c = main.material_lod[ i ].uniforms[ 'lamp' + insert_at + '_color' ].value;
+			c.r = r;
+			c.g = g;
+			c.b = b;
+			var v = main.material_lod[ i ].uniforms[ 'lamp' + insert_at + '_pos' ].value;
+			v.x = x;
+			v.y = y;
+			v.z = z;
+		}
+		
+		main.next_dynamic_lamp_id++;
+	}
 	static onEnterFrame()
 	{
-		main.WorkWithMouseMovements();
+		//main.WorkWithMouseMovements();
+		main.EraseAllDynamicLights();
 		
 		var GSPEED = main.GSPEED;
 		
@@ -3442,6 +4456,22 @@ class main
 	
 		main.composer.renderer.domElement.style.filter = "brightness(" + Math.round( Math.min( 2, main.hit_pulse ) * 100 ) + "%)";
 		
+		if ( main.zoom_intensity_target !== main.zoom_intensity )
+		{
+			if ( main.zoom_intensity < main.zoom_intensity_target )
+			{
+				main.zoom_intensity += GSPEED * 0.01 + Math.abs( main.zoom_intensity_target - main.zoom_intensity ) * 0.75 * GSPEED;
+				if ( main.zoom_intensity > main.zoom_intensity_target )
+				main.zoom_intensity = main.zoom_intensity_target;
+			}
+			else
+			if ( main.zoom_intensity > main.zoom_intensity_target )
+			{
+				main.zoom_intensity -= GSPEED * 0.01 + Math.abs( main.zoom_intensity_target - main.zoom_intensity ) * 0.75 * GSPEED;
+				if ( main.zoom_intensity < main.zoom_intensity_target )
+				main.zoom_intensity = main.zoom_intensity_target;
+			}
+		}
 		if ( main.fov * main.zoom_intensity !== main.main_camera.fov )
 		{
 			main.main_camera.fov = main.fov * main.zoom_intensity;
@@ -3520,28 +4550,46 @@ class main
 		
 		sdSound.SetSoundPitch( main.wind_channel, 0.5 + Math.pow( main.speed.length() * 0.2, 1 ) );
 		sdSound.SetSoundVolume( main.wind_channel, Math.min( 3, 0.1 + 0.666 * Math.pow( main.speed.length() * 0.3, 1.5 ) ) ); // 0.1 + 0.4 , 2
-	
+		/*
+		if ( main.turn_method === 2 )
+		{
+			if ( main.device_orientation_control !== null )
+			{
+				main.device_orientation_control.update( GSPEED );
+			}
+		}
+		*/
 		// Passive restore
 		main.main_camera.updateMatrixWorld();
-		
+
 		var front_vector = new THREE.Vector3( 0, 0, 1 );
 		front_vector.transformDirection( main.main_camera.matrixWorld );
-			
+
 		var up_vector = new THREE.Vector3( 0, 1, 0 );
 		up_vector.transformDirection( main.main_camera.matrixWorld );
-		
+
 		var look_at_m = new THREE.Matrix4();
-		
+
 		look_at_m.lookAt( front_vector, new THREE.Vector3(), new THREE.Vector3( 0, 1, 0 ) );
-		
+
 		var old_quaternion = new THREE.Quaternion();
 		old_quaternion.setFromRotationMatrix( look_at_m );
-		
-		//main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.07 * GSPEED );
-		//main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.01 * GSPEED );
-		//main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.01 * GSPEED );
-		main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.06 * GSPEED );
-		
+
+		if ( main.turn_method === 2 )
+		{
+			if ( main.device_orientation_control !== null )
+			{
+				main.device_orientation_control.update( GSPEED );
+			}
+			
+		}
+		else
+		{
+			//main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.07 * GSPEED );
+			//main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.01 * GSPEED );
+			//main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.01 * GSPEED );
+			main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.06 * GSPEED );
+		}
 		
 		/*
 		if ( main.my_character === null )
@@ -3568,7 +4616,7 @@ class main
 		
 		if ( up_vector.y > 0 )
 		{
-			if ( main.turn_method === 0 )
+			if ( main.turn_method === 0 || main.turn_method === 2 )
 			{
 				main.walk_vector_xz.x -= front_vector.x * Math.max( 0, Math.pow( up_vector.y, 2 ) ) * GSPEED;
 				main.walk_vector_xz.y -= front_vector.z * Math.max( 0, Math.pow( up_vector.y, 2 ) ) * GSPEED;
@@ -3656,14 +4704,29 @@ class main
 		sdSound.ThinkNow(  );
 		
 		
-		if ( main.recalc_brightness_tasks.length > 0 )
+		var t0 = Date.now();
+		
+		var iters_done = 0;
+		while ( main.recalc_brightness_tasks.length > 0 ) // Try to execute as many as possible...
 		{
 			var arr = main.recalc_brightness_tasks[ 0 ];
 
-			main._RecalcBrightness( arr[ 0 ], arr[ 1 ], arr[ 2 ], arr[ 3 ] );
+			//main._RecalcBrightness( arr[ 0 ], arr[ 1 ], arr[ 2 ], arr[ 3 ] );
+			if ( main._RecalcBrightness( arr ) ) // true will mean stop execution
+			{
+				main.recalc_brightness_tasks.shift();
+			}
 			
-			main.recalc_brightness_tasks.shift();
+			var t1 = Date.now();
+			
+			iters_done++;
+			
+			if ( t1 - t0 > 5 ) // ... but make sure it does not take longer than 10 ms (16 ms is 1 frame in case of 60 FPS)
+			break;
 		}
+		//if ( iters_done > 0 )
+		//console.log('iters_done = '+iters_done );
+		
 		{
 			var default_visible_timer = 40;
 			
@@ -3858,6 +4921,8 @@ class Chunk
 		
 		this.rgba = null; // Color, opacity
 		this.uvs2 = null; // Brightness and invisibility due to being hidden
+		
+		this.recalc_brightness_current_update_hash = []; // Another huge array. Keeps main.recalc_brightness_hash whenever update happens. Depending on their value brightness will be or won't be recalculated (prevention of pointless brightness recalcs).
 		
 		this.visible_timer = 0; // Timer that should be set to certain value after which retrace will be needed
 		
@@ -4155,4 +5220,45 @@ function LateLoadFileIfNeeded( this_i, callback )
 			console.log('Cannot late-load sound file "'+this_i+'"');
 		}
 	);
+}
+
+
+// Prevent occasional history back action
+/*
+ 
+	"noBackPlease", copyright (c) 2019 by Razor7689 (http://jsbin.com/yaqaho/6/edit)
+	Released under the MIT license: http://jsbin.mit-license.org
+ 
+*/
+var HistoryHashProtection_enabled = false;
+function EnableHistoryHashProtection()
+{
+	if  ( HistoryHashProtection_enabled )
+	return;
+
+	HistoryHashProtection_enabled = true;
+	(function (global) {
+
+		var _hash = "🕹";
+		var noBackPlease = function () {
+			global.location.href += "#";
+
+			global.setTimeout(function () {
+				global.location.href += "🕹";
+			}, 50);
+		};	
+
+		global.onhashchange = function () {
+			if (global.location.hash !== _hash) {
+				global.location.hash = _hash;
+			}
+		};
+
+		//global.onload = function () {
+
+			noBackPlease();
+
+		//};
+
+	})(window);
 }

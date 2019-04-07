@@ -73,48 +73,34 @@ class sdAtom
 	static init_class()
 	{
 		sdAtom.atoms = [];
+		sdAtom.pseudo_atoms = []; // Copies that stay for some time
+		
+		sdAtom.pseudo_atoms_ttl_max = 90;
 		
 		sdAtom.MATERIAL_ALIVE_PLAYER = 1;
 		sdAtom.MATERIAL_ALIVE_PLAYER_HEAD = 2;
 		sdAtom.MATERIAL_ALIVE_PLAYER_GUN = 3; // Anything below this has no physics logic
 		sdAtom.MATERIAL_GIB = 4; // Ragdolls too?
 		sdAtom.MATERIAL_GIB_GUN = 5;
-		sdAtom.MATERIAL_BLOOD = 6;
 		
 		sdAtom.atom_scale = 0.5; // Atom & voxel grid scale
 		
 		sdAtom.atom_hp = 0.2; // 0.1 is not enough for splash-spark attacks (player can disappear)
-		sdAtom.atom_hp_damage_scale_bullets = 0.005;
+		sdAtom.atom_hp_damage_scale_bullets = 0.005; // 0.005
 		
-		sdAtom.material = sdShaderMaterial.CreateMaterial( null, 'particle' );
+		sdAtom.material = null; // Created at main.InitEngine() because we need to know extension support
 
 		sdAtom.atom_limit = 4096 * 2 * 2;
-
-		var sub_geom = new THREE.BufferGeometry();
-		var vertices = sub_geom.initVertexData( false, sdAtom.atom_limit * 3 );
-		var rgba = sub_geom.initRGBAData( false, sdAtom.atom_limit * 4 );
-		var uvs2 = sub_geom.initSecondaryUVDataOpacity( false, sdAtom.atom_limit ); // Brigtness, due to lighting. Negative values will mean voxel is deep inside and should not be rendered at all
-
-		for ( var i = 3; i < rgba.length; i += 4 )
-		rgba[ i ] = 0;
-
-		sub_geom.updateVertexDataTyped( vertices );
-		sub_geom.updateRGBADataTyped( rgba );
-		sub_geom.updateSecondaryUVDataTyped( uvs2 );
-
-		sdAtom.sub_geom = sub_geom;
-		sdAtom.vertices = vertices;
-		sdAtom.rgba = rgba;
-		sdAtom.uvs2 = uvs2;
 		
 		sdAtom.stars = [];
 		
 		sdAtom.last_point = 0; // Index of a point that was last in previous frame
 		
-		sdAtom.mesh = new THREE.Points( sub_geom, sdAtom.material );
-		sdAtom.mesh.frustumCulled = false;
+		sdAtom.mesh = null;
+		//sdAtom.mesh = new THREE.Points( sub_geom, sdAtom.material );
+		//sdAtom.mesh.frustumCulled = false;
 		
-		var bmp = new BitmapData( 64, 32 );
+		var bmp = new BitmapData( 64, 48 );
 		
 		var mini_texture = new Image();
 		mini_texture.src = "assets/voxel_player3.png";
@@ -176,11 +162,42 @@ class sdAtom
 		sdAtom.material.uniforms.fog.value = new THREE.Color( main.fog_color );
 		sdAtom.material.uniforms.dot_scale.value = sdAtom.atom_scale;
 		
-		if ( sdAtom.mesh.parent !== main.scene )
-		main.scene.add( sdAtom.mesh );
+		main.SetSameLampUniforms( sdAtom.material );
+		
+		if ( sdAtom.mesh === null )
+		{
+			var sub_geom = new THREE.BufferGeometry();
+			var vertices = sub_geom.initVertexData( false, sdAtom.atom_limit * 3 );
+			var rgba = sub_geom.initRGBAData( false, sdAtom.atom_limit * 4 );
+			var uvs2 = sub_geom.initSecondaryUVDataOpacity( false, sdAtom.atom_limit ); // Brigtness, due to lighting. Negative values will mean voxel is deep inside and should not be rendered at all
+
+			for ( var i = 3; i < rgba.length; i += 4 )
+			rgba[ i ] = 0;
+
+			sub_geom.updateVertexDataTyped( vertices );
+			sub_geom.updateRGBADataTyped( rgba );
+			sub_geom.updateSecondaryUVDataTyped( uvs2 );
+
+			sdAtom.sub_geom = sub_geom;
+			sdAtom.vertices = vertices;
+			sdAtom.rgba = rgba;
+			sdAtom.uvs2 = uvs2;
+
+			sdAtom.mesh = new THREE.Points( sub_geom, sdAtom.material );
+			sdAtom.mesh.frustumCulled = false;
+
+			if ( sdAtom.mesh.parent !== main.scene )
+			main.scene.add( sdAtom.mesh );
+		}
 	}
 	
-	constructor( x, y, z, r, g, b, material, model_x, model_y, model_z, parent )
+	clone()
+	{
+		var a = new sdAtom( this.x, this.y, this.z, this.r, this.g, this.b, this.material, this.model_x, this.model_y, this.model_z, this.parent, this.glowing );
+		sdAtom.atoms.push( a );
+		return a;
+	}
+	constructor( x, y, z, r, g, b, material, model_x, model_y, model_z, parent, glowing )
 	{
 		this.removed = false;
 		
@@ -211,6 +228,7 @@ class sdAtom
 		
 		this.visible = true; // Used only for FPS mode
 		
+		this.bleed_timer = 0; // Above zero will mean bleeding from time to time
 		
 		this.parent = parent;
 		
@@ -221,6 +239,9 @@ class sdAtom
 		
 		this.my_chains = [];
 		this.my_chains_initial_length = 0;
+		
+		this.glowing = glowing; // Added brightness
+		this.glowing_initial = glowing; // Added brightness
 	}
 	
 	remove()
@@ -232,12 +253,6 @@ class sdAtom
 			for ( var i = 0; i < this.my_chains.length; i++ )
 			this.my_chains[ i ].remove();
 		}
-	}
-	clone()
-	{
-		var a = new sdAtom( this.x, this.y, this.z, this.r, this.g, this.b, this.material, this.model_x, this.model_y, this.model_z, this.parent );
-		sdAtom.atoms.push( a );
-		return a;
 	}
 	
 	AddSpeedPosFrictionFractal( bx, by, bz, x, y, z, fx, fy, fz, GSPEED ) // Only for collisions with world
@@ -344,7 +359,8 @@ class sdAtom
 				
 				if ( ch.in_limb )
 				//if ( di > target_di + 2 * GSPEED )
-				if ( di > target_di + 2 + 2 * GSPEED )
+				//if ( di > target_di + 2 + 2 * GSPEED )
+				if ( di > target_di + 8 )
 				{
 					sdBullet.DrawSingleAtomDamage( ch.a );
 					sdBullet.DrawSingleAtomDamage( ch.b );
@@ -353,33 +369,100 @@ class sdAtom
 					continue;
 				}
 			}
+			
+			a.temp_grav_disable_tim = b.temp_grav_disable_tim = Math.min( a.temp_grav_disable_tim, b.temp_grav_disable_tim );
 		
-			var cx = ( a.x + b.x ) / 2;
-			var cy = ( a.y + b.y ) / 2;
-			var cz = ( a.z + b.z ) / 2;
-			
-			var power = 0.25;
-			var power_pos = 0.5;
-			
-			var xx = ( cx - dx * target_di * 0.5 - a.x );
-			var yy = ( cy - dy * target_di * 0.5 - a.y );
-			var zz = ( cz - dz * target_di * 0.5 - a.z );
-			
-			a.tox += xx * power;
-			a.toy += yy * power;
-			a.toz += zz * power;
-			
-			b.tox -= xx * power;
-			b.toy -= yy * power;
-			b.toz -= zz * power;
+			if ( di > 0.1 )
+			{
+				var cx = ( a.x + b.x ) / 2;
+				var cy = ( a.y + b.y ) / 2;
+				var cz = ( a.z + b.z ) / 2;
+
+				var power = 0.25;
+				var power_pos = 0.5;
+				/*
+				var xx = ( cx - dx * target_di * 0.5 - a.x );
+				var yy = ( cy - dy * target_di * 0.5 - a.y );
+				var zz = ( cz - dz * target_di * 0.5 - a.z );
+				*/
+				var xx = ( cx - a.x ) / di * ( di - target_di );
+				var yy = ( cy - a.y ) / di * ( di - target_di );
+				var zz = ( cz - a.z ) / di * ( di - target_di );
+
+				a.tox += xx * power;
+				a.toy += yy * power;
+				a.toz += zz * power;
+
+				b.tox -= xx * power;
+				b.toy -= yy * power;
+				b.toz -= zz * power;
+
+				a.x += xx * power_pos;
+				a.y += yy * power_pos;
+				a.z += zz * power_pos;
+
+				b.x -= xx * power_pos;
+				b.y -= yy * power_pos;
+				b.z -= zz * power_pos;
+			}
+		}
 		
-			a.x += xx * power_pos;
-			a.y += yy * power_pos;
-			a.z += zz * power_pos;
+		for ( var i = 0; i < sdAtom.pseudo_atoms.length; i++ )
+		{
+			var a = sdAtom.pseudo_atoms[ i ];
 			
-			b.x -= xx * power_pos;
-			b.y -= yy * power_pos;
-			b.z -= zz * power_pos;
+			if ( a.ttl <= 0 )
+			{
+				for ( var more = 1; more < sdAtom.pseudo_atoms.length - i; more++ )
+				if ( sdAtom.pseudo_atoms[ i + more ].ttl > 0 )
+				break;
+				
+				sdAtom.pseudo_atoms.splice( i, more );
+				i--;
+				continue;
+			}
+			
+			vertices[ point * 3     ] = a.x;
+			vertices[ point * 3 + 1 ] = a.y;
+			vertices[ point * 3 + 2 ] = a.z;
+
+			rgba[ point * 4     ] = a.r;
+			rgba[ point * 4 + 1 ] = a.g;
+			rgba[ point * 4 + 2 ] = a.b;
+			rgba[ point * 4 + 3 ] = a.ttl / sdAtom.pseudo_atoms_ttl_max;
+
+			//uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z );
+			if ( a.glowing > 0 )
+			uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z ) + a.glowing;
+			else
+			if ( a.glowing < 0 )
+			uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z ) / ( 1 - a.glowing );
+			else
+			uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z );
+
+
+			point++;
+			
+			a.toy -= 0.01 * GSPEED * a.ttl / sdAtom.pseudo_atoms_ttl_max;
+			
+			a.x += a.tox * GSPEED;
+			a.y += a.toy * GSPEED;
+			a.z += a.toz * GSPEED;
+			
+			a.tox = main.MorphWithTimeScale( a.tox, 0, 0.9, GSPEED );
+			a.toy = main.MorphWithTimeScale( a.toy, 0, 0.9, GSPEED );
+			a.toz = main.MorphWithTimeScale( a.toz, 0, 0.9, GSPEED );
+			
+			
+			a.r = main.MorphWithTimeScale( a.r, 0, 0.9, GSPEED );
+			a.g = main.MorphWithTimeScale( a.g, 0, 0.9, GSPEED );
+			a.b = main.MorphWithTimeScale( a.b, 0, 0.9, GSPEED );
+			/*a.r += 0.01 * GSPEED;
+			a.g += 0.05 * GSPEED;
+			a.b += 0.04 * GSPEED;*/
+			
+			a.ttl -= GSPEED;
+			
 		}
 		
 		for ( var i = 0; i < sdAtom.atoms.length; i++ )
@@ -397,11 +480,43 @@ class sdAtom
 			if ( a.material > sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
 			{
 				if ( a.parent.hea <= 0 )
-				if ( a.y < main.world_end_y )
 				{
-					a.remove();
-					i--;
-					continue;
+					/*if ( a.y < main.world_end_y )
+					{
+						a.remove();
+						i--;
+						continue;
+					}*/
+					var c = a;
+					if ( c.x < 0 || c.z < 0 || c.x > main.level_chunks_x * main.chunk_size || c.z > main.level_chunks_z * main.chunk_size )
+					{
+						var in_game_x = Math.max( 0, Math.min( c.x, main.level_chunks_x * main.chunk_size ) );
+						var in_game_z = Math.max( 0, Math.min( c.z, main.level_chunks_z * main.chunk_size ) );
+
+						var di_out = main.Dist3D( in_game_x, in_game_z, 0, c.x, c.z, 0 );
+
+						if ( c.y < di_out )
+						{
+							var dx = in_game_x - c.x;
+							var dz = in_game_z - c.z;
+
+							var di = main.Dist3D( dx, dz, 0, 0, 0, 0 );
+							if ( di > 0.01 )
+							{
+								dx /= di;
+								dz /= di;
+
+								c.tox = main.MorphWithTimeScale( c.tox, 0, 0.7, GSPEED );
+								c.toy = main.MorphWithTimeScale( c.toy, 0, 0.7, GSPEED );
+								c.toz = main.MorphWithTimeScale( c.toz, 0, 0.7, GSPEED );
+
+								c.toy += 1 * GSPEED;
+
+								c.tox += ( 1 ) * dx * GSPEED;
+								c.toz += ( 1 ) * dz * GSPEED;
+							}
+						}
+					}
 				}
 				
 				if ( a.sleep_tim < 1 )
@@ -419,7 +534,9 @@ class sdAtom
 					var ty = a.y + a.toy * GSPEED;
 					var tz = a.z + a.toz * GSPEED;
 
-					var morph = main.TraceLine( a.x, a.y, a.z, tx, ty, tz, null, 1, 0 );
+					var y_offset = 2;
+					
+					var morph = main.TraceLine( a.x, a.y - y_offset, a.z, tx, ty - y_offset, tz, null, 1, 0 );
 
 					if ( morph === 1 )
 					{
@@ -428,99 +545,30 @@ class sdAtom
 						a.z = tz;
 
 						if ( a.temp_grav_disable_tim < 1 )
-						a.temp_grav_disable_tim = Math.min( 1, a.temp_grav_disable_tim + GSPEED * 0.03 );
+						a.temp_grav_disable_tim = Math.min( 1, a.temp_grav_disable_tim + GSPEED * 0.15 );
 
-						if ( a.temp_grav_disable_tim > 0 )
+						if ( a.temp_grav_disable_tim >= 0 )
 						a.toy -= GSPEED * 0.1 * a.temp_grav_disable_tim;
 					}
 					else
 					{
-						var ox = a.x;
-						var oy = a.y;
-						var oz = a.z;
-
-						a.x = a.x * ( 1 - morph ) + tx * morph;
-						a.y = a.y * ( 1 - morph ) + ty * morph;
-						a.z = a.z * ( 1 - morph ) + tz * morph;
-
 						var translate = 1;
 
-						var bounce = 0.3;
-
-						var friction = 0.7;
-
-						if ( main.TraceLine( a.x, a.y + translate, a.z, a.x, a.y + translate, a.z, null, 1, 0 ) === 1 )
+						if ( main.TraceLine( a.x, a.y - y_offset - translate, a.z, a.x, a.y - y_offset - translate, a.z, null, 1, 0 ) === 1 )
 						{
-							var teleport_morph = main.TraceLine( a.x, a.y + translate, a.z, a.x, a.y, a.z, null, 0.01, 0 );
-
-							a.AddSpeedPosFrictionFractal( 0, bounce, 0, 
-														  0, translate * ( 1 - teleport_morph ), 0,
-														  friction, 1, friction,
-														  GSPEED );
-						}
-						else
-						if ( main.TraceLine( a.x, a.y - translate, a.z, a.x, a.y - translate, a.z, null, 1, 0 ) === 1 )
-						{
-							var teleport_morph = main.TraceLine( a.x, a.y - translate, a.z, a.x, a.y, a.z, null, 0.01, 0 );
-
-							a.AddSpeedPosFrictionFractal( 0, -bounce, 0, 
-														  0, -translate * ( 1 - teleport_morph ), 0,
-														  friction, 1, friction,
-														  GSPEED );
-						}
-
-						else
-
-						if ( main.TraceLine( a.x + translate, a.y, a.z, a.x + translate, a.y, a.z, null, 1, 0 ) === 1 )
-						{
-							var teleport_morph = main.TraceLine( a.x + translate, a.y, a.z, a.x, a.y, a.z, null, 0.01, 0 );
-
-							a.AddSpeedPosFrictionFractal( bounce, 0, 0, 
-														  translate * ( 1 - teleport_morph ), 0, 0,
-														  1, friction, friction,
-														  GSPEED );
-						}
-						else
-						if ( main.TraceLine( a.x - translate, a.y, a.z, a.x - translate, a.y, a.z, null, 1, 0 ) === 1 )
-						{
-							var teleport_morph = main.TraceLine( a.x - translate, a.y, a.z, a.x, a.y, a.z, null, 0.01, 0 );
-
-							a.AddSpeedPosFrictionFractal( -bounce, 0, 0, 
-														  -translate * ( 1 - teleport_morph ), 0, 0,
-														  1, friction, friction,
-														  GSPEED );
-						}
-
-						else
-
-						if ( main.TraceLine( a.x, a.y, a.z + translate, a.x, a.y, a.z + translate, null, 1, 0 ) === 1 )
-						{
-							var teleport_morph = main.TraceLine( a.x, a.y, a.z + translate, a.x, a.y, a.z, null, 0.01, 0 );
-
-							a.AddSpeedPosFrictionFractal( 0, 0, bounce, 
-														  0, 0, translate * ( 1 - teleport_morph ), 
-														  friction, friction, 1, 
-														  GSPEED );
-						}
-						else
-						if ( main.TraceLine( a.x, a.y, a.z - translate, a.x, a.y, a.z - translate, null, 1, 0 ) === 1 )
-						{
-							var teleport_morph = main.TraceLine( a.x, a.y, a.z - translate, a.x, a.y, a.z, null, 0.01, 0 );
-
-							a.AddSpeedPosFrictionFractal( 0, 0, -bounce, 
-														  0, 0, -translate * ( 1 - teleport_morph ), 
-														  friction, friction, 1, 
-														  GSPEED );
+							//a.y = Math.abs( a.toy );
+							a.toy = Math.abs( a.toy * 0.5 );
+							a.temp_grav_disable_tim = 0;
 						}
 						else
 						{
-							a.tox = main.MorphWithTimeScale( a.tox, 0, friction, GSPEED );
-							a.toy = main.MorphWithTimeScale( a.toy, 0, friction, GSPEED );
-							a.toz = main.MorphWithTimeScale( a.toz, 0, friction, GSPEED );
-
-							a.x = ox;
-							a.y = oy;
-							a.z = oz;
+							a.x -= a.tox;
+							a.y -= a.toy;
+							a.z -= a.toz;
+							a.tox *= 0.5;
+							a.toy *= 0.5;
+							a.toz *= 0.5;
+							a.temp_grav_disable_tim = 0;
 						}
 					}
 				}
@@ -537,9 +585,27 @@ class sdAtom
 				rgba[ point * 4 + 2 ] = a.b;
 				rgba[ point * 4 + 3 ] = 1;
 
+				if ( a.glowing > 0 )
+				uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z ) + a.glowing;
+				else
+				if ( a.glowing < 0 )
+				uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z ) / ( 1 - a.glowing );
+				else
 				uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z );
 
 				point++;
+				
+				if ( a.bleed_timer > 0 )
+				{
+					var old_val = a.bleed_timer;
+					
+					a.bleed_timer -= GSPEED * 0.1;
+					
+					if ( ~~( a.bleed_timer ) !== ~~old_val )
+					{
+						sdSprite.CreateSprite({ type: sdSprite.TYPE_BLOOD, x:a.x, y:a.y, z:a.z, tox:a.tox, toy:a.toy, toz:a.toz });
+					}
+				}
 			}
 		}
 		
@@ -570,6 +636,11 @@ class sdAtom
 			var is_rocket = b.is_rocket;
 			var is_plasma = b.is_plasma;
 			
+			if ( is_rocket || is_plasma )
+			main.DrawDynamicLight( b.x, b.y, b.z, b.r, b.g, b.b );
+			else
+			main.DrawDynamicLight( b.x, b.y, b.z, b.r * 0.2, b.g * 0.2, b.b * 0.2 );
+		
 			if ( is_plasma )
 			{
 				dx = b.tox;
@@ -595,7 +666,7 @@ class sdAtom
 				
 				length = 10; // 6
 			}
-			
+
 			var di = Math.sqrt( main.Dist3D_Vector_pow2( dx, dy, dz ) ) / length;
 			if ( di > 0.001 )
 			{
@@ -670,7 +741,7 @@ class sdAtom
 		
 		for ( var i = 0; i < sdAtom.stars.length; i++ )
 		{
-			sdAtom.stars[ i ].time_offset = ( sdAtom.stars[ i ].time_offset + GSPEED * 0.01 ) % ( Math.PI * 2 );
+			sdAtom.stars[ i ].time_offset = ( sdAtom.stars[ i ].time_offset + GSPEED * 0.02 ) % ( Math.PI * 2 ); // 0.01
 			
 			vertices[ point * 3     ] = sdAtom.stars[ i ].x + main.main_camera.position.x;
 			vertices[ point * 3 + 1 ] = sdAtom.stars[ i ].y + main.main_camera.position.y;
@@ -683,6 +754,67 @@ class sdAtom
 			uvs2[ point ] = 1;
 			
 			point++;
+		}
+		
+		if ( main.my_character !== null )
+		if ( main.my_character.curwea === main.WEAPON_BUILD1 )
+		{
+			var curwea = main.my_character.curwea;
+			var c = main.my_character;
+			
+			var rad = sdCharacter.weapon_splash_radius[ curwea ];
+									
+			var new_x = c.x - c.look_direction.x * ( rad + sdCharacter.player_half_height + 1 );
+			var new_y = c.y + sdCharacter.shoot_offset_y - c.look_direction.y * ( rad + sdCharacter.player_half_height + 1 );
+			var new_z = c.z - c.look_direction.z * ( rad + sdCharacter.player_half_height + 1 );
+
+			new_x -= c.x;
+			new_y -= c.y;
+			new_z -= c.z;
+
+			var di = main.Dist3D( 0, 0, 0, new_x, new_y, new_z );
+
+			new_x /= di / ( rad + sdCharacter.player_half_height + 1 );
+			new_y /= di / ( rad + sdCharacter.player_half_height + 1 );
+			new_z /= di / ( rad + sdCharacter.player_half_height + 1 );
+
+			new_x += c.x;
+			new_y += c.y;
+			new_z += c.z;
+									
+			new_x = Math.round( new_x );
+			new_y = Math.round( new_y );
+			new_z = Math.round( new_z );
+			
+			rad = Math.round( rad );
+
+			for ( var x = -rad+1; x < rad; x++ )
+			for ( var y = -rad+1; y < rad; y++ )
+			for ( var z = -rad+1; z < rad; z++ )
+			{
+				var di = main.Dist3D( 0,0,0, x,y,z );
+				
+				if ( di < rad )
+				if ( di > rad - 1 )
+				{
+					var br = 1 - ( ( y * 0.5 + main.ticks_passed / 400 ) % 5 ) / 5;
+
+					if ( br > 0.25 )
+					{
+						vertices[ point * 3     ] = new_x + x + 0.5;
+						vertices[ point * 3 + 1 ] = new_y + y + 0.5;
+						vertices[ point * 3 + 2 ] = new_z + z + 0.5;
+
+						rgba[ point * 4     ] = 0.2 * br;
+						rgba[ point * 4 + 1 ] = 1 * br;
+						rgba[ point * 4 + 2 ] = 0.2 * br;
+						rgba[ point * 4 + 3 ] = 2;
+						uvs2[ point ] = 1;
+
+						point++;
+					}
+				}
+			}
 		}
 		
 		var point2 = point;
@@ -702,3 +834,24 @@ class sdAtom
 sdAtom.init_class();
 
 
+class PseudoAtom
+{
+	constructor( atom )
+	{
+		this.x = atom.x;
+		this.y = atom.y;
+		this.z = atom.z;
+		
+		this.tox = atom.tox;
+		this.toy = atom.toy;
+		this.toz = atom.toz;
+		
+		this.r = atom.r;
+		this.g = atom.g;
+		this.b = atom.b;
+		
+		this.ttl = sdAtom.pseudo_atoms_ttl_max;
+		
+		this.glowing = atom.glowing;
+	}
+}

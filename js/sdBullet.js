@@ -131,9 +131,10 @@ class sdBullet
 		if ( this.is_sniper )
 		{
 			this.air_friction = 0.95;
-			/*this.r = sdSprite.sniper_r;
+			
+			this.r = sdSprite.sniper_r;
 			this.g = sdSprite.sniper_g;
-			this.b = sdSprite.sniper_b;*/
+			this.b = sdSprite.sniper_b;
 		}
 		else
 		{
@@ -214,7 +215,7 @@ class sdBullet
 					
 					sdSprite.CreateSprite({ type: this.is_sniper ? sdSprite.TYPE_SNIPER_HIT : sdSprite.TYPE_SPARK, x:tx, y:ty, z:tz });
 					
-					sdSync.MP_SendEvent( sdSync.COMMAND_I_BULLET_HIT_WORLD, tx, ty, tz, this.is_sniper, vol );
+					sdSync.MP_SendEvent( sdSync.COMMAND_I_BULLET_HIT_WORLD, tx, ty, tz, this.is_sniper ? 1 : 0, vol );
 				}
 
 				return true;
@@ -296,8 +297,46 @@ class sdBullet
 		{
 			if ( this.x < -main.world_end_xyz || this.x > main.level_chunks_x * main.chunk_size + main.world_end_xyz )
 			return true;
-			if ( this.y < main.world_end_y || this.y > main.level_chunks_y * main.chunk_size + main.world_end_xyz )
-			return true;
+		
+		
+			//if ( this.y < main.world_end_y || this.y > main.level_chunks_y * main.chunk_size + main.world_end_xyz )
+			//return true;
+			if ( this.x < 0 || this.z < 0 || this.x > main.level_chunks_x * main.chunk_size || this.z > main.level_chunks_z * main.chunk_size )
+			{
+				var in_game_x = Math.max( 0, Math.min( this.x, main.level_chunks_x * main.chunk_size ) );
+				var in_game_z = Math.max( 0, Math.min( this.z, main.level_chunks_z * main.chunk_size ) );
+
+				var di_out = main.Dist3D( in_game_x, in_game_z, 0, this.x, this.z, 0 );
+
+				if ( this.y < di_out )		
+				while ( true ) // We need accurate position so enemies that run on the edge can be hit with splash damage
+				{
+					var di_out = main.Dist3D( in_game_x, in_game_z, 0, this.x, this.z, 0 );
+
+					if ( this.y < di_out )
+					{
+						var dx = in_game_x - this.x;
+						var dz = in_game_z - this.z;
+
+						var di = main.Dist3D( dx, dz, 0, 0, 0, 0 );
+						if ( di > 0.01 )
+						{
+							dx /= di;
+							dz /= di;
+
+							this.y += 1;
+							this.x += ( 1 ) * dx;
+							this.z += ( 1 ) * dz;
+						}
+						else
+						return true;
+					}
+					else
+					return true;
+				}
+			}
+		
+		
 			if ( this.z < -main.world_end_xyz || this.z > main.level_chunks_z * main.chunk_size + main.world_end_xyz )
 			return true;
 		}
@@ -311,6 +350,10 @@ class sdBullet
 	DoEntityDamage( fx, fy, fz, tx, ty, tz )
 	{
 		var impact_radius = sdAtom.atom_scale * 2; // Atom's radius + bullet's radius
+		
+		if ( main.mobile )
+		impact_radius += 5;
+		
 		var impact_radius_pow2 = impact_radius * impact_radius;
 		
 		var best_hit = null;
@@ -393,16 +436,20 @@ class sdBullet
 				sdSync.MP_SendEvent( 
 					sdSync.COMMAND_I_DIRECT_HIT_ATOM, 
 					best_hit_i, 
-					this.tox * this.knock_power, 
-					this.toy * this.knock_power, 
-					this.toz * this.knock_power,
+					this.tox * this.knock_power * ( this.is_rocket ? 0.5 : 1 ), 
+					this.toy * this.knock_power * ( this.is_rocket ? 0.5 : 1 ), 
+					this.toz * this.knock_power * ( this.is_rocket ? 0.5 : 1 ),
 					this.local_peer_uid,
 					hp_damage,
 					hp_damage_head
 				);
 			}
 			
-			sdBullet.DrawPlayerDamageAround( best_hit, this.tox * this.knock_power, this.toy * this.knock_power, this.toz * this.knock_power, this, hp_damage, hp_damage_head );
+			sdBullet.DrawPlayerDamageAround( best_hit, 
+				this.tox * this.knock_power * ( this.is_rocket ? 0.5 : 1 ), 
+				this.toy * this.knock_power * ( this.is_rocket ? 0.5 : 1 ), 
+				this.toz * this.knock_power * ( this.is_rocket ? 0.5 : 1 ), 
+			this, hp_damage, hp_damage_head );
 			
 			// Move bullet where it will possibly explode
 			this.x = tx * best_hit_morph + fx * ( 1 - best_hit_morph );
@@ -434,6 +481,8 @@ class sdBullet
 		
 		var damage_done = 0;
 		
+		var ragdoll_damage_done = 0;
+		
 		if ( bullet !== null )
 		{
 			var dmg = 0;
@@ -445,6 +494,9 @@ class sdBullet
 			if ( t.material === sdAtom.MATERIAL_ALIVE_PLAYER_HEAD )
 			dmg = hp_damage_head;
 			//dmg = bullet.hp_damage_head;
+			
+			if ( t.material === sdAtom.MATERIAL_GIB )
+			ragdoll_damage_done = hp_damage * sdAtom.atom_hp_damage_scale_bullets;
 	
 			if ( dmg !== sdByteShifter.approx( dmg ) )
 			throw new Error('Possible desync');
@@ -493,6 +545,9 @@ class sdBullet
 
 					if ( damage_done > 0 )
 					a.hp -= damage_done * morph;
+					else
+					if ( ragdoll_damage_done > 0 )
+					a.hp -= ragdoll_damage_done * morph;
 
 					//if ( a.r <= 0.25 ) // 0.02
 					//if ( a.g <= 0.25 )
@@ -556,6 +611,7 @@ class sdBullet
 		var owner_cloud_tox = [];
 		var owner_cloud_toy = [];
 		var owner_cloud_toz = [];
+		var owner_cloud_affected = [];
 		for ( var i = 0; i < sdCharacter.characters.length; i++ )
 		{
 			owner_cloud[ i ] = sdCharacter.characters[ i ];
@@ -563,9 +619,10 @@ class sdBullet
 			owner_cloud_tox[ i ] = 0;
 			owner_cloud_toy[ i ] = 0;
 			owner_cloud_toz[ i ] = 0;
+			owner_cloud_affected[ i ] = false;
 		}
 		
-		for ( var i = 0; i < sdAtom.atoms.length; i++ )
+		for ( var i = 0; i < sdAtom.atoms.length; i++ ) // Working with possibly removed atoms, caution
 		{
 			var a = sdAtom.atoms[ i ];
 			
@@ -591,11 +648,11 @@ class sdBullet
 					var dy = a.y - y;
 					var dz = a.z - z;
 					
-					var power = explosion_intens / di * ( 1 - Math.pow( di / hit_radius, 4 ) ); 
+					var power = explosion_intens / di * ( 1 - Math.pow( di / hit_radius, 4 ) ); // Copy [ 1 / 2 ]
 					
 					a.WakeUp();
 					
-					var knock_power = 25 * b.splash_radius / 8; // 35 // 25
+					var knock_power = 25 * b.splash_radius / 8; // Almost copy [ 1 / 2 ]
 
 					if ( !main.MP_mode || b.owner === main.my_character )
 					{
@@ -604,9 +661,9 @@ class sdBullet
 						a.toz += dz * knock_power * power;
 
 						// Copy [ 1 / 2 ]
-						a.parent.tox += dx * knock_power * power / sdCharacter.atoms_per_player;
-						a.parent.toy += dy * knock_power * power / sdCharacter.atoms_per_player;
-						a.parent.toz += dz * knock_power * power / sdCharacter.atoms_per_player;
+						//a.parent.tox += dx * knock_power * power / sdCharacter.atoms_per_player;
+						//a.parent.toy += dy * knock_power * power / sdCharacter.atoms_per_player;
+						//a.parent.toz += dz * knock_power * power / sdCharacter.atoms_per_player;
 
 						if ( a.material === sdAtom.MATERIAL_ALIVE_PLAYER || a.material === sdAtom.MATERIAL_ALIVE_PLAYER_HEAD )
 						{
@@ -619,9 +676,11 @@ class sdBullet
 								if ( b.owner !== a.parent ) // Could be more fun if no self-damage
 								owner_cloud_damage[ cloud_i ] += dmg;
 
-								owner_cloud_tox[ cloud_i ] += dx * knock_power * power / sdCharacter.atoms_per_player; // Copy [ 2 / 2 ]
-								owner_cloud_toy[ cloud_i ] += dy * knock_power * power / sdCharacter.atoms_per_player;
-								owner_cloud_toz[ cloud_i ] += dz * knock_power * power / sdCharacter.atoms_per_player;
+								//owner_cloud_tox[ cloud_i ] += dx * knock_power * power / sdCharacter.atoms_per_player; // Copy [ 2 / 2 ]
+								//owner_cloud_toy[ cloud_i ] += dy * knock_power * power / sdCharacter.atoms_per_player;
+								//owner_cloud_toz[ cloud_i ] += dz * knock_power * power / sdCharacter.atoms_per_player;
+								
+								owner_cloud_affected[ cloud_i ] = true;
 								
 								damage_done = dmg;
 							}
@@ -654,22 +713,64 @@ class sdBullet
 		}
 		
 		for ( var i = 0; i < owner_cloud.length; i++ )
-		if ( owner_cloud_damage[ i ] > 0 )
 		{
-			owner_cloud_damage[ i ] = sdByteShifter.approx( owner_cloud_damage[ i ] );
-
-			// Send earlier as well
-			if ( main.MP_mode )
-			if ( owner_cloud[ i ].hea > 0 ) // Almost Copy [ 2 / 2 ] Do not hit dead players or else damage may happen after respawn
-			sdSync.MP_SendEvent( sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER, 
-				owner_cloud[ i ], 
-				owner_cloud_damage[ i ],
-				owner_cloud_tox[ i ],
-				owner_cloud_toy[ i ],
-				owner_cloud_toz[ i ],
-				b.x,b.y,b.z );
+			if ( owner_cloud_affected[ i ] )
+			{
+				var c = owner_cloud[ i ];
 				
-			owner_cloud[ i ].DealDamage( owner_cloud_damage[ i ], b.owner, b.x, b.y, b.z );
+				//var di_pow2 = main.Dist3D_Vector_pow2( x-c.x, y-( c.y + sdCharacter.player_half_height ), z-c.z );
+				var di_pow2 = main.Dist3D_Vector_pow2( x-c.x, y-c.y, z-c.z );
+				
+				//di_pow2 /= 4; // Calculate as if it was 2 time closer
+			
+				if ( di_pow2 < hit_radius_pow2 )
+				{
+					var di = Math.sqrt( di_pow2 );
+					
+					if ( di < 0.1 )
+					di = 0.1;
+
+
+					var dx = c.x - x;
+					//var dy = ( c.y + sdCharacter.player_half_height ) - y;
+					var dy = c.y - y;
+					var dz = c.z - z;
+					
+					//dx /= 2; // Calculate as if it was 2 time closer
+					//dy /= 2; // Calculate as if it was 2 time closer
+					//dz /= 2; // Calculate as if it was 2 time closer
+
+					var power = explosion_intens / di * ( 1 - Math.pow( di / hit_radius, 4 ) );  // Copy [ 2 / 2 ]
+
+					var knock_power = 25 * b.splash_radius / 8 * 0.6; // Almost copy [ 2 / 2 ]
+
+					owner_cloud_tox[ i ] = dx * knock_power * power;
+					owner_cloud_toy[ i ] = dy * knock_power * power;
+					owner_cloud_toz[ i ] = dz * knock_power * power;
+					
+					c.tox += owner_cloud_tox[ i ];
+					c.toy += owner_cloud_toy[ i ];
+					c.toz += owner_cloud_toz[ i ];
+				}
+			}
+			
+			if ( owner_cloud_damage[ i ] > 0 )
+			{
+				owner_cloud_damage[ i ] = sdByteShifter.approx( owner_cloud_damage[ i ] );
+
+				// Send earlier as well
+				if ( main.MP_mode )
+				if ( owner_cloud[ i ].hea > 0 ) // Almost Copy [ 2 / 2 ] Do not hit dead players or else damage may happen after respawn
+				sdSync.MP_SendEvent( sdSync.COMMAND_I_DAMAGE_PUSH_PLAYER, 
+					owner_cloud[ i ], 
+					owner_cloud_damage[ i ],
+					owner_cloud_tox[ i ],
+					owner_cloud_toy[ i ],
+					owner_cloud_toz[ i ],
+					b.x,b.y,b.z );
+
+				owner_cloud[ i ].DealDamage( owner_cloud_damage[ i ], b.owner, b.x, b.y, b.z );
+			}
 		}
 
 	}

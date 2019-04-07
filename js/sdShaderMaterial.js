@@ -6,6 +6,71 @@ class sdShaderMaterial
 {
 	static init_class()
 	{
+		sdShaderMaterial.EXT_frag_depth = false; // Defined at main.InitEngine(), makes spheres more "in-depth"
+		
+		sdShaderMaterial.max_lamps = 8; // Per chunk. Atoms should calculate this other way perhaps?
+		sdShaderMaterial.lamp_range = 32; // integer!
+	}
+	static GenerateDynamicLightUniformsCode()
+	{
+		var s = '';
+		
+		for ( var i = 0; i < sdShaderMaterial.max_lamps; i++ )
+		{
+			s += 'uniform vec3 lamp'+i+'_pos;\n';
+			s += 'uniform vec3 lamp'+i+'_color;\n';
+		}
+		
+		return s;
+	}
+	static GenerateDynamicLightAffectionCodeForColor( position, final_var_name ) // rgba and position are String
+	{
+		var s = `float light_intens;`;
+		
+		for ( var i = 0; i < sdShaderMaterial.max_lamps; i++ )
+		{
+			s += `light_intens = 8.0 * pow( max( 0.0, 1.0 - sqrt( pow( ${position}.x - lamp${i}_pos.x, 2.0 ) + pow( ${position}.y - lamp${i}_pos.y, 2.0 ) + pow( ${position}.z - lamp${i}_pos.z, 2.0 ) ) / ${sdShaderMaterial.lamp_range}.0 ), 2.0 );\n`;
+			s += `${final_var_name}.rgb += lamp${i}_color.rgb * vec3( light_intens );`;
+		}
+		
+		return s;
+	}
+	static GetDynamicBrithnessShaderless( x,y,z, target_uniform )
+	{
+		var r = 0;
+		var g = 0;
+		var b = 0;
+		
+		var tot = Math.min( sdShaderMaterial.max_lamps, main.next_dynamic_lamp_id );
+		
+		for ( var m = 0; m < tot; m++ )
+		{
+			var p = main.material_lod[ 0 ].uniforms[ 'lamp' + m + '_pos' ].value;
+			
+			var di = main.Dist3D_Vector_pow2( x-p.x, y-p.y, z-p.z );
+			if ( di < sdShaderMaterial.lamp_range * sdShaderMaterial.lamp_range )
+			{
+				di = Math.sqrt( di );
+
+				var light_intens = Math.pow( 1 - di / sdShaderMaterial.lamp_range, 2 );
+				
+				if ( light_intens > 0.8 )
+				light_intens = 0.8;
+				
+				//light_intens *= 8;
+				light_intens *= 4;
+				
+				var c = main.material_lod[ 0 ].uniforms[ 'lamp' + m + '_color' ].value;
+				
+				r += light_intens * c.r;
+				g += light_intens * c.g;
+				b += light_intens * c.b;
+			}
+		}
+		
+		target_uniform.brightness_r.value = r;
+		target_uniform.brightness_g.value = g;
+		target_uniform.brightness_b.value = b;
 	}
 	static DummyExport( c )
 	{
@@ -23,7 +88,9 @@ class sdShaderMaterial
 			mat = new THREE.ShaderMaterial({
 				uniforms: 
 				{
-					brightness: { type: "f", value: 1 },
+					brightness_r: { type: "f", value: 1 },
+					brightness_g: { type: "f", value: 1 },
+					brightness_b: { type: "f", value: 1 },
 					r: { type: "f", value: 1 },
 					g: { type: "f", value: 1 },
 					b: { type: "f", value: 0 }
@@ -66,8 +133,10 @@ class sdShaderMaterial
 					if ( vert_pos.z < 0.3 )
 					gl_FragColor.rgba = vec4( r, g, b, 1.0 );
 				
-					//gl_FragDepthEXT = ( pos.z ) / 1024.0;
-					gl_FragDepthEXT = ( pos.z - 3.0 ) / 1024.0;
+					`+( sdShaderMaterial.EXT_frag_depth ? `
+						//gl_FragDepthEXT = ( pos.z ) / 1024.0;
+						gl_FragDepthEXT = ( pos.z - 3.0 ) / 1024.0;
+					` : '' )+`
 				}	
 			`
 			});
@@ -81,7 +150,9 @@ class sdShaderMaterial
 					tDiffuse: { type: "t", value: texture },
 					fog: { type: "c", value: new THREE.Color( 0x000000 ) },
 					fog_intensity: { type: "f", value: 0 },
-					brightness: { type: "f", value: 999 },
+					brightness_r: { type: "f", value: 999 },
+					brightness_g: { type: "f", value: 999 },
+					brightness_b: { type: "f", value: 999 },
 					diffuse: { type: "c", value: new THREE.Color( 0xffffff ) },
 					depth_offset: { type: "f", value: 1.5 }
 				},
@@ -134,7 +205,9 @@ class sdShaderMaterial
 				varying float fog_final;
 				uniform vec3 fog;
 				
-				uniform float brightness;
+				uniform float brightness_r;
+				uniform float brightness_g;
+				uniform float brightness_b;
 				
 				uniform vec3 diffuse;
 				uniform float depth_offset;
@@ -153,11 +226,14 @@ class sdShaderMaterial
 				
 					if ( fog_final < 1.0 )
 					{
-						gl_FragColor.rgb *= vec3( brightness );
+						gl_FragColor.rgb *= vec3( brightness_r, brightness_g, brightness_b );
 
 						gl_FragColor.rgb = gl_FragColor.rgb * vec3( fog_final ) + fog.rgb * vec3( 1.0 - fog_final );
 					}
-					gl_FragDepthEXT = ( pos.z - depth_offset ) / 1024.0;
+				
+					`+( sdShaderMaterial.EXT_frag_depth ? `
+						gl_FragDepthEXT = ( pos.z - depth_offset ) / 1024.0;
+					` : '' )+`
 				}	
 			`
 			});
@@ -171,7 +247,31 @@ class sdShaderMaterial
 					tDiffuse: { type: "t", value: texture },
 					fog: { type: "c", value: new THREE.Color( 0x000000 ) },
 					screen_height: { type: "f", value: 1 }, // define later
-					dot_scale: { type: "f", value: 1 }
+					dot_scale: { type: "f", value: 1 },
+					
+					lamp0_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp0_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp1_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp1_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp2_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp2_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp3_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp3_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp4_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp4_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp5_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp5_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp6_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp6_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp7_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp7_color: { type: "c", value: new THREE.Color( 0x000000 ) }
 				},
 				depthWrite: true,
 				depthTest: true,
@@ -196,16 +296,28 @@ class sdShaderMaterial
 				
 				varying vec2 pre_calc;
 				
+				`+sdShaderMaterial.GenerateDynamicLightUniformsCode()+`
+				
 				void main()
 				{
-					if ( uv2 >= 0.0 && colo.a > 0.0 )
+					vec3 dyn_light_intens;
+				
+					bool is_visible = ( uv2 >= 0.0 && colo.a > 0.0 );
+				
+					if ( is_visible ) // Taking care of NVIDIA bug... We need 2 if-s for no reason at all but in else case we can get random noise
+					{
+						dyn_light_intens = vec3( 0.0, 0.0, 0.0 );
+						`+sdShaderMaterial.GenerateDynamicLightAffectionCodeForColor( `position`, `dyn_light_intens` )+`
+					}
+				
+					if ( is_visible )
 					{
 						gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 				
 						rgba = colo;
 
-						rgba.rgb *= vec3( uv2 );
-
+						//rgba.rgb *= vec3( uv2 );
+						rgba.rgb *= vec3( uv2 ) + dyn_light_intens.rgb;
 
 						gl_PointSize = 0.8 * screen_height / ( gl_Position.z * 0.5 + 1.0 ) * dot_scale * colo.a;
 				
@@ -244,7 +356,9 @@ class sdShaderMaterial
 				
 					gl_FragColor.rgb = rgba.rgb;
 				
-					gl_FragDepthEXT = pre_calc.x - pre_calc.y * pow( 0.25 - di_pow2, 0.5 );
+					`+( sdShaderMaterial.EXT_frag_depth ? `
+						gl_FragDepthEXT = pre_calc.x - pre_calc.y * pow( 0.25 - di_pow2, 0.5 );
+					` : '' )+`
 					
 					/*
 					if ( 0.4 * 0.4 < di_pow2 )
@@ -253,7 +367,9 @@ class sdShaderMaterial
 						gl_FragColor.g += 0.1;
 						gl_FragColor.b += 0.1;
 				
-						gl_FragDepthEXT += 2.0 / 1024.0 + gl_FragDepthEXT * 0.1;
+						`+( sdShaderMaterial.EXT_frag_depth ? `
+							gl_FragDepthEXT += 2.0 / 1024.0 + gl_FragDepthEXT * 0.1;
+						` : '' )+`
 					}*/
 				}
 				`

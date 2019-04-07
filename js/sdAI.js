@@ -38,6 +38,9 @@ class sdAI
 	{
 		//return;
 		
+		if ( main.mobile )
+		GSPEED *= 0.5;
+		
 		var c = this.ai;
 		
 		this.control_change_tim -= GSPEED;

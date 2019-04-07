@@ -286,14 +286,14 @@ class sdNet
 		if ( user_uid !== sdNet.uid )
 		document.getElementById('floating_user_info').innerHTML = `
 			
-			<a href="javascript:sdNet.InviteToGroup(`+user_uid+`);sdNet.CloseUserMenu();" class="listplayer">Invite to my group</a>
+			<a href="javascript:sdNet.InviteToGroup(`+user_uid+`);sdNet.CloseUserMenu();" class="listplayer">Invite to my teammate group</a>
 			<a href="javascript:sdNet.InviteAsOpponent(`+user_uid+`);sdNet.CloseUserMenu();" class="listplayer">Invite as opponent group leader</a>
 			
 		`;
 		else
 		document.getElementById('floating_user_info').innerHTML = `
 			
-			<a href="javascript:sdNet.AcceptUsersGroup(-1);sdNet.CloseUserMenu();" class="listplayer">Reset my group</a>
+			<a href="javascript:sdNet.AcceptUsersGroup(-1);sdNet.CloseUserMenu();" class="listplayer">Reset my teammate group</a>
 			<a href="javascript:sdNet.AcceptUsersGroup(-2);sdNet.CloseUserMenu();" class="listplayer">Reset opponent group</a>
 			
 		`;
@@ -418,9 +418,14 @@ class sdNet
 		retry = true;
 		else
 		retry = false;
+	
+		let theUrl;
 
 		//var theUrl = 'server.php';
-		let theUrl = 'http://www.gevanni.com/projects/StarDefenders3D/server.php';
+		if ( window.location.href.indexOf( 'https://' ) === 0 )
+		theUrl = 'https://www.gevanni.com/projects/StarDefenders3D/server.php';
+		else
+		theUrl = 'http://www.gevanni.com/projects/StarDefenders3D/server.php';
 
 		let xmlHttp = null;
 		
@@ -513,7 +518,7 @@ class sdNet
 		
 		sdNet.StartMatch({
 			
-			max_players: enemies ? 6 : 1,
+			max_players: enemies ? ( main.mobile ? 6 : 6 ) : 1,
 			
 			max_teams: 2,
 			

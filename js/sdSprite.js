@@ -156,6 +156,7 @@ class sdSprite
 		var geom = sdSprite.GEOM_PLANE;
 		
 		this.is_glowing = false;
+		this.glowing_color = null;
 		
 		this.gore_painter = false;
 		
@@ -176,6 +177,10 @@ class sdSprite
 			this.frame_time = 4;
 			
 			this.is_glowing = true;
+			
+			this.glowing_color = new THREE.Color(	255 / 255 * 0.2, 
+													251 / 255 * 0.2, 
+													192 / 255 * 0.2 );
 		}
 		else
 		if ( params.type === sdSprite.TYPE_SMOKE )
@@ -203,6 +208,10 @@ class sdSprite
 			this.look_at = true;
 			
 			this.post_destruction = this.SpawnSmoke;
+			
+			this.glowing_color = new THREE.Color(	params.r * 0.1 * Math.pow( params.size, 2 ), 
+													params.g * 0.1 * Math.pow( params.size, 2 ), 
+													params.b * 0.1 * Math.pow( params.size, 2 ) );
 		}
 		else
 		if ( params.type === sdSprite.TYPE_SPARK_EXPLOSION )
@@ -223,9 +232,16 @@ class sdSprite
 			this.frames_to_play = 4;
 			
 			this.is_glowing = true;
-			params.r = sdSprite.sniper_r;
-			params.g = sdSprite.sniper_g;
-			params.b = sdSprite.sniper_b;
+			if ( params.r === undefined )
+			{
+				params.r = sdSprite.sniper_r;
+				params.g = sdSprite.sniper_g;
+				params.b = sdSprite.sniper_b;
+			}
+			
+			this.glowing_color = new THREE.Color(	params.r * 0.3, 
+													params.g * 0.3, 
+													params.b * 0.3 );
 		}
 		else
 		if ( params.type === sdSprite.TYPE_SNIPER_HIT )
@@ -237,6 +253,10 @@ class sdSprite
 			params.r = sdSprite.sniper_r;
 			params.g = sdSprite.sniper_g;
 			params.b = sdSprite.sniper_b;
+			
+			this.glowing_color = new THREE.Color(	params.r * 4, 
+													params.g * 4, 
+													params.b * 4 );
 		}
 		else
 		if ( params.type === sdSprite.TYPE_DAMAGE_REPORT )
@@ -248,7 +268,7 @@ class sdSprite
 			rand_rot = false;
 			this.gravity = 0.05;
 			
-			this.scale_to_keep_size = 0.001 * 0.35 / main.pixel_ratio;
+			this.scale_to_keep_size = 0.001 * 0.35 / main.pixel_ratio * ( main.base_resolution_y / main.composer.renderTarget1.height );
 		}
 		else
 		if ( params.type === sdSprite.TYPE_SHELL )
@@ -326,9 +346,20 @@ class sdSprite
 
 				m = sdShaderMaterial.CreateMaterial( tex, 'sprite' );
 					
-				//m.depthTest = false;
-				//m.uniforms.depth_offset.value = 100;
-				m.uniforms.depth_offset.value = 1000;
+				
+				if ( sdShaderMaterial.EXT_frag_depth )
+				{
+					//m.depthTest = false;
+					//m.uniforms.depth_offset.value = 100;
+					m.uniforms.depth_offset.value = 1000;
+				}
+				else
+				{
+					//m.depthTest = false;
+					m.polygonOffset = true;
+					m.polygonOffsetFactor = -100000;
+					m.polygonOffsetUnits = -100000;
+				}
 			}
 			else
 			m = sdShaderMaterial.CreateMaterial( sdSprite.texture_blood, 'sprite' );
@@ -425,6 +456,34 @@ class sdSprite
 		
 		buf.needsUpdate = true;
 	}
+	ApplyBrightnessLogic()
+	{
+		if ( this.scale_to_keep_size !== 0 )
+		{
+			this.mesh.material.uniforms.brightness_r.value = 1;
+			this.mesh.material.uniforms.brightness_g.value = 1;
+			this.mesh.material.uniforms.brightness_b.value = 1;
+		}
+		else
+		if ( this.is_glowing )
+		{
+			sdShaderMaterial.GetDynamicBrithnessShaderless( this.mesh.position.x, this.mesh.position.y, this.mesh.position.z, this.mesh.material.uniforms );
+			
+			this.mesh.material.uniforms.brightness_r.value += 1;
+			this.mesh.material.uniforms.brightness_g.value += 1;
+			this.mesh.material.uniforms.brightness_b.value += 1;
+		}
+		else
+		{
+			var gray = main.GetEntityBrightness( this.mesh.position.x, this.mesh.position.y, this.mesh.position.z );
+			
+			sdShaderMaterial.GetDynamicBrithnessShaderless( this.mesh.position.x, this.mesh.position.y, this.mesh.position.z, this.mesh.material.uniforms );
+			
+			this.mesh.material.uniforms.brightness_r.value += gray;
+			this.mesh.material.uniforms.brightness_g.value += gray;
+			this.mesh.material.uniforms.brightness_b.value += gray;
+		}
+	}
 	Update( GSPEED )
 	{
 		if ( this.gore_painter )
@@ -469,11 +528,18 @@ class sdSprite
 			var di = main.Dist3D( this.mesh.position.x, this.mesh.position.y, this.mesh.position.z, main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z );
 			this.mesh.scale.x = this.mesh.scale.y = this.mesh.scale.z = di * this.scale_to_keep_size * main.main_camera.fov;
 		}
-		
-		if ( this.is_glowing )
-		this.mesh.material.uniforms.brightness.value = 1;
-		else
-		this.mesh.material.uniforms.brightness.value = main.GetEntityBrightness( this.mesh.position.x, this.mesh.position.y, this.mesh.position.z );
+			
+		if ( this.glowing_color !== null )
+		{
+			main.DrawDynamicLight( 
+				this.mesh.position.x, 
+				this.mesh.position.y,
+				this.mesh.position.z, 
+				this.glowing_color.r * ( 1 - ( this.frame + this.frame_time_current / this.frame_time ) / ( this.frames_to_play + 1 ) ), 
+				this.glowing_color.g * ( 1 - ( this.frame + this.frame_time_current / this.frame_time ) / ( this.frames_to_play + 1 ) ), 
+				this.glowing_color.b * ( 1 - ( this.frame + this.frame_time_current / this.frame_time ) / ( this.frames_to_play + 1 ) ) 
+			);
+		}
 		
 		this.toy -= this.gravity * GSPEED;
 		
@@ -516,6 +582,9 @@ class sdSprite
 				continue;
 			}
 		}
+		
+		for ( var i = 0; i < sdSprite.sprites.length; i++ )
+		sdSprite.sprites[ i ].ApplyBrightnessLogic();
 	}
 }
 sdSprite.init_class();
