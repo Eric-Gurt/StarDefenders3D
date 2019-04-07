@@ -1,6 +1,6 @@
 /*
 
-	If not working in Opera - go to opera://settings/?search=UDP and put that dot higher (Opera does not allow UDP by default at all. That setting honestly would do more sense if this was per-side instead of global).
+	If not working in Opera - go to opera://settings/?search=UDP and put that dot higher (Opera does not allow UDP by default at all. That setting honestly would do more sense if this was per-website instead of global).
 
 */
 
