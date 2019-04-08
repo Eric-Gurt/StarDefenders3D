@@ -7,7 +7,7 @@
 
 # dev: TODO
 
-- Do not spawn players near enemies.
+- Do not spawn players near enemies (but do not spawn them always too far either!).
 - Real 3D physics for each limb instead of atoms+chains system which I actually don't like for bad performance and disability to remove them from their pools here. These are at sdAtom.js file. Cannon.js perhaps? Not in separate worker since it is critical to keep things in sync, especially since sdCharacter collision box might be eventually rewritten for these new physics as well.
 - Character & model editor that operates on voxels and outputs a .js file that can be easily included in final game. It can use either GL_POINTS with current shader for rendering or even operate on multiple spheres, at least in Chracter Editor preview. 3D physics needs to be re-impelmented in order to allow joints etc.
 - Create sdEntity.js class that will be responsible for various objects with logic of any type.
