@@ -1,3 +1,10 @@
+# dev: Routes
+
+- Alient Swarm-inspired game?
+- Arena shooter?
+- Tower defence-like game?
+- Starship Troopers-inspired game?
+
 # dev: TODO
 
 - Real 3D physics for each limb instead of atoms+chains system which I actually don't like for bad performance and disability to remove them from their pools here. These are at sdAtom.js file. Cannon.js perhaps? Not in separate worker since it is critical to keep things in sync, especially since sdCharacter collision box might be eventually rewritten for these new physics as well.
