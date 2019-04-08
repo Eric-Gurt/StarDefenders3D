@@ -1,6 +1,6 @@
 # dev: Routes
 
-- Alient Swarm-inspired game?
+- Alien Swarm-inspired game?
 - Arena shooter?
 - Tower defence-like game?
 - Starship Troopers-inspired game?
