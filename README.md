@@ -1,7 +1,7 @@
 # dev: TODO
 
-- Real 3D physics for each limb instead of atoms+chains system which I actually don't like for bad performance and disability to remove them from their pools here. These are at sdAtom.js file.
-- Character & model editor that operates on voxels and outputs a .js file that can be easily included in final game.
+- Real 3D physics for each limb instead of atoms+chains system which I actually don't like for bad performance and disability to remove them from their pools here. These are at sdAtom.js file. Cannon.js perhaps? Not in separate worker since it is critical to keep things in sync, especially since sdCharacter collision box might be eventually rewritten for these new physics as well.
+- Character & model editor that operates on voxels and outputs a .js file that can be easily included in final game. It can use either GL_POINTS with current shader for rendering or even operate on multiple spheres, at least in Chracter Editor preview. 3D physics needs to be re-impelmented in order to allow joints etc.
 - Create sdEntity.js class that will be responsible for various objects with logic of any type.
 - Storymode could take in place. But it is better to make sure core mechanics such as multiplayer do work and work in stable way. Maybe even switch to server-oriented mode where players can host their own customizable servers.
 - Perhaps Starship Troopers-like mode? Something like "team vs horde of aliens". Originally I've seen this game as team of players in cooperative mode that is trying to capture randomly generated planet with randomized creatures (to some extent) that have randomized attacks, properties etc. Not sure how it will work with destructible physics, but seems possible once stable model destruction, shape rebuilding into smaller bodies and their physics are working well together.
@@ -11,7 +11,7 @@
 
 # dev: My personal notes
 
-- I'd suggest not to go with server-side logic for now - I'm afraid it will complicate too much things
+- I'd suggest not to go with server-side logic for now - I'm afraid it will complicate things too much before it is time (it is important to rewrite classes like sdCharacter and make few more like sdGun, sdGunClass and sdEntity).
 - It should be fine to use server on gevanni.com for match making (or suggest changes to it) - this way more players will be online until real distribution will start.
 - Network side cheat/hack/abusement fixes should be probably delayed to the latest stage, they might slow down other updates in my opinion.
 
