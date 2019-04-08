@@ -13,7 +13,6 @@
 
 - I'd suggest not to go with server-side logic for now - I'm afraid it will complicate things too much before it is time (it is important to rewrite classes like sdCharacter and make few more like sdGun, sdGunClass and sdEntity). I'm pretty sure JavaScript is perfect language to support addition of late netcode. In any case I might return back to this project and redo netcode to what I'll end up with for PB2.5/3.
 - It should be fine to use server on gevanni.com for match making (or suggest changes to it) - this way more players will be online until real distribution will start.
-- Network side cheat/hack/abusement fixes should be probably delayed to the latest stage, they might slow down other updates in my opinion.
 
 # dev: Short feature/class description FAQ
 
