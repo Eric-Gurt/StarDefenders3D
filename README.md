@@ -1,14 +1,18 @@
 # dev: TODO
 
-- Randomly generated stars of various brightness. I'd pick them from spread algorithm shotgun is using, probably put them into separate mesh that is always visible. Since it is better to exclude transparency (unless it is done with some dither visibility shader), they are better to have additive blending (three.js supports it).
-- If there will be signs of game becoming popular - few more classes for weaponry should be added: sdGunClass.js and sdGun.js. 1st keeps info like gun names, slot, spread, default stats etc and sdGun.js should be more like gun instances in shared pool. In addition to that sdCharacter could use some array like inventory_guns elements of which will point towards sdGun instances. They also might be inventory_guns2 if we will be going the route of PB2.5/3 where players can dual wield.
 - Real 3D physics for each limb instead of atoms+chains system which I actually don't like for bad performance and disability to remove them from their pools here. These are at sdAtom.js file.
-- Improve network connection quality. At least it should be more obvious why some players will have problems with connection establish. Maybe once it will be getting more popular - server should be aware of these limits and keep information on connection problems across players?
-- More gameplay elements needs to be added in future if this will be getting more of a serious turn.
-- Network side cheat/hack/abusement fixes should be probably delayed to the latest stage, they might slow down other updates in my opinion.
+- Character & model editor that operates on voxels and outputs a .js file that can be easily included in final game.
+- Create sdEntity.js class that will be responsible for various objects with logic of any type.
 - Storymode could take in place and as a side-effect also bring more people to multiplayer. But it is better to make sure core mechanics such as multiplayer do work and work in stable way. Maybe even switch to server-oriented mode where players can host their own customizable servers.
-- In future more entity types should be supported. Perhaps Starship Troopers-like mode? Something like "team vs horde of aliens". Originally I've seen this game as team of players in cooperative mode that is trying to capture randomly generated planet with randomized creatures (to some extent) that have randomized attacks, properties etc. Not sure how it will work with destructible physics, but seems possible once stable model destruction, shape rebuilding into smaller bodies and their physics are working well together.
+- Perhaps Starship Troopers-like mode? Something like "team vs horde of aliens". Originally I've seen this game as team of players in cooperative mode that is trying to capture randomly generated planet with randomized creatures (to some extent) that have randomized attacks, properties etc. Not sure how it will work with destructible physics, but seems possible once stable model destruction, shape rebuilding into smaller bodies and their physics are working well together.
 - Level Editor needs to be done at some point. Would be best to let it have random-based conditional world generation as well.
+- Few more classes for weaponry should be added: sdGunClass.js and sdGun.js. 1st keeps info like gun names, slot, spread, default stats etc and sdGun.js should be more like gun instances in shared pool. In addition to that sdCharacter could use some array like inventory_guns elements of which will point towards sdGun instances. They also might be inventory_guns2 if we will be going the route of PB2.5/3 where players can dual wield.
+
+# dev: My personal notes
+
+- I'd suggest not to go with server-side logic for now - I'm afraid it will complicate too much things
+- It should be fine to use server on gevanni.com for match making (or suggest changes to it) - this way more players will be online until real distribution will start.
+- Network side cheat/hack/abusement fixes should be probably delayed to the latest stage, they might slow down other updates in my opinion.
 
 # dev: Short feature/class description FAQ
 
@@ -29,11 +33,7 @@ There are few game modes:
 - Team vs Team - your team against enemy team;
 - As One - multiple teams that contain only 2 players.
 
-All game modes are endless, have timer and 2 weapons:
-- Rifle - shoots team-colored lasers on primary fire, shotgun pellets on alternate fire;
-- Rocket Launcher - shoots rockets on primary fire, sniper shots on alternate fire.
-
-Weapons have different stats such as knockback, self-knockback, damage, speed, count and spread which are, to be honest, are very easy to change. Would not wonder if somebody will start playing with them.
+All game modes are endless, players have few default weapons that have different stats such as knockback, self-knockback, damage, speed, count and spread which are, to be honest, are very easy to change. Would not wonder if somebody will start playing with them.
 
 Anyway this game was built in ~6 days using Star Defender assets from my long-ago-never-released game which you probably already heard about by now (if you're happened to check <a href='https://www.plazmaburst2.com'>Plazma Burst 2</a> website from time to time).
 
