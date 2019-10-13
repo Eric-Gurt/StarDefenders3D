@@ -161,12 +161,20 @@ class sdSprite
 		this.gore_painter = false;
 		
 		this.scale_to_keep_size = 0;
+		
+		this.type = params.type;
+		
+		var custom_alpha = 1;
 			
 		if ( params.type === sdSprite.TYPE_BLOOD )
 		{
-			this.toy = 0.5;
+			this.toy += 0.5;
 			this.gravity = 0.1;
 			effect_id = 0;
+			
+			//this.frame_time = 10; // 8
+			
+			custom_alpha = 0.7; // 0.75 is too much
 			
 			this.gore_painter = true;
 		}
@@ -178,6 +186,8 @@ class sdSprite
 			
 			this.is_glowing = true;
 			
+			custom_alpha = 0.75;
+			
 			this.glowing_color = new THREE.Color(	255 / 255 * 0.2, 
 													251 / 255 * 0.2, 
 													192 / 255 * 0.2 );
@@ -187,6 +197,8 @@ class sdSprite
 		{
 			effect_id = 2;
 			rand_rot = false;
+			
+			custom_alpha = 0.7;
 		}
 		else
 		if ( params.type === sdSprite.TYPE_ROCK )
@@ -230,6 +242,8 @@ class sdSprite
 			effect_id = 5;
 			this.frame_time = 5; // 10
 			this.frames_to_play = 4;
+			
+			custom_alpha = 0.4;
 			
 			this.is_glowing = true;
 			if ( params.r === undefined )
@@ -302,6 +316,7 @@ class sdSprite
 			else
 			g = new THREE.PlaneBufferGeometry( 8, 8 );
 		
+		
 			if ( params.type === sdSprite.TYPE_DAMAGE_REPORT )
 			{
 				var bmp = new BitmapData( 64, 64, true );
@@ -373,6 +388,9 @@ class sdSprite
 				m.uniforms.diffuse.value.g = params.g;
 				m.uniforms.diffuse.value.b = params.b;
 			}
+		
+			if ( params.type === sdSprite.TYPE_SPARK )
+			m.uniforms.depth_offset.value = 2;
 		}
 		else
 		{
@@ -397,6 +415,14 @@ class sdSprite
 			}
 		}
 		
+		if ( custom_alpha !== 1 || geom === sdSprite.GEOM_SPHERE )
+		{
+			m.depthWrite = false;
+			m.transparent = true;
+			
+			if ( custom_alpha !== 1)
+			m.opacity = custom_alpha;
+		}
 		
 		this.mesh = new THREE.Mesh( g, m );
 		main.scene.add( this.mesh );
@@ -523,6 +549,9 @@ class sdSprite
 		this.mesh.scale.y += this.scale_speed * GSPEED;
 		this.mesh.scale.z += this.scale_speed * GSPEED;
 		
+		if ( this.type === sdSprite.TYPE_EXPLOSION )
+		this.mesh.material.opacity -= 0.05 * GSPEED;
+		
 		if ( this.scale_to_keep_size !== 0 )
 		{
 			var di = main.Dist3D( this.mesh.position.x, this.mesh.position.y, this.mesh.position.z, main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z );
@@ -548,7 +577,11 @@ class sdSprite
 		if ( this.frame_time_current >= this.frame_time )
 		{
 			this.frame_time_current -= this.frame_time;
-			this.frame++;
+			this.frame++;	
+			
+			if ( this.type === sdSprite.TYPE_BLOOD )
+			if ( this.frame === 2 )
+			this.frame_time *= 3;
 			
 			this.SetFrame( 0 );
 		}

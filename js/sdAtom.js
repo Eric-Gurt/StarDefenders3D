@@ -2,6 +2,9 @@
 
 	Physics here. Also visualization for atoms & bullets.
 
+	Unless things change - .atoms array is used for all the damageable & physically movable entities in the world. 
+	Anything from player body parts to alien body parts, weapons (when they will become separate and organized class?), barrels and doors should be made using these.
+
 */
 
 /* global THREE, main, sdShaderMaterial, sdCharacter, sdBullet */
@@ -322,90 +325,303 @@ class sdAtom
 		var rgba = sdAtom.rgba;
 		var uvs2 = sdAtom.uvs2;
 		
-		for ( var i = 0; i < sdChain.chains.length; i++ )
-		{
-			var ch = sdChain.chains[ i ];
-			
-			var a = ch.a;
-			
-			if ( a.material <= sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
-			continue;
-			
-			if ( ch.removed )
-			continue;
-			
-			
-			var b = ch.b;
-			
-			if ( a.sleep_tim >= 1 )
-			if ( b.sleep_tim >= 1 )
-			continue;
+		var steps = Math.ceil( GSPEED / 2.5 );
+		var GSPEED_old = GSPEED;
+		
+		
+		if ( main.low_physics === 1 )
+		steps = 1;
 	
-			a.sleep_tim = b.sleep_tim = Math.min( a.sleep_tim, b.sleep_tim );
+		for ( var step = 0; step < steps; step++ )
+		{
+			let GSPEED = GSPEED_old / steps;
 			
-			var target_di = ch.def;
-			
-			var di = main.Dist3D( a.x, a.y, a.z, b.x, b.y, b.z );
-			
-			var dx = b.x - a.x;
-			var dy = b.y - a.y;
-			var dz = b.z - a.z;
-			
-			if ( di > 0 )
+			if ( main.mobile )
 			{
-				dx /= di;
-				dy /= di;
-				dz /= di;
-				
-				if ( ch.in_limb )
-				//if ( di > target_di + 2 * GSPEED )
-				//if ( di > target_di + 2 + 2 * GSPEED )
-				if ( di > target_di + 8 )
+				step = steps; // Just skip everything to prevent lag
+			}
+
+			if ( main.low_physics === 0 )
+			for ( var i = 0; i < sdChain.chains.length; i++ )
+			{
+				var ch = sdChain.chains[ i ];
+
+				var a = ch.a;
+
+				if ( a.material <= sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
+				continue;
+
+				if ( ch.removed )
+				continue;
+
+
+				var b = ch.b;
+
+				if ( a.sleep_tim >= 1 )
+				if ( b.sleep_tim >= 1 )
+				continue;
+
+				a.sleep_tim = b.sleep_tim = Math.min( a.sleep_tim, b.sleep_tim );
+
+				var target_di = ch.def;
+
+				var di = main.Dist3D( a.x, a.y, a.z, b.x, b.y, b.z );
+
+				var dx = b.x - a.x;
+				var dy = b.y - a.y;
+				var dz = b.z - a.z;
+
+				if ( di > 0 )
 				{
-					sdBullet.DrawSingleAtomDamage( ch.a );
-					sdBullet.DrawSingleAtomDamage( ch.b );
-					ch.remove();
-					i--;
-					continue;
+					dx /= di;
+					dy /= di;
+					dz /= di;
+
+					if ( ch.in_limb )
+					//if ( di > target_di + 2 * GSPEED )
+					//if ( di > target_di + 2 + 2 * GSPEED )
+					if ( di > target_di + 8 )
+					{
+						sdBullet.DrawSingleAtomDamage( ch.a );
+						sdBullet.DrawSingleAtomDamage( ch.b );
+						ch.remove();
+						i--;
+						continue;
+					}
+				}
+
+				a.temp_grav_disable_tim = b.temp_grav_disable_tim = Math.min( a.temp_grav_disable_tim, b.temp_grav_disable_tim );
+
+				if ( di > 0.1 )
+				{
+					var cx = ( a.x + b.x ) / 2;
+					var cy = ( a.y + b.y ) / 2;
+					var cz = ( a.z + b.z ) / 2;
+
+					var power = 0.25;
+					var power_pos = 0.5;
+					/*
+					var xx = ( cx - dx * target_di * 0.5 - a.x );
+					var yy = ( cy - dy * target_di * 0.5 - a.y );
+					var zz = ( cz - dz * target_di * 0.5 - a.z );
+					*/
+					var xx = ( cx - a.x ) / di * ( di - target_di );
+					var yy = ( cy - a.y ) / di * ( di - target_di );
+					var zz = ( cz - a.z ) / di * ( di - target_di );
+
+					a.tox += xx * power;
+					a.toy += yy * power;
+					a.toz += zz * power;
+
+					b.tox -= xx * power;
+					b.toy -= yy * power;
+					b.toz -= zz * power;
+
+					a.x += xx * power_pos;
+					a.y += yy * power_pos;
+					a.z += zz * power_pos;
+
+					b.x -= xx * power_pos;
+					b.y -= yy * power_pos;
+					b.z -= zz * power_pos;
 				}
 			}
-			
-			a.temp_grav_disable_tim = b.temp_grav_disable_tim = Math.min( a.temp_grav_disable_tim, b.temp_grav_disable_tim );
-		
-			if ( di > 0.1 )
+
+			for ( var i = 0; i < sdAtom.atoms.length; i++ )
 			{
-				var cx = ( a.x + b.x ) / 2;
-				var cy = ( a.y + b.y ) / 2;
-				var cz = ( a.z + b.z ) / 2;
+				var a = sdAtom.atoms[ i ];
 
-				var power = 0.25;
-				var power_pos = 0.5;
-				/*
-				var xx = ( cx - dx * target_di * 0.5 - a.x );
-				var yy = ( cy - dy * target_di * 0.5 - a.y );
-				var zz = ( cz - dz * target_di * 0.5 - a.z );
-				*/
-				var xx = ( cx - a.x ) / di * ( di - target_di );
-				var yy = ( cy - a.y ) / di * ( di - target_di );
-				var zz = ( cz - a.z ) / di * ( di - target_di );
+				if ( a.removed )
+				continue;
 
-				a.tox += xx * power;
-				a.toy += yy * power;
-				a.toz += zz * power;
+				// Always update for accurate atom-bullet collisions
+				if ( step === 0 )
+				{
+					a.lx = a.x;
+					a.ly = a.y;
+					a.lz = a.z;
+				}
 
-				b.tox -= xx * power;
-				b.toy -= yy * power;
-				b.toz -= zz * power;
+				//if ( a.material > sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
+				if ( a.parent.stability < 1 || a.material > sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
+				{
+					if ( a.parent.hea <= 0 )
+					{
+						/*if ( a.y < main.world_end_y )
+						{
+							a.remove();
+							i--;
+							continue;
+						}*/
+						var c = a;
+						if ( c.x < 0 || c.z < 0 || c.x > main.level_chunks_x * main.chunk_size || c.z > main.level_chunks_z * main.chunk_size )
+						{
+							var in_game_x = Math.max( 0, Math.min( c.x, main.level_chunks_x * main.chunk_size ) );
+							var in_game_z = Math.max( 0, Math.min( c.z, main.level_chunks_z * main.chunk_size ) );
 
-				a.x += xx * power_pos;
-				a.y += yy * power_pos;
-				a.z += zz * power_pos;
+							var di_out = main.Dist3D( in_game_x, in_game_z, 0, c.x, c.z, 0 );
 
-				b.x -= xx * power_pos;
-				b.y -= yy * power_pos;
-				b.z -= zz * power_pos;
+							if ( c.y < di_out )
+							{
+								var dx = in_game_x - c.x;
+								var dz = in_game_z - c.z;
+
+								var di = main.Dist3D( dx, dz, 0, 0, 0, 0 );
+								if ( di > 0.01 )
+								{
+									dx /= di;
+									dz /= di;
+
+									c.tox = main.MorphWithTimeScale( c.tox, 0, 0.7, GSPEED );
+									c.toy = main.MorphWithTimeScale( c.toy, 0, 0.7, GSPEED );
+									c.toz = main.MorphWithTimeScale( c.toz, 0, 0.7, GSPEED );
+
+									c.toy += 1 * GSPEED;
+
+									c.tox += ( 1 ) * dx * GSPEED;
+									c.toz += ( 1 ) * dz * GSPEED;
+								}
+							}
+						}
+					}
+
+					if ( a.sleep_tim < 1 )
+					{
+						if ( Math.pow( a.tox, 2 ) + Math.pow( a.toy, 2 ) + Math.pow( a.toz, 2 ) < 0.25 )
+						{
+							a.sleep_tim += GSPEED * 0.01;
+						}
+						else
+						{
+							a.sleep_tim = 0;
+						}
+
+						var tx = a.x + a.tox * GSPEED;
+						var ty = a.y + a.toy * GSPEED;
+						var tz = a.z + a.toz * GSPEED;
+
+						var y_offset = 1;
+
+						var morph = main.TraceLine( a.x, a.y - y_offset, a.z, tx, ty - y_offset, tz, null, 1, 0 );
+
+						if ( morph === 1 )
+						{
+							a.x = tx;
+							a.y = ty;
+							a.z = tz;
+
+							if ( a.temp_grav_disable_tim < 1 )
+							a.temp_grav_disable_tim = Math.min( 1, a.temp_grav_disable_tim + GSPEED * 0.15 );
+
+							if ( a.temp_grav_disable_tim >= 0 )
+							a.toy -= GSPEED * 0.1 * a.temp_grav_disable_tim;
+						}
+						else
+						{
+							var translate = 1;
+							
+							//var hit_power = main.Dist3D( 0,0,0, a.tox, a.toy, a.toz );
+							//if ( hit_power > 3 )
+							//sdSound.PlaySound({ sound: lib.player_step, position: new THREE.Vector3( a.x, a.y, a.z ), volume: Math.min( 1, hit_power * 0.25 ) });
+
+							if ( main.TraceLine( a.x, a.y + y_offset + translate, a.z, 
+												 a.x, a.y + y_offset + translate, a.z, null, 1, 0 ) === 1 )
+							{
+								a.toy = Math.abs( a.toy * 0.2 );
+								a.tox *= 0.9;
+								a.toz *= 0.9;
+										
+								a.temp_grav_disable_tim = 0;
+							}
+							else
+							if ( main.TraceLine( a.x + y_offset + translate, a.y, a.z, 
+												 a.x + y_offset + translate, a.y, a.z, null, 1, 0 ) === 1 )
+							{
+								a.tox = Math.abs( a.tox * 0.2 );
+								a.toy *= 0.9;
+								a.toz *= 0.9;
+							}
+							else
+							if ( main.TraceLine( a.x - y_offset - translate, a.y, a.z, 
+												 a.x - y_offset - translate, a.y, a.z, null, 1, 0 ) === 1 )
+							{
+								a.tox = -Math.abs( a.tox * 0.5 );
+								a.toy *= 0.9;
+								a.toz *= 0.9;
+							}
+							else
+							if ( main.TraceLine( a.x, a.y, a.z + y_offset + translate, 
+												 a.x, a.y, a.z + y_offset + translate, null, 1, 0 ) === 1 )
+							{
+								a.toz = Math.abs( a.toz * 0.2 );
+								a.toy *= 0.9;
+								a.tox *= 0.9;
+							}
+							else
+							if ( main.TraceLine( a.x, a.y, a.z - y_offset - translate, 
+												 a.x, a.y, a.z - y_offset - translate, null, 1, 0 ) === 1 )
+							{
+								a.toz = -Math.abs( a.toz * 0.2 );
+								a.toy *= 0.9;
+								a.tox *= 0.9;
+							}
+							else
+							{
+								/*a.x -= a.tox;
+								a.y -= a.toy;
+								a.z -= a.toz;*/
+								a.tox *= 0.5;
+								a.toy *= 0.5;
+								a.toz *= 0.5;
+										/*
+								a.x -= a.tox;
+								a.y -= a.toy;
+								a.z -= a.toz;
+								
+								a.tox = - a.tox * 0.5;
+								a.toy = - a.toy * 0.5;
+								a.toz = - a.toz * 0.5;*/
+							}
+						}
+					}
+				}
+
+				if ( a.visible ) // If it is not visible, simply skip
+				{
+					vertices[ point * 3     ] = a.x;
+					vertices[ point * 3 + 1 ] = a.y;
+					vertices[ point * 3 + 2 ] = a.z;
+
+					rgba[ point * 4     ] = a.r;
+					rgba[ point * 4 + 1 ] = a.g;
+					rgba[ point * 4 + 2 ] = a.b;
+					rgba[ point * 4 + 3 ] = 1;
+
+					if ( a.glowing > 0 )
+					uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z ) + a.glowing;
+					else
+					if ( a.glowing < 0 )
+					uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z ) / ( 1 - a.glowing );
+					else
+					uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z );
+
+					point++;
+
+					if ( a.bleed_timer > 0 )
+					{
+						var old_val = a.bleed_timer;
+
+						a.bleed_timer -= GSPEED * 0.1;
+
+						if ( ~~( a.bleed_timer ) !== ~~old_val )
+						{
+							sdSprite.CreateSprite({ type: sdSprite.TYPE_BLOOD, x:a.x, y:a.y, z:a.z, tox:a.tox, toy:a.toy, toz:a.toz });
+						}
+					}
+				}
 			}
-		}
+
+		} // steps
 		
 		for ( var i = 0; i < sdAtom.pseudo_atoms.length; i++ )
 		{
@@ -465,153 +681,42 @@ class sdAtom
 			
 		}
 		
-		for ( var i = 0; i < sdAtom.atoms.length; i++ )
+		for ( var i = 0; i < sdCharacter.characters.length; i++ )
+		if ( sdCharacter.characters[ i ].hook_enabled )
 		{
-			var a = sdAtom.atoms[ i ];
+			var c = sdCharacter.characters[ i ];
+			var di = main.Dist3D( c.x, c.y + 3, c.z, c.hook_pos.x, c.hook_pos.y, c.hook_pos.z ) * 2;
 			
-			if ( a.removed )
-			continue;
-			
-			// Always update for accurate atom-bullet collisions
-			a.lx = a.x;
-			a.ly = a.y;
-			a.lz = a.z;
-			
-			if ( a.material > sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
+			if ( di > 1 )
+			for ( var i2 = 0; i2 < di; i2++ )
 			{
-				if ( a.parent.hea <= 0 )
-				{
-					/*if ( a.y < main.world_end_y )
-					{
-						a.remove();
-						i--;
-						continue;
-					}*/
-					var c = a;
-					if ( c.x < 0 || c.z < 0 || c.x > main.level_chunks_x * main.chunk_size || c.z > main.level_chunks_z * main.chunk_size )
-					{
-						var in_game_x = Math.max( 0, Math.min( c.x, main.level_chunks_x * main.chunk_size ) );
-						var in_game_z = Math.max( 0, Math.min( c.z, main.level_chunks_z * main.chunk_size ) );
-
-						var di_out = main.Dist3D( in_game_x, in_game_z, 0, c.x, c.z, 0 );
-
-						if ( c.y < di_out )
-						{
-							var dx = in_game_x - c.x;
-							var dz = in_game_z - c.z;
-
-							var di = main.Dist3D( dx, dz, 0, 0, 0, 0 );
-							if ( di > 0.01 )
-							{
-								dx /= di;
-								dz /= di;
-
-								c.tox = main.MorphWithTimeScale( c.tox, 0, 0.7, GSPEED );
-								c.toy = main.MorphWithTimeScale( c.toy, 0, 0.7, GSPEED );
-								c.toz = main.MorphWithTimeScale( c.toz, 0, 0.7, GSPEED );
-
-								c.toy += 1 * GSPEED;
-
-								c.tox += ( 1 ) * dx * GSPEED;
-								c.toz += ( 1 ) * dz * GSPEED;
-							}
-						}
-					}
-				}
+				var morph = i2 / di;
 				
-				if ( a.sleep_tim < 1 )
-				{
-					if ( Math.pow( a.tox, 2 ) + Math.pow( a.toy, 2 ) + Math.pow( a.toz, 2 ) < 0.25 )
-					{
-						a.sleep_tim += GSPEED * 0.01;
-					}
-					else
-					{
-						a.sleep_tim = 0;
-					}
+				vertices[ point * 3     ] = c.x * morph + c.hook_pos.x * ( 1 - morph );
+				vertices[ point * 3 + 1 ] = ( c.y + 3 ) * morph + c.hook_pos.y * ( 1 - morph );
+				vertices[ point * 3 + 2 ] = c.z * morph + c.hook_pos.z * ( 1 - morph );
+				
+				rgba[ point * 4     ] = ( i2 % 3 < 2 ) ? 0.2 : 0.1;
+				rgba[ point * 4 + 1 ] = ( i2 % 3 < 2 ) ? 0.2 : 0.1;
+				rgba[ point * 4 + 2 ] = ( i2 % 3 < 2 ) ? 0.2 : 0.1;
 
-					var tx = a.x + a.tox * GSPEED;
-					var ty = a.y + a.toy * GSPEED;
-					var tz = a.z + a.toz * GSPEED;
-
-					var y_offset = 2;
-					
-					var morph = main.TraceLine( a.x, a.y - y_offset, a.z, tx, ty - y_offset, tz, null, 1, 0 );
-
-					if ( morph === 1 )
-					{
-						a.x = tx;
-						a.y = ty;
-						a.z = tz;
-
-						if ( a.temp_grav_disable_tim < 1 )
-						a.temp_grav_disable_tim = Math.min( 1, a.temp_grav_disable_tim + GSPEED * 0.15 );
-
-						if ( a.temp_grav_disable_tim >= 0 )
-						a.toy -= GSPEED * 0.1 * a.temp_grav_disable_tim;
-					}
-					else
-					{
-						var translate = 1;
-
-						if ( main.TraceLine( a.x, a.y - y_offset - translate, a.z, a.x, a.y - y_offset - translate, a.z, null, 1, 0 ) === 1 )
-						{
-							//a.y = Math.abs( a.toy );
-							a.toy = Math.abs( a.toy * 0.5 );
-							a.temp_grav_disable_tim = 0;
-						}
-						else
-						{
-							a.x -= a.tox;
-							a.y -= a.toy;
-							a.z -= a.toz;
-							a.tox *= 0.5;
-							a.toy *= 0.5;
-							a.toz *= 0.5;
-							a.temp_grav_disable_tim = 0;
-						}
-					}
-				}
-			}
-			
-			if ( a.visible ) // If it is not visible, simply skip
-			{
-				vertices[ point * 3     ] = a.x;
-				vertices[ point * 3 + 1 ] = a.y;
-				vertices[ point * 3 + 2 ] = a.z;
-			
-				rgba[ point * 4     ] = a.r;
-				rgba[ point * 4 + 1 ] = a.g;
-				rgba[ point * 4 + 2 ] = a.b;
-				rgba[ point * 4 + 3 ] = 1;
-
-				if ( a.glowing > 0 )
-				uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z ) + a.glowing;
-				else
-				if ( a.glowing < 0 )
-				uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z ) / ( 1 - a.glowing );
-				else
-				uvs2[ point ] = main.GetEntityBrightness( a.x, a.y, a.z );
-
+				rgba[ point * 4 + 3 ] = ( i2 % 3 < 2 ) ? 1 : 0.9; // Scale
+				
+				uvs2[ point ] = main.GetEntityBrightness( vertices[ point * 3     ], vertices[ point * 3 + 1 ], vertices[ point * 3 + 2 ] );
+				
 				point++;
-				
-				if ( a.bleed_timer > 0 )
-				{
-					var old_val = a.bleed_timer;
-					
-					a.bleed_timer -= GSPEED * 0.1;
-					
-					if ( ~~( a.bleed_timer ) !== ~~old_val )
-					{
-						sdSprite.CreateSprite({ type: sdSprite.TYPE_BLOOD, x:a.x, y:a.y, z:a.z, tox:a.tox, toy:a.toy, toz:a.toz });
-					}
-				}
 			}
 		}
 		
 		for ( var i = 0; i < sdBullet.bullets.length; i++ )
 		{
 			var b = sdBullet.bullets[ i ];
+			
+			if ( b.is_melee )
+			continue;
+			
+			if ( b.is_sniper )
+			continue;
 			
 			var length;
 			
@@ -660,9 +765,9 @@ class sdAtom
 			}
 			else
 			{
-				dx = b.tox;
-				dy = b.toy;
-				dz = b.toz;
+				dx = b.tox - main.speed.x;
+				dy = b.toy - main.speed.y;
+				dz = b.toz - main.speed.z;
 				
 				length = 10; // 6
 			}
@@ -732,6 +837,8 @@ class sdAtom
 					rgba[ point * 4 + 1 ] = b.g;
 					rgba[ point * 4 + 2 ] = b.b;
 					uvs2[ point ] = 1;
+					
+					rgba[ point * 4 + 3 ] = 0.4; // Scale
 				}
 
 				

@@ -377,7 +377,11 @@ class sdByteShifter
 				this.approx( c.act_x ) + _ + 
 				this.approx( c.act_y ) + _ + 
 				this.approx( c.sit ) + _ + 
-				this.approx( c.walk_phase );
+				this.approx( c.walk_phase ) + _ + 
+				this.approx( c.hook_enabled ? 1 : 0 ) + _ + 
+				this.approx( c.hook_pos.x ) + _ + 
+				this.approx( c.hook_pos.y ) + _ + 
+				this.approx( c.hook_pos.z );
 		}
 		else
 		/*if ( command === sdSync.COMMAND_VISIBLE_BLOCKS )
@@ -555,7 +559,19 @@ class sdByteShifter
 			c.act_y = Number( parts[ i++ ] );
 			c.sit = Number( parts[ i++ ] );
 			c.walk_phase = Number( parts[ i++ ] );
+			var hook_enabled = ( Number( parts[ i++ ] ) === 1 );
+			var hook_pos_x = Number( parts[ i++ ] );
+			var hook_pos_y = Number( parts[ i++ ] );
+			var hook_pos_z = Number( parts[ i++ ] );
 			
+			if ( c.hook_enabled )
+			{
+				if ( !hook_enabled )
+				c.hook_enabled = false;
+			}
+			if ( hook_enabled )
+			c.HookHere( hook_pos_x, hook_pos_y, hook_pos_z );
+
 			return true;
 		}
 		else
@@ -603,6 +619,7 @@ class sdByteShifter
 				is_rocket: sdCharacter.weapon_is_rocket[ curwea ],
 				is_sniper: sdCharacter.weapon_is_sniper[ curwea ],
 				is_plasma: sdCharacter.weapon_is_plasma[ curwea ],
+				is_melee: sdCharacter.weapon_melee[ curwea ],
 				splash_radius: sdCharacter.weapon_splash_radius[ curwea ]
 			});
 			bullet.local_peer_uid = local_peer_uid;

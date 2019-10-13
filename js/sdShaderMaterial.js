@@ -10,6 +10,12 @@ class sdShaderMaterial
 		
 		sdShaderMaterial.max_lamps = 8; // Per chunk. Atoms should calculate this other way perhaps?
 		sdShaderMaterial.lamp_range = 32; // integer!
+		
+		sdShaderMaterial.position_formula = `
+	
+			gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+		
+		`;
 	}
 	static GenerateDynamicLightUniformsCode()
 	{
@@ -30,6 +36,7 @@ class sdShaderMaterial
 		for ( var i = 0; i < sdShaderMaterial.max_lamps; i++ )
 		{
 			s += `light_intens = 8.0 * pow( max( 0.0, 1.0 - sqrt( pow( ${position}.x - lamp${i}_pos.x, 2.0 ) + pow( ${position}.y - lamp${i}_pos.y, 2.0 ) + pow( ${position}.z - lamp${i}_pos.z, 2.0 ) ) / ${sdShaderMaterial.lamp_range}.0 ), 2.0 );\n`;
+			
 			s += `${final_var_name}.rgb += lamp${i}_color.rgb * vec3( light_intens );`;
 		}
 		
@@ -45,7 +52,7 @@ class sdShaderMaterial
 		
 		for ( var m = 0; m < tot; m++ )
 		{
-			var p = main.material_lod[ 0 ].uniforms[ 'lamp' + m + '_pos' ].value;
+			var p = main.materials_with_dyn_light[ 0 ].uniforms[ 'lamp' + m + '_pos' ].value;
 			
 			var di = main.Dist3D_Vector_pow2( x-p.x, y-p.y, z-p.z );
 			if ( di < sdShaderMaterial.lamp_range * sdShaderMaterial.lamp_range )
@@ -60,7 +67,7 @@ class sdShaderMaterial
 				//light_intens *= 8;
 				light_intens *= 4;
 				
-				var c = main.material_lod[ 0 ].uniforms[ 'lamp' + m + '_color' ].value;
+				var c = main.materials_with_dyn_light[ 0 ].uniforms[ 'lamp' + m + '_color' ].value;
 				
 				r += light_intens * c.r;
 				g += light_intens * c.g;
@@ -93,7 +100,8 @@ class sdShaderMaterial
 					brightness_b: { type: "f", value: 1 },
 					r: { type: "f", value: 1 },
 					g: { type: "f", value: 1 },
-					b: { type: "f", value: 0 }
+					b: { type: "f", value: 0 },
+					opacity: { type: "f", value: 1 }
 				},
 				depthWrite: true,
 				transparent: false,
@@ -111,7 +119,7 @@ class sdShaderMaterial
 				
 				void main() 
 				{
-					gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+					${sdShaderMaterial.position_formula}
 				
 					pos = gl_Position;
 					vert_pos = position;
@@ -125,13 +133,15 @@ class sdShaderMaterial
 				uniform float r;
 				uniform float g;
 				uniform float b;
+				uniform float opacity;
 				
 				void main()
 				{
-					gl_FragColor.rgba = vec4( 1.0, 1.0, 1.0, 1.0 );
+					//gl_FragColor.rgba = vec4( 1.0, 1.0, 1.0, 0.9 );
+					gl_FragColor.rgba = vec4( r * 2.0, g * 2.0, b * 2.0, 0.7 * 2.0 * opacity );
 				
 					if ( vert_pos.z < 0.3 )
-					gl_FragColor.rgba = vec4( r, g, b, 1.0 );
+					gl_FragColor.rgba = vec4( r, g, b, 0.7 * opacity );
 				
 					`+( sdShaderMaterial.EXT_frag_depth ? `
 						//gl_FragDepthEXT = ( pos.z ) / 1024.0;
@@ -154,7 +164,8 @@ class sdShaderMaterial
 					brightness_g: { type: "f", value: 999 },
 					brightness_b: { type: "f", value: 999 },
 					diffuse: { type: "c", value: new THREE.Color( 0xffffff ) },
-					depth_offset: { type: "f", value: 1.5 }
+					depth_offset: { type: "f", value: 1.5 },
+					opacity: { type: "f", value: 1 }
 				},
 				depthWrite: true,
 				transparent: false,
@@ -179,7 +190,7 @@ class sdShaderMaterial
 				{
 					vUv = uv;
 				
-					gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+					${sdShaderMaterial.position_formula}
 				
 					pos = gl_Position;
 				
@@ -211,6 +222,7 @@ class sdShaderMaterial
 				
 				uniform vec3 diffuse;
 				uniform float depth_offset;
+				uniform float opacity;
 				
 				void main()
 				{
@@ -222,7 +234,7 @@ class sdShaderMaterial
 					}
 				
 					gl_FragColor.rgb *= diffuse.rgb;
-					//gl_FragColor.a = 1.0;
+					gl_FragColor.a *= opacity;
 				
 					if ( fog_final < 1.0 )
 					{
@@ -312,7 +324,8 @@ class sdShaderMaterial
 				
 					if ( is_visible )
 					{
-						gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+						//gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+						${sdShaderMaterial.position_formula}
 				
 						rgba = colo;
 
@@ -386,25 +399,175 @@ class sdShaderMaterial
 				uniforms: 
 				{
 					diffuse: { type: "c", value: new THREE.Color( 0xffffff ) },
-					opacity: { value: 1 }
+					opacity: { value: 1 },
+					depth_offset: { type: "f", value: 1.5 }
 				},
 				depthWrite: true,
 				transparent: false,
 				flatShading: true,
+				extensions: {
+					derivatives: false,
+					fragDepth: true, 
+					drawBuffers: false,
+					shaderTextureLOD: false
+				},
 				vertexShader: `
+				
+				varying vec4 pos;
+				
 				void main() 
 				{
-					gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+					${sdShaderMaterial.position_formula}
+					
+					pos = gl_Position;
 				}
 				`,
 				fragmentShader: `
 				uniform vec3 diffuse;
 				uniform float opacity;
+				
+				varying vec4 pos;
+				uniform float depth_offset;
 
 				void main()
 				{
 					gl_FragColor.rgb = diffuse.rgb;
 					gl_FragColor.a = opacity;
+					
+					`+( sdShaderMaterial.EXT_frag_depth ? `
+						gl_FragDepthEXT = ( pos.z - depth_offset ) / 1024.0;
+					` : '' )+`
+				}	
+			`
+			});
+		}
+		else
+		if ( method === 'voxel_map' )
+		{
+			mat = new THREE.ShaderMaterial({
+				uniforms: 
+				{
+					tDiffuse: { type: "t", value: texture },
+					fog: { type: "c", value: new THREE.Color( 0x000000 ) },
+					fog_intensity: { type: "f", value: 0 },
+					/*brightness_r: { type: "f", value: 999 },
+					brightness_g: { type: "f", value: 999 },
+					brightness_b: { type: "f", value: 999 },*/
+					depth_offset: { type: "f", value: 1.5 },
+					
+					lamp0_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp0_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp1_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp1_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp2_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp2_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp3_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp3_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp4_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp4_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp5_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp5_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp6_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp6_color: { type: "c", value: new THREE.Color( 0x000000 ) },
+					
+					lamp7_pos: { type: "v3", value: new THREE.Vector3() },
+					lamp7_color: { type: "c", value: new THREE.Color( 0x000000 ) }
+				},
+				depthWrite: true,
+				transparent: false,
+				flatShading: true,
+				extensions: {
+					derivatives: false,
+					fragDepth: true, 
+					drawBuffers: false,
+					shaderTextureLOD: false
+				},
+				vertexShader: `
+				
+				varying vec2 vUv;
+				
+				varying vec4 pos;
+				varying vec4 world_pos;
+				
+				uniform vec3 fog;
+				uniform float fog_intensity;
+				varying float fog_final;
+				
+				void main() 
+				{
+					vUv = uv;
+				
+					${sdShaderMaterial.position_formula}
+				
+					pos = gl_Position;
+				
+					//world_pos = modelViewMatrix * vec4( position, 1.0 );
+					world_pos = modelMatrix * vec4( position, 1.0 );
+				
+					if ( fog_intensity > 0.0 )
+					{
+						//float fog_morph = 1.0 / ( 1.0 + gl_Position.z * 0.017 );
+						float fog_morph = 1.0 / max( 1.0 + gl_Position.z * 0.017, 1.0 );
+						fog_final = fog_morph;
+					}
+					else
+					{
+						fog_final = 1.0;
+					}
+				}
+				`,
+				fragmentShader: `
+				
+				uniform sampler2D tDiffuse;
+				varying vec2 vUv;
+				
+				varying vec4 pos;
+				varying vec4 world_pos;
+				
+				varying float fog_final;
+				uniform vec3 fog;
+				
+				/*uniform float brightness_r;
+				uniform float brightness_g;
+				uniform float brightness_b;*/
+				
+				uniform float depth_offset;
+				
+				`+sdShaderMaterial.GenerateDynamicLightUniformsCode()+`
+				
+				void main()
+				{
+					gl_FragColor.rgba = texture2D( tDiffuse, vUv ).rgba * vec4( 3.0, 3.0, 3.0, 1.0 );
+					
+					if ( gl_FragColor.a < 0.5 )
+					{
+						discard;
+					}
+				
+					vec3 dyn_light_intens = vec3( 0.0, 0.0, 0.0 );
+				
+					`+sdShaderMaterial.GenerateDynamicLightAffectionCodeForColor( `world_pos`, `dyn_light_intens` )+`
+				
+					//gl_FragColor.rgb += dyn_light_intens.rgb;
+					gl_FragColor.rgb += dyn_light_intens.rgb * ( vec3( 0.05 ) + gl_FragColor.rgb * 0.95 );
+				
+				
+					if ( fog_final < 1.0 )
+					{
+						//gl_FragColor.rgb *= vec3( brightness_r, brightness_g, brightness_b );
+
+						gl_FragColor.rgb = gl_FragColor.rgb * vec3( fog_final ) + fog.rgb * vec3( 1.0 - fog_final );
+					}
+				
+					`+( sdShaderMaterial.EXT_frag_depth ? `
+						gl_FragDepthEXT = ( pos.z - depth_offset ) / 1024.0;
+					` : '' )+`
 				}	
 			`
 			});

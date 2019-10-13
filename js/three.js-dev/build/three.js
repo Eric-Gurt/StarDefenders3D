@@ -8582,11 +8582,11 @@
 
 		}(),
 
-		setFromObject: function ( object ) {
+		setFromObject: function ( object, update_stuff=true ) {
 
 			this.makeEmpty();
 
-			return this.expandByObject( object );
+			return this.expandByObject( object, update_stuff );
 
 		},
 
@@ -8670,10 +8670,11 @@
 
 			var v1 = new Vector3();
 
-			return function expandByObject( object ) {
+			return function expandByObject( object, update_stuff=true ) {
 
 				var scope = this;
 
+				if ( update_stuff ) // Custom
 				object.updateMatrixWorld( true );
 
 				object.traverse( function ( node ) {
@@ -8699,18 +8700,27 @@
 
 						} else if ( geometry.isBufferGeometry ) {
 
-							var attribute = geometry.attributes.position;
+							if ( geometry.boundingBox !== null ) // Custom
+							{
+								scope.union( geometry.boundingBox );
+								
+								scope.translate( object.position );
+							}
+							else
+							{
+								var attribute = geometry.attributes.position;
 
-							if ( attribute !== undefined ) {
+								if ( attribute !== undefined ) {
 
-								for ( i = 0, l = attribute.count; i < l; i ++ ) {
+									for ( i = 0, l = attribute.count; i < l; i ++ ) {
 
-									v1.fromBufferAttribute( attribute, i ).applyMatrix4( node.matrixWorld );
+										v1.fromBufferAttribute( attribute, i ).applyMatrix4( node.matrixWorld );
 
-									scope.expandByPoint( v1 );
+										scope.expandByPoint( v1 );
+
+									}
 
 								}
-
 							}
 
 						}
@@ -37787,7 +37797,8 @@
 
 			//this.gain.gain.value = value;
 			this.value = value; // Custom
-			this.gain.gain.setTargetAtTime( value, this.context.currentTime, 0.015 ); // Custom
+			//this.gain.gain.setTargetAtTime( value, this.context.currentTime, 0.015 ); // Custom
+			this.gain.gain.setTargetAtTime( value, this.context.currentTime, smooth ); // Custom
 			
 			return this;
 

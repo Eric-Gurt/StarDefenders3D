@@ -21,13 +21,13 @@ class main
 		
 		if ( mode === 1 )
 		{
-			trace('+');
+			//trace('+');
 			t.myTimer = setInterval( function() { main.ShowSliderNumber( t, 0 ) }, 50 );
 		}
 		
 		if ( mode === 2 )
 		{
-			trace('-');
+			//trace('-');
 			clearInterval( t.myTimer );
 		}
 	}
@@ -50,6 +50,22 @@ class main
 		main.PlaySongIfNeeded();
 		
 		sdSound.SetSoundVolume( main.song_channel, v );
+	}
+	static get first_person_camera()
+	{
+		return sdCharacter.first_person_view ? 1 : 0;
+	}
+	static set first_person_camera( v )
+	{
+		var new_v = ( v === 1 );
+		if ( new_v !== sdCharacter.first_person_view )
+		{
+			sdCharacter.first_person_view = new_v;
+
+			var c = main.my_character;
+			main.SetActiveCharacter( null );
+			main.SetActiveCharacter( c );
+		}
 	}
 	static PlaySongIfNeeded( rand )
 	{
@@ -88,6 +104,9 @@ class main
 		main.WEAPON_SNIPER = 3;
 		main.WEAPON_SPARK = 4;
 		main.WEAPON_BUILD1 = 5;
+		main.WEAPON_SAW = 6;
+		
+		main.allowed_ai_guns = [ 0, 1, 2, 3, 4, 6 ];
 		
 		main.date_match_started = new Date();
 		
@@ -151,48 +170,54 @@ class main
 	
 		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.5 );
 	
-		//main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 1.5 );
-		main.lod_ratio = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 2.26 );
+		//main.ai_difficulty = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 1.5 );
+		main.ai_difficulty = Number( localStorage.getItem( 'ai_difficulty' ) || 0.5 );
 	
 		main.fov = Number( localStorage.getItem( 'stardefenders_fov' ) || 103 ); // 90
 		
-		main.dynamic_light_intensity = Number( localStorage.getItem( 'stardefenders_dynamic_light_intensity' ) || 0.2 );
+		main.dynamic_light_intensity = Number( localStorage.getItem( 'stardefenders_dynamic_light_intensity' ) || 0.25 );
 		
 		main.sound_volume = Number( localStorage.getItem( 'stardefenders_sound_volume' ) || 0.1 ); // Getter
 		
 		main._music_volume = Number( localStorage.getItem( 'stardefenders_music_volume' ) || 0.4 ); // Getter
 		
+		main.gun_x_offset = Number( localStorage.getItem( 'stardefenders_gun_x_offset' ) || 2 ); 
+		main.gun_y_offset = Number( localStorage.getItem( 'stardefenders_gun_y_offset' ) || -3.5 );
+		main.gun_z_offset = Number( localStorage.getItem( 'stardefenders_gun_z_offset' ) || -2 ); 
+		main.gun_recoil = Number( localStorage.getItem( 'stardefenders_gun_recoil' ) || 1.2 ); 
+		
+		main.first_person_camera = Number( localStorage.getItem( 'stardefenders_first_person_camera' ) || 1 ); 
+		
+		main.report_damage = Number( localStorage.getItem( 'report_damage' ) || 0 ); 
+		main.low_physics = Number( localStorage.getItem( 'low_physics' ) || 0 ); 
+		
 		setTimeout( function()
 		{
 			document.getElementById('sensitivity').value = main.sensitivity;
-		}, 1000 );
-		setTimeout( function()
-		{
+		
 			document.getElementById('turn_method').value = main.turn_method;
-		}, 1000 );
-		setTimeout( function()
-		{
+		
 			document.getElementById('quality').value = main.pixel_ratio;
-		}, 1000 );
-		setTimeout( function()
-		{
-			document.getElementById('lod').value = main.lod_ratio;
-		}, 1000 );
-		setTimeout( function()
-		{
+		
+			document.getElementById('ai_difficulty').value = main.ai_difficulty;
+		
 			document.getElementById('fov').value = main.fov;
-		}, 1000 );
-		setTimeout( function()
-		{
+		
 			document.getElementById('dynamic_light_intensity').value = main.dynamic_light_intensity;
-		}, 1000 );
-		setTimeout( function()
-		{
+	
 			document.getElementById('sound_volume').value = main.sound_volume;
-		}, 1000 );
-		setTimeout( function()
-		{
+	
 			document.getElementById('music_volume').value = main.music_volume;
+	
+			document.getElementById('gun_x_offset').value = main.gun_x_offset;
+			document.getElementById('gun_y_offset').value = main.gun_y_offset;
+			document.getElementById('gun_z_offset').value = main.gun_z_offset;
+			document.getElementById('gun_recoil').value = main.gun_recoil;
+			
+			document.getElementById('first_person_camera').value = main.first_person_camera;
+			
+			document.getElementById('report_damage').value = main.report_damage;
+			document.getElementById('low_physics').value = main.low_physics;
 		}, 1000 );
 		
 		
@@ -203,7 +228,7 @@ class main
 		
 		main.speed = new THREE.Vector3( 0, 0, 0 );
 		
-		main.material_lod = null;
+		main.materials_with_dyn_light = null;
 		main.voxel_static = null;
 		
 		main.chat_messages = [];
@@ -375,7 +400,8 @@ class main
 			fragDepth:true, 
 			precision:'lowp',
 			stencil:false, 
-			powerPreference:'high-performance' 
+			powerPreference:'high-performance',
+			antialias: false
 		});
 		sdShaderMaterial.EXT_frag_depth = ( main.renderer.extensions.get('EXT_frag_depth') !== null );
 		
@@ -626,6 +652,11 @@ class main
 				a.r = ~~( a.r * 255 );
 				a.g = ~~( a.g * 255 );
 				a.b = ~~( a.b * 255 );
+				
+				//if ( character === main.my_character )
+				//TTS_Speak( t, 'Google US Male', 0.5, sdSound.MASTER_SOUND_VOLUME * 0.5, 1 );
+				//else
+				TTS_Speak( t, 'Google US Male', 1.5, sdSound.MASTER_SOUND_VOLUME * 0.75 / ( 1 + main.Dist3D( character.x, character.y, character.z, main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z ) / 64 ), 1.2 );
 
 				main.chat_messages.push( '<div><span style="color:rgba('+a.r+','+a.g+','+a.b+',1)">'+from+':</span> '+t+'</div>' );
 			}
@@ -740,6 +771,9 @@ class main
 		else
 		if ( e.keyCode === 54 ) // 6
 		main.action_weapon = main.WEAPON_BUILD1;
+		else
+		if ( e.keyCode === 192 || e.keyCode === 48 ) // ~ or 0
+		main.action_weapon = main.WEAPON_SAW;
 		else
 		if ( e.keyCode === 9 ) // Tab
 		{
@@ -872,6 +906,50 @@ class main
 	static onMouseDown( e )
 	{
 		main.GoFullscreen();
+		
+		if ( e.which === 2 )
+		if ( main.my_character !== null )
+		if ( main.my_character.hea > 0 )
+		{
+			if ( main.my_character.hook_enabled )
+			{
+				main.my_character.hook_enabled = false;
+				sdSound.PlaySound({ sound: lib.blocked_damage, parent_mesh: main.my_character.mesh, volume: 1, pitch: 2 });
+			}
+			else
+			{
+				//main.my_character.hook_pos;
+				
+				var dx = -main.my_character.look_direction.x * 64;
+				var dy = -main.my_character.look_direction.y * 64;
+				var dz = -main.my_character.look_direction.z * 64;
+				
+				var morph2 = main.TraceLine( main.my_character.x, 
+											 main.my_character.y + sdCharacter.shoot_offset_y, 
+											 main.my_character.z, 
+											 main.my_character.x+dx, 
+											 main.my_character.y+dy + sdCharacter.shoot_offset_y, 
+											 main.my_character.z+dz, null, 1, 0 );
+				if ( morph2 < 1 )
+				{
+					main.my_character.HookHere( main.my_character.x + dx * morph2, main.my_character.y + dy * morph2 + sdCharacter.shoot_offset_y, main.my_character.z + dz * morph2, 64 * morph2 );
+					/*
+					main.my_character.hook_enabled = true;
+
+					main.my_character.hook_pos.x = main.my_character.x + dx * morph2;
+					main.my_character.hook_pos.y = main.my_character.y + dy * morph2 + sdCharacter.shoot_offset_y;
+					main.my_character.hook_pos.z = main.my_character.z + dz * morph2;
+					
+					main.my_character.hook_di = 64 * morph2;
+					
+					sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK, x:main.my_character.hook_pos.x, y:main.my_character.hook_pos.y, z:main.my_character.hook_pos.z, tox:0, toy:0, toz:0 });
+					
+					sdSound.PlaySound({ sound: lib.blocked_damage, position: main.my_character.hook_pos.clone(), volume: 1 });*/
+				}
+				else
+				sdSound.PlaySound({ sound: lib.blocked_damage, parent_mesh: main.my_character.mesh, volume: 1, pitch: 0.5 });
+			}
+		}
 		
 		if ( e.which === 1 )
 		main.hold_fire = 1;
@@ -1209,8 +1287,8 @@ class main
 		main.main_camera.aspect = DisplayedScreen.width / DisplayedScreen.height;
 		main.main_camera.updateProjectionMatrix();
 
-		for ( var i = 0; i < main.material_lod.length; i++ )
-		main.material_lod[ i ].ScreenUpdated();
+		//for ( var i = 0; i < main.materials_with_dyn_light.length; i++ )
+		//main.materials_with_dyn_light[ i ].ScreenUpdated();
 
 		sdAtom.material.ScreenUpdated();
 
@@ -1275,7 +1353,7 @@ class main
 		sdAtom.pseudo_atoms.length = 0;
 		sdChain.chains.length = 0;
 		
-		main.material_lod = [];
+		main.materials_with_dyn_light = [];
 		main.voxel_static = [];
 		
 		sdLamp.lamps = [];
@@ -1351,11 +1429,11 @@ class main
 		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
 		var level_chunks_z = ~~( 4 * 32 / chunk_size ); // 4
 		*/
-		var level_chunks_x = ~~( 14 * 32 / chunk_size ); // 10
-		var level_chunks_y = ~~( 2 * 32 / chunk_size ); // 3
+		var level_chunks_x = ~~( 8 * 32 / chunk_size ); // 10
+		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
 		var level_chunks_z = ~~( 8 * 32 / chunk_size ); // 4
-		/*
-		if ( confirm('Build simple world? (not for multiplayer)') )
+		
+		/*if ( confirm('Build simple world? (not for multiplayer)') )
 		{
 			level_chunks_x = 1;
 			level_chunks_y = 2;
@@ -1371,7 +1449,7 @@ class main
 			var max_y = size_y / block_height - 1;
 			var max_z = size_z / 32 - 1;
 			
-			if ( x === 0 || z === 0 || x === max_x || z === max_z )
+			/*if ( x === 0 || z === 0 || x === max_x || z === max_z )
 			{
 				return false;
 			}
@@ -1383,7 +1461,7 @@ class main
 			
 				return false;
 			}
-			
+			*/
 			if ( y === max_y )
 			return false;
 		
@@ -1431,8 +1509,8 @@ class main
 		var edge_density = 0.5;
 		//var sky_ground_contrast = 0.05;
 		//var extra_sky_ground_contrast = 0.025;
-		var sky_ground_contrast = 0.1;
-		var extra_sky_ground_contrast = 0.1;
+		var sky_ground_contrast = 0.05;
+		var extra_sky_ground_contrast = 0.05;
 		
 		var horizon_offset = 0.35; // More = lower // 0
 		
@@ -1752,15 +1830,15 @@ class main
 		main.fog_color = c._uint;
 		var terrain_color = new pb2HighRangeColor().rand_pattern();
 		main.renderer.setClearColor( main.fog_color );
-		for ( var i = 0; i < 4; i++ )
+		/*for ( var i = 0; i < 4; i++ )
 		{
-			if ( main.material_lod.length === i )
-			main.material_lod[ i ] = sdShaderMaterial.CreateMaterial( texture, 'particle' );
+			if ( main.materials_with_dyn_light.length === i )
+			main.materials_with_dyn_light[ i ] = sdShaderMaterial.CreateMaterial( texture, 'particle' );
 		
-			main.material_lod[ i ].uniforms.fog.value = new THREE.Color( main.fog_color );
-			main.material_lod[ i ].uniforms.dot_scale.value = Math.pow( 2, i * 0.75 );
-		}
-		sdAtom.init(); // updates fog
+			main.materials_with_dyn_light[ i ].uniforms.fog.value = new THREE.Color( main.fog_color );
+			main.materials_with_dyn_light[ i ].uniforms.dot_scale.value = Math.pow( 2, i * 0.75 );
+		}*/
+		
 		
 		sdAtom.RandomizeStars();
 		
@@ -1770,7 +1848,7 @@ class main
 		}
 		
 		main.RandomizeGroundColor();
-		var g = new THREE.PlaneBufferGeometry( 800, 800, 16, 16 );
+		var g = new THREE.PlaneBufferGeometry( 800, 800, 32, 32 );
 		var m = sdShaderMaterial.CreateMaterial( main.world_end_texture, 'sprite' );
 		m.uniforms.fog.value = new THREE.Color( main.fog_color );
 		m.uniforms.fog_intensity.value = 1;
@@ -1862,7 +1940,7 @@ class main
 				
 				for ( var z = 0; z < level_grid[ x ][ y ].length; z++ )
 				{
-					level_grid[ x ][ y ][ z ] = new Entry( AllowLevelBuildingAt( x, y, z, true ) && ( sdRandomPattern.random() < 0.5 ) ); // 0.25
+					level_grid[ x ][ y ][ z ] = new Entry( AllowLevelBuildingAt( x, y, z, true ) && ( sdRandomPattern.random() < 0.35 ) ); // 0.5
 				}
 			}
 		}
@@ -1877,7 +1955,7 @@ class main
 			{
 				// Make corridors higher
 				if ( !WallExists( x, y-1, z ) && WallExists( x, y-2, z ) )
-				if ( sdRandomPattern.random() < 0.125 )
+				if ( sdRandomPattern.random() < 0.2 ) // 0.125
 				level_grid[ x ][ y ][ z ].is_wall = false;
 			}
 			else
@@ -2814,7 +2892,7 @@ class main
 		{
 			var sub_geom = new THREE.BufferGeometry();
 			var vertices = sub_geom.initVertexData( false, chunk_size * chunk_size * chunk_size * 3 );
-			var rgba = sub_geom.initRGBAData( false, chunk_size * chunk_size * chunk_size * 4 );
+			var rgba = []; rgba.length = chunk_size * chunk_size * chunk_size * 4; // sub_geom.initRGBAData( false, chunk_size * chunk_size * chunk_size * 4 );
 			var uvs2 = sub_geom.initSecondaryUVDataOpacity( false, chunk_size * chunk_size * chunk_size ); // Brigtness, due to lighting. Negative values will mean voxel is deep inside and should not be rendered at all
 
 			var dots_total = 0;
@@ -2851,7 +2929,10 @@ class main
 			}
 
 			sub_geom.updateVertexDataTyped( vertices );
-			sub_geom.updateRGBADataTyped( rgba );
+			
+			//sub_geom.updateRGBADataTyped( rgba );
+			sub_geom.updateRGBADataTyped( sub_geom.initRGBAData( false, chunk_size * chunk_size * chunk_size * 4 ) ); // Remove later
+			
 			sub_geom.updateSecondaryUVDataTyped( uvs2 );
 			
 			sub_geom.boundingBox = new THREE.Box3( new THREE.Vector3( xx * chunk_size, yy * chunk_size, zz * chunk_size ),
@@ -2859,8 +2940,8 @@ class main
 			sub_geom.boundingSphere = new THREE.Sphere( new THREE.Vector3( ( xx + 0.5 ) * chunk_size, ( yy + 0.5 ) * chunk_size, ( zz + 0.5 ) * chunk_size ),
 														Math.sqrt( 3 * Math.pow( chunk_size / 2, 2 ) ) );
 
-
-			var mesh = new THREE.Points( sub_geom, main.material_lod[ 0 ] );
+			/*
+			var mesh = new THREE.Points( sub_geom, main.materials_with_dyn_light[ 0 ] );
 			mesh.position.x = 0.5;
 			mesh.position.y = 0.5;
 			mesh.position.z = 0.5;
@@ -2868,8 +2949,8 @@ class main
 			var lod = new THREE.Group();
 			lod.add( mesh );
 			main.scene.add( lod );
-			
-			var chunk = new Chunk( xx, yy, zz, lod );
+			*/
+			var chunk = new Chunk( xx, yy, zz, null );
 			
 			chunk.dots_total = dots_total;
 			
@@ -2899,7 +2980,7 @@ class main
 			main.voxel_static.push( chunk );
 		}
 		
-		
+		sdAtom.init(); // updates fog
 
 		main.wind_channel = new SimplePanVolumeDriver();
 		sdSound.PlaySound({ sound: lib.wind, parent_mesh: main.main_camera, channel:main.wind_channel, volume: 0, loop: true });
@@ -3250,9 +3331,16 @@ class main
 	
 	static GetEntityBrightness( x, y, z )
 	{
-		if ( Math.abs( main.GetEntityBrightness_lx - x ) <= 2 )
-		if ( Math.abs( main.GetEntityBrightness_ly - y ) <= 2 )
-		if ( Math.abs( main.GetEntityBrightness_lz - z ) <= 2 )
+		if ( main.mobile )
+		return 1;
+		
+		var di = main.Dist3D( main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z, x, y, z );
+
+		var cache_size = ~~Math.max( 2, di * 0.1 ); // 2
+		
+		if ( Math.abs( main.GetEntityBrightness_lx - x ) <= cache_size )
+		if ( Math.abs( main.GetEntityBrightness_ly - y ) <= cache_size )
+		if ( Math.abs( main.GetEntityBrightness_lz - z ) <= cache_size )
 		{
 			return main.GetEntityBrightness_lr;
 		}
@@ -3647,7 +3735,7 @@ class main
 		
 		TryToRestoreVariables(); ////////
 		
-		var y_steps_to_do = 8;
+		var y_steps_to_do = 8;//Math.ceil( 8 / ((to_x-from_x)*(to_z-from_z)/32/32) ); // 8
 		//var y_steps_to_do = 16 * 16*16 / ( (to_x-from_x)*(to_z-from_z) );
 		
 		for ( y; y >= 0; y-- )
@@ -4338,11 +4426,24 @@ class main
 	}
 	static EraseAllDynamicLights()
 	{
-		for ( var i = 0; i < main.material_lod.length; i++ )
+		for ( var i = 0; i < main.materials_with_dyn_light.length; i++ )
 		{
+			var spawn_quick_uniform_links = ( main.materials_with_dyn_light[ i ].quick_uniform_links === undefined );
+			
+			if ( spawn_quick_uniform_links )
+			{
+				main.materials_with_dyn_light[ i ].quick_uniform_links = [];
+				main.materials_with_dyn_light[ i ].quick_uniform_links.length = sdShaderMaterial.max_lamps;
+			}
+			
 			for ( var m = 0; m < sdShaderMaterial.max_lamps; m++ )
 			{
-				var c = main.material_lod[ i ].uniforms[ 'lamp' + m + '_color' ].value;
+				if ( spawn_quick_uniform_links )
+				main.materials_with_dyn_light[ i ].quick_uniform_links[ m ] = main.materials_with_dyn_light[ i ].uniforms[ 'lamp' + m + '_color' ];
+				
+				var c = main.materials_with_dyn_light[ i ].quick_uniform_links[ m ].value;
+				
+				//var c = main.materials_with_dyn_light[ i ].uniforms[ 'lamp' + m + '_color' ].value;
 				c.r = 0;
 				c.g = 0;
 				c.b = 0;
@@ -4355,8 +4456,8 @@ class main
 	{
 		for ( var m = 0; m < sdShaderMaterial.max_lamps; m++ )
 		{
-			mat.uniforms[ 'lamp' + m + '_color' ] = main.material_lod[ 0 ].uniforms[ 'lamp' + m + '_color' ];
-			mat.uniforms[ 'lamp' + m + '_pos' ] = main.material_lod[ 0 ].uniforms[ 'lamp' + m + '_pos' ];
+			mat.uniforms[ 'lamp' + m + '_color' ] = main.materials_with_dyn_light[ 0 ].uniforms[ 'lamp' + m + '_color' ];
+			mat.uniforms[ 'lamp' + m + '_pos' ] = main.materials_with_dyn_light[ 0 ].uniforms[ 'lamp' + m + '_pos' ];
 		}
 	}
 	static DrawDynamicLight( x, y, z, r, g, b )
@@ -4421,13 +4522,13 @@ class main
 		main.dynamic_lamp_max_value[ insert_at ] = max_val;
 		//console.log('angleto = '+main.dynamic_lamp_cam_angles[ insert_at ] );
 		
-		for ( var i = 0; i < main.material_lod.length; i++ )
+		for ( var i = 0; i < main.materials_with_dyn_light.length; i++ )
 		{
-			var c = main.material_lod[ i ].uniforms[ 'lamp' + insert_at + '_color' ].value;
+			var c = main.materials_with_dyn_light[ i ].uniforms[ 'lamp' + insert_at + '_color' ].value;
 			c.r = r;
 			c.g = g;
 			c.b = b;
-			var v = main.material_lod[ i ].uniforms[ 'lamp' + insert_at + '_pos' ].value;
+			var v = main.materials_with_dyn_light[ i ].uniforms[ 'lamp' + insert_at + '_pos' ].value;
 			v.x = x;
 			v.y = y;
 			v.z = z;
@@ -4454,7 +4555,7 @@ class main
 		if ( main.hit_pulse < 1 )
 		main.hit_pulse = Math.min( 1, main.hit_pulse + GSPEED * 0.01 );
 	
-		main.composer.renderer.domElement.style.filter = "brightness(" + Math.round( Math.min( 2, main.hit_pulse ) * 100 ) + "%)";
+		main.composer.renderer.domElement.style.filter = "brightness(" + Math.round( Math.min( 1.5, main.hit_pulse ) * 100 ) + "%)";
 		
 		if ( main.zoom_intensity_target !== main.zoom_intensity )
 		{
@@ -4750,6 +4851,8 @@ class main
 			var _frustum = new THREE.Frustum();
 			_frustum.setFromMatrix( _projScreenMatrix );
 			
+			var box3 = new THREE.Box3();
+			
 			while ( active.length > 0 )
 			{
 				var active_one = active[ 0 ];
@@ -4757,13 +4860,14 @@ class main
 				{
 					var nearby_one = active_one.nearby[ n ];
 					
-					if ( !_frustum.intersectsBox( nearby_one.mesh.children[ 0 ].geometry.boundingBox ) )
+					//if ( !_frustum.intersectsBox( nearby_one.mesh.children[ 0 ].geometry.boundingBox ) )
+					if ( nearby_one.bit_mesh === null || !_frustum.intersectsBox( box3.setFromObject( nearby_one.bit_mesh, false ) ) )
 					continue;
 				
 					if ( nearby_one.visible_timer < default_visible_timer )
 					{
 						
-						var tot_rays = main.FastCeil( 20 * ( chunk_size / 32 ) * Math.min( 1, 1 - nearby_one.visible_timer / default_visible_timer ) );
+						var tot_rays = main.FastCeil( 10 * ( chunk_size / 32 ) * Math.min( 1, 1 - nearby_one.visible_timer / default_visible_timer ) );
 						
 						if ( tot_rays === 0 )
 						continue;
@@ -4799,6 +4903,16 @@ class main
 							var y = Math.random() * ( y2 - y1 ) + y1;
 							var z = Math.random() * ( z2 - z1 ) + z1;
 							
+							if ( tot_rays > 4 )
+							{
+								if ( r === 0 )
+								{
+									x = 0.5 * ( x2 - x1 ) + x1;
+									y = 0.5 * ( y2 - y1 ) + y1;
+									z = 0.5 * ( z2 - z1 ) + z1;
+								}
+							}
+							
 							if ( main.main_camera.position.y > main.level_chunks_y * chunk_size )
 							if ( nearby_one.yy === main.level_chunks_y - 1 )
 							y = y1 = y2 = chunk_size;
@@ -4827,7 +4941,7 @@ class main
 												( nearby_one.yy ) * chunk_size + y + 0.5, 
 												( nearby_one.zz ) * chunk_size + z + 0.5,
 												nearby_one,
-												3 ) === 1 )
+												5 ) === 1 )//3 ) === 1 )
 							{
 								nearby_one.visible_timer = default_visible_timer;
 								active.push( nearby_one );
@@ -4841,14 +4955,14 @@ class main
 				active.shift();
 			}
 			
-			function ChoseLODMesh( chunk )
+			/*function ChoseLODMesh( chunk )
 			{
 				var di = main.Dist3D(	( chunk.xx + 0.5 ) * main.chunk_size, 
 										( chunk.yy + 0.5 ) * main.chunk_size, 
 										( chunk.zz + 0.5 ) * main.chunk_size,
 										main.main_camera.position.x,
 										main.main_camera.position.y,
-										main.main_camera.position.z ) / ( 32 * 6 * main.lod_ratio );
+										main.main_camera.position.z ) / ( 32 * 6 * main.ai_difficulty );
 				
 				di = Math.pow( di, 1.5 );
 				
@@ -4860,29 +4974,51 @@ class main
 				{
 					meshes[ i ].visible = ( i === best_i );
 				}
-			}
+			}*/
+			
+			var update_lods = true;
+			var t0 = Date.now();
 			
 			for ( var i = 0; i < main.voxel_static.length; i++ )
 			{
 				var chunk = main.voxel_static[ i ];
 				
+				if ( chunk.bit_mesh === null )
+				{
+					chunk.ChoseLODMesh( chunk );
+					continue;
+				}
+				
 				if ( chunk.visible_timer > 0 )
 				{
 					chunk.visible_timer -= GSPEED;
-					if ( !chunk.mesh.visible )
+					//if ( !chunk.mesh.visible )
+					if ( !chunk.bit_mesh.visible )
 					if ( chunk.dots_total > 0 )
-					chunk.mesh.visible = true;
+					chunk.bit_mesh.visible = true;
+					//chunk.mesh.visible = true;
 				
-					ChoseLODMesh( chunk );
+					if ( update_lods )
+					{
+						//ChoseLODMesh( chunk );
+						chunk.ChoseLODMesh( chunk );
+
+						var t1 = Date.now();
+
+						if ( t1 - t0 > 5 ) // ... but make sure it does not take longer than 10 ms (16 ms is 1 frame in case of 60 FPS)
+						update_lods = false;
+					}
 				}
 				else
 				{
-					if ( chunk.mesh.visible )
+					//if ( chunk.mesh.visible )
+					if ( chunk.bit_mesh.visible )
 					{
-						chunk.mesh.visible = false;
+						//chunk.mesh.visible = false;
+						chunk.bit_mesh.visible = false;
 						
-						for ( var c = 0; c < chunk.mesh.children.length; c++ )
-						chunk.mesh.children[ c ].visible = false;
+						//for ( var c = 0; c < chunk.mesh.children.length; c++ )
+						//chunk.mesh.children[ c ].visible = false;
 					}
 				}
 			}
@@ -4907,7 +5043,8 @@ class CoordXYZ
 		this.coord = d;
 	}
 }
-class Chunk
+
+/*class Chunk
 {
 	constructor( xx, yy, zz, mesh )
 	{
@@ -4980,6 +5117,9 @@ class Chunk
 	}
 	GenerateLODModels( upd_vertices=true, upd_rgba=true, upd_brightness_visibility=true )
 	{
+		if ( main.report_damage === 0 )
+		return;
+		
 		var chunk_size = main.chunk_size;
 		var lod = this.mesh;
 		
@@ -5008,7 +5148,7 @@ class Chunk
 			{
 				_sub_geom = new THREE.BufferGeometry();
 				
-				_mesh = new THREE.Points( _sub_geom, main.material_lod[ level ] );
+				_mesh = new THREE.Points( _sub_geom, main.materials_with_dyn_light[ level ] );
 				
 				_vertices = _sub_geom.initVertexData( false, smaller_chunk_size * smaller_chunk_size * smaller_chunk_size * 3 );
 				_rgba = _sub_geom.initRGBAData( false, smaller_chunk_size * smaller_chunk_size * smaller_chunk_size * 4 );
@@ -5116,7 +5256,8 @@ class Chunk
 			uvs2 = _uvs2;
 		}
 	}
-}
+}*/
+										
 main.init_class();
 var pb2_mp = main;
 
@@ -5127,6 +5268,9 @@ game_start.mp3
 pb3_spoiler.mp3
 player_death.mp3
 player_hit.mp3
+player_hit2.mp3
+player_spawn.mp3
+blocked_damage.mp3
 player_step.mp3
 rifle_fire.mp3
 rocket_attached_sound.mp3
@@ -5138,7 +5282,8 @@ sniper.mp3
 wind.mp3
 spark2.mp3
 shotgun.mp3
-reload.mp3`;
+reload.mp3
+headshot.mp3`;
 var sounds = sounds_raw.split('\r').join('').split('\n');
 delete sounds_raw;
 
@@ -5221,6 +5366,109 @@ function LateLoadFileIfNeeded( this_i, callback )
 		}
 	);
 }
+
+// TTS
+var tts_prepared = false;
+var tts_interval = 0;
+var tts_maxquota = 2;
+var tts_quota = tts_maxquota;
+var tts_scheduled_speak = null;
+var tts_loaded = false;
+function TTS_Prepare()
+{
+	if ( !tts_prepared )
+	{
+		tts_prepared = true;
+		
+		_TTS_ready();
+	}
+}
+function _TTS_ready()
+{
+	tts_loaded = true;
+
+	tts_interval = setInterval( function()
+	{
+		if ( tts_quota < tts_maxquota )
+		tts_quota = Math.min( tts_quota + 1, tts_maxquota );
+	}, 500 );
+	
+	if ( tts_scheduled_speak != null )
+	{
+		if ( tts_scheduled_speak[ 4 ] === undefined )
+		tts_scheduled_speak[ 4 ] = 1;
+		
+		TTS_Speak( tts_scheduled_speak[ 0 ], tts_scheduled_speak[ 1 ], tts_scheduled_speak[ 2 ], tts_scheduled_speak[ 3 ], tts_scheduled_speak[ 4 ] );
+		tts_scheduled_speak = null;
+	}
+}
+var synth = window.speechSynthesis;
+var voices = [];
+if (speechSynthesis.onvoiceschanged !== undefined)
+speechSynthesis.onvoiceschanged = function(){ voices = synth.getVoices(); };
+
+function NativeSpeak( text, voice, volume, pitch, rate=1 )
+{
+	if ( synth.pending ) // Chrome did stuck there
+	synth.cancel();
+	
+	voices = synth.getVoices();
+	
+	var utterThis = new SpeechSynthesisUtterance( text );
+	
+	var best_pick = null;
+	
+	var voice_parts = voice.split(';');
+	for ( var i = 0; i < voices.length; i++ ) 
+	for ( var i2 = 0; i2 < voice_parts.length; i2++ ) 
+	if ( voices[ i ].name.trim() === voice_parts[ i2 ].trim() )
+	{
+		best_pick = voices[ i ];
+		i = voices.length;
+		i2 = voice_parts.length;
+		break;
+	}
+
+	if ( best_pick === null )
+	{
+		for ( var i = 0; i < voices	.length; i++ ) 
+		for ( var i2 = 0; i2 < voice_parts.length; i2++ ) 
+		if ( voices[ i ].name.indexOf( voice_parts[ i2 ].trim() ) !== -1 )
+		{
+			best_pick = voices[ i ];
+			i = voices.length;
+			i2 = voice_parts.length;
+			break;
+		}
+	}
+	
+	utterThis.voice = best_pick;
+	
+	utterThis.pitch = pitch;
+	utterThis.rate = rate;
+	utterThis.volume = volume;
+	synth.speak( utterThis );
+}
+function TTS_Speak( text, voice, pitch, volume, rate=1 )
+{
+	if ( tts_loaded )
+	{
+		if ( tts_quota >= 1 )
+		{
+			tts_quota -= 1;
+			
+			if ( text.length > 256 )
+			text = text.substring( 0, 256 );
+			
+			//responsiveVoice.speak( text, voice, { volume: volume * 3.5, pitch: pitch } );
+			NativeSpeak( text, voice, volume * 3.5, pitch, rate );
+		}
+	}
+	else
+	tts_scheduled_speak = [ text, voice, pitch, volume ];
+}
+TTS_Prepare();
+
 
 
 // Prevent occasional history back action

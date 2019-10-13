@@ -10,6 +10,9 @@ class sdBullet
 		sdBullet.ragdoll_knock_scale = 2; // Only bullets. explosions are not influenced
 		
 		sdBullet.local_peer_uid_counter = 0;
+		
+		sdBullet.melee_radius = 5;
+		sdBullet.melee_range = 15;
 	}
 	static CreateBullet( params )
 	{
@@ -84,6 +87,11 @@ class sdBullet
 		this.is_rocket = params.is_rocket || false;
 		this.is_sniper = params.is_sniper || false;
 		this.is_plasma = params.is_plasma || false;
+		this.is_melee = params.is_melee || false;
+		
+		this.world_hits_allowed = this.is_sniper ? 3 : ( this.hp_damage >= 30 ? 2 : 1 );
+		
+		this.melee_time_to_live = 5;
 		
 		this.splash_radius = params.splash_radius;
 		
@@ -137,6 +145,11 @@ class sdBullet
 			this.b = sdSprite.sniper_b;
 		}
 		else
+		if ( this.is_melee )
+		{
+			this.air_friction = 1;
+		}
+		else
 		{
 			this.air_friction = 0.95;
 			//this.dy = -0.05;
@@ -170,13 +183,35 @@ class sdBullet
 		var ty = this.y + this.toy * GSPEED;
 		var tz = this.z + this.toz * GSPEED;
 		
+		if ( this.is_melee )
+		{
+			this.x = this.owner.x;
+			this.y = this.owner.y + sdCharacter.shoot_offset_y;
+			this.z = this.owner.z;
+			
+			tx = this.x - this.owner.look_direction.x * sdBullet.melee_range;
+			ty = this.y - this.owner.look_direction.y * sdBullet.melee_range;
+			tz = this.z - this.owner.look_direction.z * sdBullet.melee_range;
+			
+			this.melee_time_to_live -= GSPEED;
+			
+			if ( this.owner.hea <= 0 )
+			this.melee_time_to_live = 0;
+		}
+		
 		var morph = main.TraceLine( this.x, this.y, this.z, tx, ty, tz, null, 0.5, 0 );
 		
 		if ( morph === 1 )
 		{
 			if ( !main.MP_mode || this.owner === main.my_character )
-			if ( this.DoEntityDamage( this.x, this.y, this.z, tx, ty, tz ) )
-			return true;
+			{
+				if ( this.DoEntityDamage( this.x, this.y, this.z, tx, ty, tz ) )
+				return true;
+			
+				if ( this.is_melee )
+				if ( this.melee_time_to_live <= 0 )
+				return true;
+			}
 					
 			this.visual_x += tx - this.x;
 			this.visual_y += ty - this.y;
@@ -211,23 +246,40 @@ class sdBullet
 					if ( this.is_sniper )
 					main.WorldPaintDamage( tx, ty, tz, 4.5 );
 					else
+					if ( this.is_melee )
+					main.WorldPaintDamage( tx, ty, tz, 3.5 );
+					else
 					main.WorldPaintDamage( tx, ty, tz, 1.5 );
 					
-					sdSprite.CreateSprite({ type: this.is_sniper ? sdSprite.TYPE_SNIPER_HIT : sdSprite.TYPE_SPARK, x:tx, y:ty, z:tz });
+					sdSprite.CreateSprite({ type: this.is_sniper || this.is_melee ? sdSprite.TYPE_SNIPER_HIT : sdSprite.TYPE_SPARK, x:tx, y:ty, z:tz });
 					
 					sdSync.MP_SendEvent( sdSync.COMMAND_I_BULLET_HIT_WORLD, tx, ty, tz, this.is_sniper ? 1 : 0, vol );
 				}
-
-				return true;
+				
+				this.world_hits_allowed--;
+				if ( this.world_hits_allowed <= 0 )
+				{
+					return true;
+				}
+				else
+				{
+					this.hp_damage *= 0.666;
+					this.hp_damage_head *= 0.666;
+					this.tox *= 0.666;
+					this.toy *= 0.666;
+					this.toz *= 0.666;
+					
+				}
 			}
 		}
 		
 		if ( this.is_rocket && !this.is_plasma )
 		{
 			this.trail_spawn += GSPEED;
-			if ( this.trail_spawn > 2 )
+			//if ( this.trail_spawn > 2 )
+			if ( this.trail_spawn > 1.5 )
 			{
-				this.trail_spawn = this.trail_spawn % 2;
+				this.trail_spawn = this.trail_spawn % 1.5;
 				
 				var bx = this.x;
 				var by = this.y;
@@ -295,12 +347,9 @@ class sdBullet
 		
 		if ( !main.MP_mode || this.owner === main.my_character )
 		{
-			if ( this.x < -main.world_end_xyz || this.x > main.level_chunks_x * main.chunk_size + main.world_end_xyz )
-			return true;
-		
-		
-			//if ( this.y < main.world_end_y || this.y > main.level_chunks_y * main.chunk_size + main.world_end_xyz )
+			//if ( this.x < -main.world_end_xyz || this.x > main.level_chunks_x * main.chunk_size + main.world_end_xyz )
 			//return true;
+		
 			if ( this.x < 0 || this.z < 0 || this.x > main.level_chunks_x * main.chunk_size || this.z > main.level_chunks_z * main.chunk_size )
 			{
 				var in_game_x = Math.max( 0, Math.min( this.x, main.level_chunks_x * main.chunk_size ) );
@@ -309,7 +358,7 @@ class sdBullet
 				var di_out = main.Dist3D( in_game_x, in_game_z, 0, this.x, this.z, 0 );
 
 				if ( this.y < di_out )		
-				while ( true ) // We need accurate position so enemies that run on the edge can be hit with splash damage
+				while ( true ) // We need accurate position so enemies that run on the edge can be hit with splash damage. This is not accurate either by the way - we sould have backward move according to bullet velocity (that can lead into endless loop)
 				{
 					var di_out = main.Dist3D( in_game_x, in_game_z, 0, this.x, this.z, 0 );
 
@@ -337,8 +386,12 @@ class sdBullet
 			}
 		
 		
-			if ( this.z < -main.world_end_xyz || this.z > main.level_chunks_z * main.chunk_size + main.world_end_xyz )
+			if ( this.y < main.world_end_y || this.y > main.level_chunks_y * main.chunk_size + main.world_end_xyz )
 			return true;
+		
+		
+			//if ( this.z < -main.world_end_xyz || this.z > main.level_chunks_z * main.chunk_size + main.world_end_xyz )
+			//return true;
 		}
 	
 		this.lx = this.x;
@@ -350,11 +403,18 @@ class sdBullet
 	DoEntityDamage( fx, fy, fz, tx, ty, tz )
 	{
 		var impact_radius = sdAtom.atom_scale * 2; // Atom's radius + bullet's radius
+		var impact_radius_guns = sdAtom.atom_scale; // Should be always smaller than above or else bounds won't work properly
 		
+		if ( this.is_melee )
+		{
+			impact_radius += sdBullet.melee_radius;
+		}
+		else
 		if ( main.mobile )
 		impact_radius += 5;
 		
 		var impact_radius_pow2 = impact_radius * impact_radius;
+		var impact_radius_guns_pow2 = impact_radius_guns * impact_radius_guns;
 		
 		var best_hit = null;
 		var best_hit_i = -1;
@@ -385,8 +445,8 @@ class sdBullet
 			if ( a.parent === this.owner )
 			continue;
 		
-			if ( a.material === sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
-			continue;
+			//if ( a.material === sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
+			//continue;
 			
 			if ( a.removed )
 			continue;
@@ -413,8 +473,21 @@ class sdBullet
 				
 				if ( main.Dist3D_Vector_pow2( bx-ax, by-ay, bz-az ) <= impact_radius_pow2 )
 				{
+					if ( a.material === sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
+					{
+						if ( main.Dist3D_Vector_pow2( bx-ax, by-ay, bz-az ) > impact_radius_guns_pow2 )
+						continue;
+					}
+					
 					if ( best_hit_morph > morph )
 					{
+						
+						if ( this.is_melee )
+						{
+							if ( main.Dist3D( this.owner.x, this.owner.y + sdCharacter.shoot_offset_y, this.owner.z, a.x, a.y, a.z ) > sdBullet.melee_range )
+							continue;
+						}
+						
 						best_hit = a;
 						best_hit_i = i;
 						best_hit_morph = morph;
@@ -467,9 +540,15 @@ class sdBullet
 		t.parent.toz += toz;
 		
 		if ( t.material === sdAtom.MATERIAL_ALIVE_PLAYER_GUN || t.material === sdAtom.MATERIAL_GIB_GUN )
-		sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK, x:t.x, y:t.y, z:t.z, tox:(tox+t.tox)/2, toy:(toy+t.toy)/2, toz:(toz+t.toz)/2 });
+		{
+			sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK, x:t.x, y:t.y, z:t.z, tox:(tox+t.tox)/2, toy:(toy+t.toy)/2, toz:(toz+t.toz)/2 });
+			
+			sdSound.PlaySound({ sound: lib.blocked_damage, position: new THREE.Vector3( t.x, t.y, t.z ), volume: Math.min( 4, hp_damage / 50 ) });
+		}
 		else
-		sdSprite.CreateSprite({ type: sdSprite.TYPE_BLOOD, x:t.x, y:t.y, z:t.z, tox:(tox+t.tox)/2, toy:(toy+t.toy)/2, toz:(toz+t.toz)/2 });
+		{
+			//sdSprite.CreateSprite({ type: sdSprite.TYPE_BLOOD, x:t.x, y:t.y, z:t.z, tox:(tox+t.tox)/2, toy:(toy+t.toy)/2, toz:(toz+t.toz)/2 }); Moved lower
+		}
 	
 		if ( bullet.is_sniper )
 		{
@@ -488,12 +567,24 @@ class sdBullet
 			var dmg = 0;
 			
 			if ( t.material === sdAtom.MATERIAL_ALIVE_PLAYER )
-			dmg = hp_damage;
-			//dmg = bullet.hp_damage;
+			{
+				dmg = hp_damage;
+				//dmg = bullet.hp_damage;
+			}
 			else
 			if ( t.material === sdAtom.MATERIAL_ALIVE_PLAYER_HEAD )
-			dmg = hp_damage_head;
-			//dmg = bullet.hp_damage_head;
+			{
+				dmg = hp_damage_head;
+				//dmg = bullet.hp_damage_head;
+				
+				//if ( bullet.owner === main.my_character )
+				//sdSound.PlaySound({ sound: lib.headshot, position:new THREE.Vector3(t.x,t.y,t.z), volume: 5 / 180 * hp_damage_head });
+			}
+			else
+			if ( t.material === sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
+			{
+				dmg = sdByteShifter.approx( hp_damage * 0.1 );
+			}
 			
 			if ( t.material === sdAtom.MATERIAL_GIB )
 			ragdoll_damage_done = hp_damage * sdAtom.atom_hp_damage_scale_bullets;
@@ -503,13 +594,63 @@ class sdBullet
 		
 			//dmg = sdByteShifter.approx( dmg );
 			
+			
+			
+			var simulated_damage = 0;
+			// Do this before DealDamage because that method will convert everything into gibs
+			if ( t.material === sdAtom.MATERIAL_ALIVE_PLAYER )
+			simulated_damage = hp_damage;
+			else
+			if ( t.material === sdAtom.MATERIAL_ALIVE_PLAYER_HEAD )
+			simulated_damage = hp_damage_head;
+			else
+			if ( t.material === sdAtom.MATERIAL_GIB )
+			simulated_damage = hp_damage * 0.5;
+	
+	
+			
 			if ( dmg > 0 )
 			{	
 				t.parent.DealDamage( dmg, bullet.owner, t.x, t.y, t.z );
 
 				damage_done = dmg * sdAtom.atom_hp_damage_scale_bullets;
 			}
+			
+			if ( simulated_damage > 0 )
+			{
+				sdSound.PlaySound({ sound: lib.headshot, position:new THREE.Vector3(t.x,t.y,t.z), volume: 7 / 140 * Math.min( 140, simulated_damage ) });
+				
+				var parts = simulated_damage / 4;
+				for ( var i = 0; i < parts; i++ )
+				{
+					var r = new THREE.Vector3();
+					main.SetAsRandom3D( r );
+
+					var rr = Math.random() * simulated_damage / 100;
+
+					var d = Math.random() - 0.5;
+					sdSprite.CreateSprite({ type: sdSprite.TYPE_BLOOD, x:t.x, y:t.y, z:t.z, 
+						tox:(tox*d+t.tox)/2 + r.x * rr, 
+						toy:(toy*d+t.toy)/2 + r.y * rr, 
+						toz:(toz*d+t.toz)/2 + r.z * rr });
+					
+					// Paint the melee weapon in red?
+					if ( bullet.is_melee )
+					{
+						var morph = 0.1;
+
+						var a = bullet.owner.atoms[ sdCharacter.ATOMS_SAW ][ ~~( Math.random() * bullet.owner.atoms[ sdCharacter.ATOMS_SAW ].length ) ];
+
+						a.r = Math.max( 0, a.r * ( 1 - morph * 0.75 ) );
+						a.g = Math.max( 0, a.g * ( 1 - morph * 2 ) );
+						a.b = Math.max( 0, a.b * ( 1 - morph * 2 ) );
+						a.glowing *= ( 1 - morph * 0.75 ) ;
+					}
+				}
+			}
 		}
+		
+		
 		
 		for ( var i = 0; i < sdAtom.atoms.length; i++ )
 		{
@@ -603,7 +744,8 @@ class sdBullet
 		
 		sdSprite.CreateSprite({ type: sdSprite.TYPE_EXPLOSION, x:x, y:y, z:z, size:-b.splash_radius, r:b.r, g:b.g, b:b.b });
 		
-		var hit_radius = 20;
+		//var hit_radius = 20;
+		var hit_radius = b.splash_radius * 5;
 		var hit_radius_pow2 = hit_radius * hit_radius;
 		
 		var owner_cloud = []; // Pointer is copied for case of removal? Also for sync
@@ -632,6 +774,7 @@ class sdBullet
 			var di_pow2 = main.Dist3D_Vector_pow2( x-a.x, y-a.y, z-a.z );
 			
 			if ( di_pow2 < hit_radius_pow2 )
+			if ( main.TraceLine( x, y, z, a.x, a.y, a.z, null, 1, 0 ) >= 1 ) // After explosion
 			{
 				var di = Math.sqrt( di_pow2 );
 				
@@ -674,7 +817,17 @@ class sdBullet
 								var cloud_i = owner_cloud.indexOf( a.parent );
 
 								if ( b.owner !== a.parent ) // Could be more fun if no self-damage
-								owner_cloud_damage[ cloud_i ] += dmg;
+								{
+									owner_cloud_damage[ cloud_i ] += dmg;
+
+									if ( Math.random() < 0.05 * knock_power * power )
+									{
+										sdSprite.CreateSprite({ type: sdSprite.TYPE_BLOOD, x:a.x, y:a.y, z:a.z, 
+										tox:(dx * knock_power * power + a.tox)/2, 
+										toy:(dy * knock_power * power + a.toy)/2, 
+										toz:(dz * knock_power * power + a.toz)/2 });
+									}
+								}
 
 								//owner_cloud_tox[ cloud_i ] += dx * knock_power * power / sdCharacter.atoms_per_player; // Copy [ 2 / 2 ]
 								//owner_cloud_toy[ cloud_i ] += dy * knock_power * power / sdCharacter.atoms_per_player;
@@ -698,7 +851,7 @@ class sdBullet
 					
 					if ( damage_done > 0 )
 					a.hp -= damage_done;
-
+				
 					//if ( a.r <= 0.25 )
 					//if ( a.g <= 0.25 )
 					//if ( a.b <= 0.25 )
@@ -757,6 +910,11 @@ class sdBullet
 			if ( owner_cloud_damage[ i ] > 0 )
 			{
 				owner_cloud_damage[ i ] = sdByteShifter.approx( owner_cloud_damage[ i ] );
+
+				
+				//sdSound.PlaySound({ sound: lib.headshot, position:new THREE.Vector3(b.x,b.y,b.z), volume: 7 / 180 * owner_cloud_damage[ i ] });
+				sdSound.PlaySound({ sound: lib.headshot, position:new THREE.Vector3(b.x,b.y,b.z), volume: 7 / 140 * Math.min( 140, owner_cloud_damage[ i ] ) });
+
 
 				// Send earlier as well
 				if ( main.MP_mode )

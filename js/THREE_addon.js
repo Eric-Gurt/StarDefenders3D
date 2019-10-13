@@ -51,9 +51,9 @@ THREE.BufferGeometry.prototype.updateVertexDataTyped = function ( replacement, c
 
 
 
-THREE.BufferGeometry.prototype.initUVData = function ( dynamic )
+THREE.BufferGeometry.prototype.initUVData = function ( dynamic, chunk_size=0 )
 {
-	var buffer = new THREE.BufferAttribute( new Float32Array( 0 ), 2 );
+	var buffer = new THREE.BufferAttribute( new Float32Array( chunk_size ), 2 );
     this.addAttribute( 'uv', buffer );
 	return buffer.array;
 };

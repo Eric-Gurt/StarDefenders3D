@@ -31,26 +31,52 @@ class sdAI
 	
 	ResetFavGun()
 	{
-		this.fav_gun = ~~( Math.random() * 5 );
+		//this.fav_gun = ~~( Math.random() * 5 );
+		this.fav_gun = main.allowed_ai_guns[ ~~( Math.random() * main.allowed_ai_guns.length ) ];
 	}
 	
 	ApplyLogic( GSPEED ) // Never return early, because .look_direction must be normalized (or else shots will throw AI into sky)
 	{
-		//return;
+		var c = this.ai;
+		
+		if ( main.ai_difficulty <= 0 )
+		{
+			c.act_x = 0;
+			c.act_y = 0;
+			c.act_fire = 0;
+			c.act_jump = 0;
+			return;
+		}
 		
 		if ( main.mobile )
 		GSPEED *= 0.5;
 		
-		var c = this.ai;
+		
+		var skill_mult = main.ai_difficulty * 2;
+	
+		// Skill boost
+		/*var max_score = 1;
+		for ( var i = 0; i < main.team_scores.length; i++ )
+		max_score = Math.max( max_score, main.team_scores[ i ] );
+	
+		skill_mult *= ( 1 + Math.max( 0, max_score - main.team_scores[ c.team ] ) / 100 );
+		*/
+		GSPEED *= skill_mult;
 		
 		this.control_change_tim -= GSPEED;
 		if ( this.control_change_tim < 0 )
 		{
+			if ( main.ai_difficulty > 0.2 )
 			c.act_x = ~~( Math.random() * 3 ) - 1;
+			else
+			c.act_x = 0;
 			
 			if ( Math.random() < 0.5 )
 			c.act_y = ~~( Math.random() * 3 ) - 1;
 			else
+			c.act_y = -1;
+		
+			if ( this.fav_gun === main.WEAPON_SAW )
 			c.act_y = -1;
 		
 			c.act_sprint = ~~( Math.random() * 2 );
@@ -105,9 +131,9 @@ class sdAI
 					var di = main.Dist3D( targ.x, targ.y, targ.z, 0, 0, 0 );
 					var spread = { x:0, y:0, z:0 };
 					SetAsRandom3D( spread );
-					targ.x += spread.x * di * 0.3;
-					targ.y += spread.y * di * 0.3;
-					targ.z += spread.z * di * 0.3;
+					targ.x += spread.x * di * 0.3 / Math.max( 1, skill_mult );
+					targ.y += spread.y * di * 0.3 / Math.max( 1, skill_mult );
+					targ.z += spread.z * di * 0.3 / Math.max( 1, skill_mult );
 					
 					var an = this.look_vector.angleTo( targ );
 					
@@ -189,6 +215,14 @@ class sdAI
 		else
 		{
 			c.act_fire = 0;
+		}
+		
+		
+		if ( main.ai_difficulty < 0.333 )
+		if ( c.hurt_anim > 0 )
+		{
+			c.act_fire = 0;
+			//return;
 		}
 		
 		c.look_direction.x = this.look_vector.x;

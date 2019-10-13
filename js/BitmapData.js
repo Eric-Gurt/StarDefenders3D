@@ -138,9 +138,12 @@
 			
 			var pixel_data = this.pixel_data;
 		
-			pixel_data.data[ i++ ] = parseInt( c.r * 255 );
+			/*pixel_data.data[ i++ ] = parseInt( c.r * 255 );
 			pixel_data.data[ i++ ] = parseInt( c.g * 255 );
-			pixel_data.data[ i++ ] = parseInt( c.b * 255 );
+			pixel_data.data[ i++ ] = parseInt( c.b * 255 );*/
+			pixel_data.data[ i++ ] = ~~( c.r * 255 );
+			pixel_data.data[ i++ ] = ~~( c.g * 255 );
+			pixel_data.data[ i++ ] = ~~( c.b * 255 );
 			
 			pixel_data.data[ i ] = alpha;
 		}
@@ -278,6 +281,11 @@
 		{
 			if ( BitmapData.debug_offset === undefined )
 			BitmapData.debug_offset = 0;
+		
+			if ( this.preview_enabled !== undefined )
+			return;
+			
+			this.preview_enabled = true;
 			
 			this.ctx.canvas.style = 'position:fixed;left:'+BitmapData.debug_offset+'px;top:0px;transform:scale('+scale+','+scale+');transform-origin: 0% 0%;border:1px solid rgba(0,0,0,0.15)';
 			document.body.appendChild( this.ctx.canvas );

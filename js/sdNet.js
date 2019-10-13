@@ -21,6 +21,16 @@ class sdNet
 		sdNet.match_my_uid = -1;
 		sdNet.match_dataConnections = [];
 		sdNet.match_queued_dataConnections = null; // these will be assigned later, once fully connected. So we know from who messages are coming
+		
+		sdNet.offline_players = ( main.mobile ? 4 : 6 );
+		sdNet.respawn_time = 2000;
+		sdNet.GuessTeam = function( i, max_teams )
+		{
+			if ( main.MP_mode )
+			return ( i % max_teams );
+		
+			return ( i % max_teams );
+		};
 
 		//sdNet.match_uid = -1;
 		sdNet.match_uid = -2; // Why it was -1? -2 means it is not reset yet
@@ -518,7 +528,7 @@ class sdNet
 		
 		sdNet.StartMatch({
 			
-			max_players: enemies ? ( main.mobile ? 6 : 6 ) : 1,
+			max_players: enemies ? sdNet.offline_players : 1,
 			
 			max_teams: 2,
 			
@@ -796,7 +806,7 @@ class sdNet
 
 			for ( var i = 0; i < max_players; i++ )
 			{
-				var c = sdCharacter.CreateCharacter({ x:5, y:main.level_chunks_y*main.chunk_size + 20, z:5, bmp:sdAtom.character_bitmap, team:i%max_teams });
+				var c = sdCharacter.CreateCharacter({ x:5, y:main.level_chunks_y*main.chunk_size + 20, z:5, bmp:sdAtom.character_bitmap, team:sdNet.GuessTeam( i, max_teams ) });
 				c.Respawn();
 			}
 
