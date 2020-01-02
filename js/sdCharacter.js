@@ -1460,6 +1460,7 @@ class sdCharacter
 	{
 		this.UpdateWeaponVisibilityFPS( false );
 		
+                // Body Parts
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_HEAD ], true );
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_BODY ], true );
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_LEG1A ], true );
@@ -1468,6 +1469,15 @@ class sdCharacter
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_LEG2B ], true );
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ARM1 ], true );
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ARM2 ], true );
+                
+                // Weapons
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_RIFLE ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ROCKET ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SNIPER ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SHOTGUN ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SPARK ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_BUILD1 ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SAW ], true );
 	}
 	
 	HideForFPS()
