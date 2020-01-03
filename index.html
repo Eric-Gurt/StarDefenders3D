@@ -24,6 +24,8 @@
     
 	<script type="text/javascript">
 		var ng = ( document.location.href.indexOf('gevanni.com') === -1 );
+		
+		var allow_music = ( document.location.href.indexOf('itch.io') === -1 && document.location.href.indexOf('hwcdn.net') === -1 );
 	</script>
     
 	<style>
@@ -481,7 +483,7 @@
         </div>
 	    <!-- Crosshair -->
 	    <!--<img src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -8px;margin-top: -8px;top: 50%;">-->
-	    <img id="crosshair" src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -6px;margin-top: -6px;top: 50%;width:12px;height:12px">
+	    <img id="crosshair" src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -6px;margin-top: -6px;top: 50%;width:89px;height:89px;image-rendering: pixelated;">
 
 	    <!-- Healthbar -->
 	    <span class="r_conteiner" style="position:fixed;left:50%;width:40vh;margin-left:-20vh;bottom:0.5vh;padding:0.25vh;border-radius:1.5vh;background-color:rgba(0,0,0,0.5);">

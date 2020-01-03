@@ -684,6 +684,10 @@ class sdCharacter
 		
 		this.last_out_of_bounds_timer = 0;
 		
+		this.muzzle_r = 0;
+		this.muzzle_g = 0;
+		this.muzzle_b = 0;
+		this.muzzle_a = 0;
 		
 		this.time_to_reload = 0;
 		
@@ -1551,6 +1555,22 @@ class sdCharacter
 		}
 	}
 	
+	GetActiveWeapon( passive_weapons=null )
+	{
+		var c = this;
+		var active_weapon = null;
+
+		if ( c.curwea === main.WEAPON_RIFLE ) active_weapon = c.rifle; else if ( passive_weapons !== null ) passive_weapons.push( c.rifle );
+		if ( c.curwea === main.WEAPON_ROCKET ) active_weapon = c.rocket; else if ( passive_weapons !== null ) passive_weapons.push( c.rocket );
+		if ( c.curwea === main.WEAPON_SHOTGUN ) active_weapon = c.shotgun; else if ( passive_weapons !== null ) passive_weapons.push( c.shotgun );
+		if ( c.curwea === main.WEAPON_SNIPER ) active_weapon = c.sniper; else if ( passive_weapons !== null ) passive_weapons.push( c.sniper );
+		if ( c.curwea === main.WEAPON_SPARK ) active_weapon = c.spark; else if ( passive_weapons !== null ) passive_weapons.push( c.spark );
+		if ( c.curwea === main.WEAPON_BUILD1 ) active_weapon = c.build1; else if ( passive_weapons !== null ) passive_weapons.push( c.build1 );
+		if ( c.curwea === main.WEAPON_SAW ) active_weapon = c.saw; else if ( passive_weapons !== null ) passive_weapons.push( c.saw );
+		
+		return active_weapon;
+	}
+	
 	UpdateCharacter( GSPEED, teleport_limb_mode )
 	{
 		//main.DrawDynamicLight( this.x, this.y, this.z, this.glow_color.r, this.glow_color.g, this.glow_color.b );
@@ -1759,6 +1779,13 @@ class sdCharacter
 				c.act_weapon = main.action_weapon;
 				c.act_fire = main.hold_fire;
 			}
+			
+			if ( c.muzzle_a > 0 )
+			{
+				c.muzzle_a -= GSPEED * 0.5;
+				if ( c.muzzle_a < 0 )
+				c.muzzle_a = 0;
+			}
 
 			if ( c.curwea !== c.act_weapon )
 			{
@@ -1883,6 +1910,10 @@ class sdCharacter
 										is_melee: sdCharacter.weapon_melee[ curwea ],
 										splash_radius: sdCharacter.weapon_splash_radius[ curwea ]
 									});
+									
+									c.muzzle_r = bullet.r;
+									c.muzzle_g = bullet.g;
+									c.muzzle_b = bullet.b;
 
 									if ( main.MP_mode )
 									{
@@ -1890,6 +1921,8 @@ class sdCharacter
 										sdSync.MP_SendEvent( sdSync.COMMAND_I_SPAWN_BULLET, bullet, curwea, p );
 									}
 								}
+								
+								c.muzzle_a = 1;
 								
 								if ( curwea === main.WEAPON_BUILD1 )
 								{
@@ -2358,13 +2391,8 @@ class sdCharacter
 		var active_weapon = null;//( c.curwea === 0 ) ? c.rifle : c.rocket;
 		var passive_weapons = [];
 		
-		if ( c.curwea === main.WEAPON_RIFLE ) active_weapon = c.rifle; else passive_weapons.push( c.rifle );
-		if ( c.curwea === main.WEAPON_ROCKET ) active_weapon = c.rocket; else passive_weapons.push( c.rocket );
-		if ( c.curwea === main.WEAPON_SHOTGUN ) active_weapon = c.shotgun; else passive_weapons.push( c.shotgun );
-		if ( c.curwea === main.WEAPON_SNIPER ) active_weapon = c.sniper; else passive_weapons.push( c.sniper );
-		if ( c.curwea === main.WEAPON_SPARK ) active_weapon = c.spark; else passive_weapons.push( c.spark );
-		if ( c.curwea === main.WEAPON_BUILD1 ) active_weapon = c.build1; else passive_weapons.push( c.build1 );
-		if ( c.curwea === main.WEAPON_SAW ) active_weapon = c.saw; else passive_weapons.push( c.saw );
+		active_weapon = c.GetActiveWeapon( passive_weapons );
+		
 		//
 		WeaponLogic( c, GSPEED, active_weapon );
 
@@ -2891,7 +2919,9 @@ class sdCharacter
 			var dy = c.hook_pos.y - c.y;
 			var dz = c.hook_pos.z - c.z;
 			var di = main.Dist3D( dx, dy, dz, 0,0,0 );
-			c.hook_di = ( di + Math.max( 0, c.hook_di - GSPEED * 0.75 ) ) / 2;
+			//c.hook_di = ( di + Math.max( 0, c.hook_di - GSPEED * 0.75 ) ) / 2;
+			//c.hook_di = main.MorphWithTimeScale( c.hook_di, ( di + Math.max( 0, c.hook_di - GSPEED * 1 ) ) / 2, 0.1, GSPEED );
+			c.hook_di = main.MorphWithTimeScale( c.hook_di - GSPEED * 0.5, di, 0.5, GSPEED );
 			
 			//if ( di < c.hook_di )
 			//c.hook_di = di;

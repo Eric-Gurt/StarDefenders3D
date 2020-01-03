@@ -417,8 +417,8 @@ class sdSprite
 		
 		if ( custom_alpha !== 1 || geom === sdSprite.GEOM_SPHERE )
 		{
-			m.depthWrite = false;
-			m.transparent = true;
+			//m.depthWrite = false;
+			//m.transparent = true;
 			
 			if ( custom_alpha !== 1)
 			m.opacity = custom_alpha;

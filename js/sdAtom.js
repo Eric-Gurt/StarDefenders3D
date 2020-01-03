@@ -78,6 +78,11 @@ class sdAtom
 		sdAtom.atoms = [];
 		sdAtom.pseudo_atoms = []; // Copies that stay for some time
 		
+		sdAtom.snow_particles = null;
+		sdAtom.snow_particles_last_trace = null;
+		sdAtom.snow_particles_tested_i = 0;
+		sdAtom.snow_particles_xyz_addition = 100;
+		
 		sdAtom.pseudo_atoms_ttl_max = 90;
 		
 		sdAtom.MATERIAL_ALIVE_PLAYER = 1;
@@ -191,6 +196,23 @@ class sdAtom
 
 			if ( sdAtom.mesh.parent !== main.scene )
 			main.scene.add( sdAtom.mesh );
+		}
+		
+		
+		if ( main.isWinter )
+		{
+			sdAtom.snow_particles = [];
+			sdAtom.snow_particles_last_trace = [];
+			for ( var i = 0; i < main.level_chunks_x * main.level_chunks_z * main.chunk_size * main.chunk_size * 0.1; i++ )
+			{
+				var v = new THREE.Vector3( Math.random() * ( main.level_chunks_x * main.chunk_size + sdAtom.snow_particles_xyz_addition * 2 ) - sdAtom.snow_particles_xyz_addition,
+										   Math.random() * ( main.level_chunks_y * main.chunk_size + sdAtom.snow_particles_xyz_addition ),
+										   Math.random() * ( main.level_chunks_z * main.chunk_size + sdAtom.snow_particles_xyz_addition * 2 ) - sdAtom.snow_particles_xyz_addition );
+				var v2 = new THREE.Vector3( v.x, v.y, v.z );
+				
+				sdAtom.snow_particles.push( v );
+				sdAtom.snow_particles_last_trace.push( v2 );
+			}
 		}
 	}
 	
@@ -682,29 +704,61 @@ class sdAtom
 		}
 		
 		for ( var i = 0; i < sdCharacter.characters.length; i++ )
-		if ( sdCharacter.characters[ i ].hook_enabled )
 		{
 			var c = sdCharacter.characters[ i ];
-			var di = main.Dist3D( c.x, c.y + 3, c.z, c.hook_pos.x, c.hook_pos.y, c.hook_pos.z ) * 2;
-			
-			if ( di > 1 )
-			for ( var i2 = 0; i2 < di; i2++ )
+				
+			if ( sdCharacter.characters[ i ].hook_enabled )
 			{
-				var morph = i2 / di;
-				
-				vertices[ point * 3     ] = c.x * morph + c.hook_pos.x * ( 1 - morph );
-				vertices[ point * 3 + 1 ] = ( c.y + 3 ) * morph + c.hook_pos.y * ( 1 - morph );
-				vertices[ point * 3 + 2 ] = c.z * morph + c.hook_pos.z * ( 1 - morph );
-				
-				rgba[ point * 4     ] = ( i2 % 3 < 2 ) ? 0.2 : 0.1;
-				rgba[ point * 4 + 1 ] = ( i2 % 3 < 2 ) ? 0.2 : 0.1;
-				rgba[ point * 4 + 2 ] = ( i2 % 3 < 2 ) ? 0.2 : 0.1;
+				var di = main.Dist3D( c.x, c.y + 3, c.z, c.hook_pos.x, c.hook_pos.y, c.hook_pos.z ) * 4;
 
-				rgba[ point * 4 + 3 ] = ( i2 % 3 < 2 ) ? 1 : 0.9; // Scale
-				
-				uvs2[ point ] = main.GetEntityBrightness( vertices[ point * 3     ], vertices[ point * 3 + 1 ], vertices[ point * 3 + 2 ] );
-				
-				point++;
+				if ( di > 1 )
+				for ( var i2 = 0; i2 < di; i2++ )
+				{
+					var morph = i2 / di;
+
+					vertices[ point * 3     ] = c.x * morph + c.hook_pos.x * ( 1 - morph );
+					vertices[ point * 3 + 1 ] = ( c.y + 3 ) * morph + c.hook_pos.y * ( 1 - morph );
+					vertices[ point * 3 + 2 ] = c.z * morph + c.hook_pos.z * ( 1 - morph );
+
+					rgba[ point * 4     ] = ( i2 % 4 < 2 ) ? 0.2 : 0.1;
+					rgba[ point * 4 + 1 ] = ( i2 % 4 < 2 ) ? 0.2 : 0.1;
+					rgba[ point * 4 + 2 ] = ( i2 % 4 < 2 ) ? 0.2 : 0.1;
+
+					rgba[ point * 4 + 3 ] = ( i2 % 4 < 2 ) ? 0.5 : 0.4; // Scale
+
+					uvs2[ point ] = main.GetEntityBrightness( vertices[ point * 3     ], vertices[ point * 3 + 1 ], vertices[ point * 3 + 2 ] );
+
+					point++;
+				}
+			}
+			
+			if ( c.muzzle_a > 0 )
+			if ( c.curwea !== main.WEAPON_BUILD1 )
+			if ( c.curwea !== main.WEAPON_SAW )
+			{
+				var active_weapon = c.GetActiveWeapon();
+
+				var visual = active_weapon.children[ 0 ].getWorldPosition();
+
+				for ( var f = 0; f < 16; f++ )
+				{
+					var intens = 1 - Math.pow( 1 - f / 16, 2 );
+					
+					// Muzzle flash?
+					vertices[ point * 3     ] = visual.x - c.look_direction.x * c.muzzle_a * intens * 12 / 2 * 1.5;
+					vertices[ point * 3 + 1 ] = visual.y - c.look_direction.y * c.muzzle_a * intens * 12 / 2 * 1.5;
+					vertices[ point * 3 + 2 ] = visual.z - c.look_direction.z * c.muzzle_a * intens * 12 / 2 * 1.5;
+
+					rgba[ point * 4     ] = c.muzzle_r;
+					rgba[ point * 4 + 1 ] = c.muzzle_g;
+					rgba[ point * 4 + 2 ] = c.muzzle_b;
+
+					rgba[ point * 4 + 3 ] = 1.5 * c.muzzle_a * ( 1 - intens ); // Scale
+
+					uvs2[ point ] = 1;
+
+					point++;
+				}
 			}
 		}
 		
@@ -779,6 +833,11 @@ class sdAtom
 				dy /= di;
 				dz /= di;
 			}
+			
+			// More iterations for nearby bullets
+			if ( !is_plasma && !is_rocket )
+			if ( main.Dist3D( main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z, b.x, b.y, b.z ) < 32 )
+			length = 50;
 			
 			for ( var i2 = 0; i2 <= length; i2 += sdAtom.atom_scale )
 			{
@@ -861,6 +920,65 @@ class sdAtom
 			uvs2[ point ] = 1;
 			
 			point++;
+		}
+		
+		if ( sdAtom.snow_particles !== null )
+		{
+			var particles_to_check = 50;
+			
+			sdAtom.snow_particles_tested_i = ( sdAtom.snow_particles_tested_i + particles_to_check ) % sdAtom.snow_particles.length;
+			
+			var av_br = ( main.fog_color_color.r + main.fog_color_color.g + main.fog_color_color.b ) / 3;
+			
+			var max_height = main.level_chunks_y * main.chunk_size + sdAtom.snow_particles_xyz_addition;
+			for ( var i = 0; i < sdAtom.snow_particles.length; i++ )
+			{
+				sdAtom.snow_particles[ i ].y -= GSPEED * 0.1;
+				
+				var trace_result = true;
+				
+				var is_tested = ( i >= sdAtom.snow_particles_tested_i && i < sdAtom.snow_particles_tested_i + particles_to_check );
+				
+				if ( is_tested )
+				{
+					trace_result = main.TraceLine(  sdAtom.snow_particles[ i ].x,
+													sdAtom.snow_particles[ i ].y,
+													sdAtom.snow_particles[ i ].z, 
+													sdAtom.snow_particles_last_trace[ i ].x,
+													sdAtom.snow_particles_last_trace[ i ].y,
+													sdAtom.snow_particles_last_trace[ i ].z, null, 1, 0 );
+				}
+				
+				if ( sdAtom.snow_particles[ i ].y < 0 || !trace_result )
+				{
+					sdAtom.snow_particles[ i ].y += max_height;
+					
+					is_tested = true;
+				}
+
+				if ( is_tested )
+				{
+					sdAtom.snow_particles_last_trace[ i ].x = sdAtom.snow_particles[ i ].x;
+					sdAtom.snow_particles_last_trace[ i ].y = sdAtom.snow_particles[ i ].y;
+					sdAtom.snow_particles_last_trace[ i ].z = sdAtom.snow_particles[ i ].z;
+				}
+				
+				vertices[ point * 3     ] = sdAtom.snow_particles[ i ].x + Math.sin( i * 0.1 ) * Math.sin( sdAtom.snow_particles[ i ].y );
+				vertices[ point * 3 + 1 ] = sdAtom.snow_particles[ i ].y;
+				vertices[ point * 3 + 2 ] = sdAtom.snow_particles[ i ].z + Math.sin( i * 0.1 ) * Math.cos( sdAtom.snow_particles[ i ].y );
+
+				rgba[ point * 4     ] = 1;// * av_br;
+				rgba[ point * 4 + 1 ] = 1;// * av_br;
+				rgba[ point * 4 + 2 ] = 1;// * av_br;
+				rgba[ point * 4 + 3 ] = 0.5;
+				
+				if ( main.Dist3D( sdAtom.snow_particles[ i ].x, sdAtom.snow_particles[ i ].y, sdAtom.snow_particles[ i ].z, main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z ) > 64 )
+				uvs2[ point ] = 1.5 * ( main.lightmap_ambient + main.lightmap_beam_power * 8 );
+				else
+				uvs2[ point ] = 1.5 * main.GetEntityBrightness( vertices[ point * 3     ], vertices[ point * 3 + 1 ], vertices[ point * 3 + 2 ] );
+
+				point++;
+			}
 		}
 		
 		if ( main.my_character !== null )

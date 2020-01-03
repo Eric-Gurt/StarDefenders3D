@@ -7,6 +7,7 @@ class sdShaderMaterial
 	static init_class()
 	{
 		sdShaderMaterial.EXT_frag_depth = false; // Defined at main.InitEngine(), makes spheres more "in-depth"
+		sdShaderMaterial.EXT_frag_depth_sphericals = false;
 		
 		sdShaderMaterial.max_lamps = 8; // Per chunk. Atoms should calculate this other way perhaps?
 		sdShaderMaterial.lamp_range = 32; // integer!
@@ -103,8 +104,8 @@ class sdShaderMaterial
 					b: { type: "f", value: 0 },
 					opacity: { type: "f", value: 1 }
 				},
-				depthWrite: true,
-				transparent: false,
+				depthWrite: false,
+				transparent: true,
 				flatShading: true,
 				extensions: {
 					derivatives: false, // set to use derivatives
@@ -167,8 +168,8 @@ class sdShaderMaterial
 					depth_offset: { type: "f", value: 1.5 },
 					opacity: { type: "f", value: 1 }
 				},
-				depthWrite: true,
-				transparent: false,
+				depthWrite: false,
+				transparent: true,
 				flatShading: true,
 				extensions: {
 					derivatives: false,
@@ -303,10 +304,11 @@ class sdShaderMaterial
 				
 				attribute vec4 colo;
 				varying vec4 rgba;
+				varying vec4 rgba2;
 				
 				attribute float uv2;
 				
-				varying vec2 pre_calc;
+				varying vec3 pre_calc;
 				
 				`+sdShaderMaterial.GenerateDynamicLightUniformsCode()+`
 				
@@ -339,10 +341,18 @@ class sdShaderMaterial
 						gl_PointSize *= min( 2.7, 1.0 + di * 0.2 );
 				
 						float fog_morph = 1.0 / ( 1.0 + gl_Position.z * 0.017 ); // 0.025
+						rgba2.rgb = rgba.rgb * vec3( fog_morph * 0.8 ) + fog.rgb * vec3( 1.0 - fog_morph );
 						rgba.rgb = rgba.rgb * vec3( fog_morph ) + fog.rgb * vec3( 1.0 - fog_morph );
 				
-						pre_calc.x = gl_Position.z / 1024.0;
-						pre_calc.y = 16.0 / ( 4096.0 / dot_scale + gl_Position.z * gl_Position.z * 1.024 );
+				
+						// For EXT_frag_depth
+						//pre_calc.x = gl_Position.z / 1024.0;
+						//pre_calc.y = 16.0 / ( 4096.0 / dot_scale + gl_Position.z * gl_Position.z * 1.024 );
+				
+						// For EXT_frag_depth_sphericals
+						pre_calc.x = gl_Position.z;
+						pre_calc.y = gl_Position.w;
+						pre_calc.z = dot_scale * colo.a / gl_Position.z / gl_Position.z * 0.5;
 					}
 					else
 					{
@@ -354,8 +364,9 @@ class sdShaderMaterial
 				fragmentShader: `
 				
 				varying vec4 rgba;
+				varying vec4 rgba2;
 				
-				varying vec2 pre_calc;
+				varying vec3 pre_calc;
 				
 				void main()
 				{
@@ -372,18 +383,27 @@ class sdShaderMaterial
 					`+( sdShaderMaterial.EXT_frag_depth ? `
 						gl_FragDepthEXT = pre_calc.x - pre_calc.y * pow( 0.25 - di_pow2, 0.5 );
 					` : '' )+`
+				
+					`+( sdShaderMaterial.EXT_frag_depth_sphericals ? `
+						gl_FragDepthEXT = ( ( pre_calc.x - pre_calc.z * pow( 0.25 - di_pow2, 0.5 ) ) / pre_calc.y + 1.0 ) * 0.5;
+					` : '' )+`
 					
-					/*
+					
 					if ( 0.4 * 0.4 < di_pow2 )
 					{
-						gl_FragColor.r += 0.1;
-						gl_FragColor.g += 0.1;
-						gl_FragColor.b += 0.1;
+						gl_FragColor.rgb = rgba2.rgb;
 				
+						/*
 						`+( sdShaderMaterial.EXT_frag_depth ? `
 							gl_FragDepthEXT += 2.0 / 1024.0 + gl_FragDepthEXT * 0.1;
 						` : '' )+`
-					}*/
+					
+						*/
+						`+( sdShaderMaterial.EXT_frag_depth_sphericals ? `
+							gl_FragDepthEXT = ( ( pre_calc.x + 0.0025 - pre_calc.z * pow( 0.25 - di_pow2, 0.5 ) ) / pre_calc.y + 1.0 ) * 0.5;
+						` : '' )+`
+						
+					}
 				}
 				`
 			});
@@ -550,6 +570,8 @@ class sdShaderMaterial
 						discard;
 					}
 				
+					
+				
 					vec3 dyn_light_intens = vec3( 0.0, 0.0, 0.0 );
 				
 					`+sdShaderMaterial.GenerateDynamicLightAffectionCodeForColor( `world_pos`, `dyn_light_intens` )+`
@@ -564,10 +586,12 @@ class sdShaderMaterial
 
 						gl_FragColor.rgb = gl_FragColor.rgb * vec3( fog_final ) + fog.rgb * vec3( 1.0 - fog_final );
 					}
+					
 				
 					`+( sdShaderMaterial.EXT_frag_depth ? `
 						gl_FragDepthEXT = ( pos.z - depth_offset ) / 1024.0;
 					` : '' )+`
+				
 				}	
 			`
 			});

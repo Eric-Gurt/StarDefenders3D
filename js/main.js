@@ -69,6 +69,7 @@ class main
 	}
 	static PlaySongIfNeeded( rand )
 	{
+		if ( allow_music )
 		if ( main._music_volume > 0 )
 		if ( main.song_channel === null )
 		{
@@ -90,6 +91,8 @@ class main
 		main.base_resolution_y = 1080;
 		
 		main.mobile = false;
+		
+		main.isWinter = ( [ 12, 1, 2 ].indexOf( new Date().getMonth() + 1 ) !== -1 );
 		
 		main.next_dynamic_lamp_id = 0;
 		main.dynamic_lamp_cam_distances = [];
@@ -168,7 +171,7 @@ class main
 		else
 		main.turn_method = Number( main.turn_method );
 	
-		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.5 );
+		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.6 );
 	
 		//main.ai_difficulty = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 1.5 );
 		main.ai_difficulty = Number( localStorage.getItem( 'ai_difficulty' ) || 0.5 );
@@ -403,7 +406,12 @@ class main
 			powerPreference:'high-performance',
 			antialias: false
 		});
-		sdShaderMaterial.EXT_frag_depth = ( main.renderer.extensions.get('EXT_frag_depth') !== null );
+		//sdShaderMaterial.EXT_frag_depth = ( main.renderer.extensions.get('EXT_frag_depth') !== null ); // High performance impact when used with new voxel rendering...
+		sdShaderMaterial.EXT_frag_depth = false;
+		sdShaderMaterial.EXT_frag_depth_sphericals = ( main.renderer.extensions.get('EXT_frag_depth') !== null );
+		
+		if ( sdShaderMaterial.EXT_frag_depth )
+		sdShaderMaterial.EXT_frag_depth_sphericals = false;
 		
 		sdAtom.material = sdShaderMaterial.CreateMaterial( null, 'particle' );
 		
@@ -1214,7 +1222,8 @@ class main
 		{
 			main.main_camera.updateMatrixWorld();
 
-			var orbital_intens = 0.777; // Because orbital feels faster
+			//var orbital_intens = 0.777; // Because orbital feels faster
+			var orbital_intens = 0.85; // Because orbital feels faster
 
 			var q1 = new THREE.Quaternion();
 			q1.setFromAxisAngle( new THREE.Vector3( 0, -1, 0 ), xx * orbital_intens );
@@ -1429,6 +1438,11 @@ class main
 		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
 		var level_chunks_z = ~~( 4 * 32 / chunk_size ); // 4
 		*/
+		/* Slow loading?
+		var level_chunks_x = ~~( 8 * 32 / chunk_size ); // 10
+		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
+		var level_chunks_z = ~~( 8 * 32 / chunk_size ); // 4
+		 */
 		var level_chunks_x = ~~( 8 * 32 / chunk_size ); // 10
 		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
 		var level_chunks_z = ~~( 8 * 32 / chunk_size ); // 4
@@ -1504,15 +1518,14 @@ class main
 		main.level_chunks_y = level_chunks_y;
 		main.level_chunks_z = level_chunks_z;
 		
-		//var solve_random_factor = 0.75; 
-		var solve_random_factor = 0.1; 
-		var edge_density = 0.5;
-		//var sky_ground_contrast = 0.05;
-		//var extra_sky_ground_contrast = 0.025;
-		var sky_ground_contrast = 0.05;
-		var extra_sky_ground_contrast = 0.05;
+		var solve_random_factor = 0.025; // 0.1
+		var edge_density = 0.85; // 0.5
 		
-		var horizon_offset = 0.35; // More = lower // 0
+		var sky_ground_contrast = 0; // 0.05
+		var extra_sky_ground_contrast = 0.005; // 0.05
+		var completely_random_percentage = 0.03; // 0
+		
+		var horizon_offset = 0.1; // More = lower // 0 // 0.35 = little ground on bottom
 		
 		var size_x = level_chunks_x * chunk_size;
 		var size_y = level_chunks_y * chunk_size;
@@ -1574,6 +1587,11 @@ class main
 			
 			var ret = ( edge_density - sdRandomPattern.random() * sky_ground_contrast - extra_sky_ground_contrast ) * morph + 
 					  ( edge_density + sdRandomPattern.random() * sky_ground_contrast + extra_sky_ground_contrast ) * ( 1 - morph );
+			  
+			if ( completely_random_percentage > 0 )
+			{
+				ret = ret * ( 1 - completely_random_percentage ) + sdRandomPattern.random() * completely_random_percentage;
+			}
 
 			return ret;
 		}
@@ -1757,9 +1775,13 @@ class main
 			{
 				sum = Math.max( edge_density + 0.02, sum );
 			}
-			if ( solvable.y === size_y-1 )
+
+			if ( completely_random_percentage === 0 )
 			{
-				sum = Math.min( edge_density - 0.02, sum );
+				if ( solvable.y === size_y-1 )
+				{
+					sum = Math.min( edge_density - 0.02, sum );
+				}
 			}
 			
 			fill[ solvable.coord ] = sum;
@@ -1850,6 +1872,8 @@ class main
 		main.RandomizeGroundColor();
 		var g = new THREE.PlaneBufferGeometry( 800, 800, 32, 32 );
 		var m = sdShaderMaterial.CreateMaterial( main.world_end_texture, 'sprite' );
+		m.depthWrite = true;
+		m.transparent = false;
 		m.uniforms.fog.value = new THREE.Color( main.fog_color );
 		m.uniforms.fog_intensity.value = 1;
 		m.uniforms.brightness_r.value = 1;
@@ -2716,53 +2740,56 @@ class main
 		for ( z = 1; z < size_z-1; z++ )
 		{
 			var i = Coord( x,y,z );
+			// ( x * size_z_mul_size_y + y * size_z + z );
 			
 			var cur_fill = fill[ i ] > edge_density;
 			if ( cur_fill )
 			{
 				var filled_around = 0;
-				if ( cur_fill === fill[ i - 1 ] > edge_density )
+				
+				/*if ( i - 1 !== Coord( x,y,z - 1 ) )
+				throw new Error();
+				if ( i + 1 !== Coord( x,y,z + 1 ) )
+				throw new Error();
+				if ( i - size_z !== Coord( x,y - 1,z ) )
+				throw new Error();
+				if ( i + size_z !== Coord( x,y + 1,z ) )
+				throw new Error();
+				if ( i - size_z * size_y !== Coord( x - 1,y,z ) )
+				throw new Error();
+				if ( i + size_z * size_y !== Coord( x + 1,y,z ) )
+				throw new Error();*/
+				
+				
+				
+				
+				
+				
+				if ( cur_fill === ( fill[ i - 1 ] > edge_density ) ) // z
 				filled_around++;
-				if ( cur_fill === fill[ i + 1 ] > edge_density )
-				filled_around++;
-				if ( cur_fill === fill[ i - size_z ] > edge_density )
-				filled_around++;
-				if ( cur_fill === fill[ i + size_z ] > edge_density )
-				filled_around++;
-				if ( cur_fill === fill[ i - size_y * size_z ] > edge_density )
-				filled_around++;
-				if ( cur_fill === fill[ i + size_y * size_z ] > edge_density )
+				if ( cur_fill === ( fill[ i + 1 ] > edge_density ) )
 				filled_around++;
 			
-				/*
-				if ( cur_fill === fill[ i - size_z - 1 ] > edge_density )
+				if ( cur_fill === ( fill[ i - size_z ] > edge_density ) ) // y
 				filled_around++;
-				if ( cur_fill === fill[ i + size_z - 1 ] > edge_density )
+				if ( cur_fill === ( fill[ i + size_z ] > edge_density ) )
 				filled_around++;
-				if ( cur_fill === fill[ i - size_y * size_z - 1 ] > edge_density )
+			
+				if ( cur_fill === ( fill[ i - size_z * size_y ] > edge_density ) ) // x
 				filled_around++;
-				if ( cur_fill === fill[ i + size_y * size_z - 1 ] > edge_density )
+				if ( cur_fill === ( fill[ i + size_z * size_y ] > edge_density ) )
 				filled_around++;
-				
-				if ( cur_fill === fill[ i - size_z + 1 ] > edge_density )
-				filled_around++;
-				if ( cur_fill === fill[ i + size_z + 1 ] > edge_density )
-				filled_around++;
-				if ( cur_fill === fill[ i - size_y * size_z + 1 ] > edge_density )
-				filled_around++;
-				if ( cur_fill === fill[ i + size_y * size_z + 1 ] > edge_density )
-				filled_around++;
-				*/
+			
 				//if ( filled_around === 14 )
 				if ( filled_around === 6 )
 				{
 					brightness[ i ] = -1; // Will mean it is invisible
 				}
-				else
+				/*else
 				if ( filled_around <= 1 )
 				{
-					fill[ i ] = 0;
-				}
+					fill[ i ] = 0; Causes artifacts if some nearby blocks are removed with code above
+				}*/
 			}
 		}
 		
@@ -2850,6 +2877,29 @@ class main
 				}
 				
 				brightness[ i ] += main.lightmap_ambient; // Ambient
+			}
+		}
+		
+		if ( main.isWinter )
+		{
+			for ( x = 0; x < size_x; x++ )
+			for ( z = 0; z < size_z; z++ )
+			{
+				//var flake_lives = true;
+				for ( y = size_y - 1; y >= 0; y-- )
+				{
+					var i = Coord( x,y,z );
+					if ( brightness[ i ] !== -1 )
+					if ( fill[ i ] > edge_density )
+					{
+						var c = i * 3;
+						world_rgb[ c   ] = 255;
+						world_rgb[ c+1 ] = 255;
+						world_rgb[ c+2 ] = 255;
+						
+						break;
+					}
+				}
 			}
 		}
 		
@@ -4270,7 +4320,7 @@ class main
 		chunk_updates[ i ].UpdateChunk( false, false, true );
 	}*/
 	
-	static TraceLine( x,y,z, x2,y2,z2, stop_condition_chunk=null, step_scale=1, offset=0 )
+	static TraceLine( x,y,z, x2,y2,z2, stop_condition_chunk=null, step_scale=1, offset=0 ) // First point and last point, not relative to each other.
 	{
 		var chunk_size = main.chunk_size;
 			
@@ -4625,12 +4675,27 @@ class main
 			scale += Math.PI;
 			//( ( main.my_character.ammo[ main.my_character.curwea ] <= 0 || main.my_character.time_to_reload > 0 ) ? main.my_character.time_to_reload : 2 ) );
 			
-			var normal_size = 6;
-			main.crosshair.style.width = ( normal_size * scale * 2 )+'px';
+			var recoil_scale = ( 0.6667 + 40/sdCharacter.weapon_speed[ main.my_character.curwea ] * ( 0.6667 * sdCharacter.weapon_knock_spread[ main.my_character.curwea ] + main.my_character.recoil * 2 / 5*sdCharacter.weapon_spread_from_recoil[ main.my_character.curwea ] ) ) * 103 / main.fov / main.zoom_intensity;
+			
+			if ( recoil_scale > 1.5 )
+			recoil_scale = 1.5;
+			
+			if ( recoil_scale > 2 )
+			{
+				scale = 0;
+			}
+			
+			var normal_size = 89 / 2;
+			/*main.crosshair.style.width = ( normal_size * scale * 2 )+'px';
 			main.crosshair.style.height = ( normal_size * scale * 2 )+'px';
 			main.crosshair.style.marginLeft = ( - normal_size * scale )+'px';
 			main.crosshair.style.marginTop = ( - normal_size * scale )+'px';
-			main.crosshair.style.opacity = 1 / ( 1 + Math.abs( 1 - scale ) );
+			main.crosshair.style.opacity = 1 / ( 1 + Math.abs( 1 - scale ) );*/
+			main.crosshair.style.width = ( normal_size * recoil_scale * 2 )+'px';
+			main.crosshair.style.height = ( normal_size * recoil_scale * 2 )+'px';
+			main.crosshair.style.marginLeft = ( - normal_size * recoil_scale )+'px';
+			main.crosshair.style.marginTop = ( - normal_size * recoil_scale )+'px';
+			main.crosshair.style.opacity = 0.6667 / ( 1 + Math.abs( 1 - scale ) );
 		}
 			
 		main.speed.x = main.MorphWithTimeScale( main.speed.x, 0, 0.7, GSPEED );
@@ -4651,16 +4716,10 @@ class main
 		
 		sdSound.SetSoundPitch( main.wind_channel, 0.5 + Math.pow( main.speed.length() * 0.2, 1 ) );
 		sdSound.SetSoundVolume( main.wind_channel, Math.min( 3, 0.1 + 0.666 * Math.pow( main.speed.length() * 0.3, 1.5 ) ) ); // 0.1 + 0.4 , 2
-		/*
-		if ( main.turn_method === 2 )
-		{
-			if ( main.device_orientation_control !== null )
-			{
-				main.device_orientation_control.update( GSPEED );
-			}
-		}
-		*/
+		
+		
 		// Passive restore
+		
 		main.main_camera.updateMatrixWorld();
 
 		var front_vector = new THREE.Vector3( 0, 0, 1 );
@@ -4689,7 +4748,10 @@ class main
 			//main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.07 * GSPEED );
 			//main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.01 * GSPEED );
 			//main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.01 * GSPEED );
-			main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.06 * GSPEED );
+			//main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.06 * GSPEED );
+			
+			if ( main.turn_method === 0 )
+			main.main_camera.quaternion.slerp( old_quaternion, 0.03 * GSPEED );
 		}
 		
 		/*
@@ -4867,7 +4929,7 @@ class main
 					if ( nearby_one.visible_timer < default_visible_timer )
 					{
 						
-						var tot_rays = main.FastCeil( 10 * ( chunk_size / 32 ) * Math.min( 1, 1 - nearby_one.visible_timer / default_visible_timer ) );
+						var tot_rays = main.FastCeil( 20 * ( chunk_size / 32 ) * Math.min( 1, 1 - nearby_one.visible_timer / default_visible_timer ) );
 						
 						if ( tot_rays === 0 )
 						continue;
@@ -4941,7 +5003,7 @@ class main
 												( nearby_one.yy ) * chunk_size + y + 0.5, 
 												( nearby_one.zz ) * chunk_size + z + 0.5,
 												nearby_one,
-												5 ) === 1 )//3 ) === 1 )
+												10 ) === 1 )//3 ) === 1 )
 							{
 								nearby_one.visible_timer = default_visible_timer;
 								active.push( nearby_one );
