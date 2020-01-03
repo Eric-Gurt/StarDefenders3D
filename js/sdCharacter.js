@@ -1464,6 +1464,7 @@ class sdCharacter
 	{
 		this.UpdateWeaponVisibilityFPS( false );
 		
+                // Body Parts
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_HEAD ], true );
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_BODY ], true );
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_LEG1A ], true );
@@ -1472,6 +1473,15 @@ class sdCharacter
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_LEG2B ], true );
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ARM1 ], true );
 		this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ARM2 ], true );
+                
+                // Weapons
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_RIFLE ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ROCKET ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SNIPER ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SHOTGUN ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SPARK ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_BUILD1 ], true );
+                this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SAW ], true );
 	}
 	
 	HideForFPS()
@@ -1990,6 +2000,7 @@ class sdCharacter
 			var look_direction_flat_z = -c.look_direction.z;
 			
 			var di = main.Dist3D( look_direction_flat_x, look_direction_flat_z, 0, 0,0,0 );
+                        var c_low = (-sdCharacter.player_half_height * ( 1 - c.sit * 0.333 ) + sdCharacter.player_half_height * ( c.sit * 0.333 )) + 2;
 			
 			if ( di < 0.01 )
 			return false;
@@ -1998,7 +2009,7 @@ class sdCharacter
 			look_direction_flat_z /= di;
 			
 			for ( var depth = 1.5; depth <= 2.5; depth += 1 )
-			for ( var hei = -sdCharacter.player_half_height + 2; hei <= sdCharacter.player_half_height; hei += 1 )
+			for ( var hei = c_low; hei <= sdCharacter.player_half_height; hei += 1 )
 			{
 				if ( main.TraceLine( c.x, 
 									 c.y + hei, 
