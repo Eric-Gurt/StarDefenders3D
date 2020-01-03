@@ -7,7 +7,6 @@
 
 # dev: TODO
 
-- Do not spawn players near enemies (but do not spawn them always too far either!).
 - Real 3D physics for each limb instead of atoms+chains system which I actually don't like for bad performance and disability to remove them from their pools here. These are at sdAtom.js file. Cannon.js perhaps? Not in separate worker since it is critical to keep things in sync, especially since sdCharacter collision box might be eventually rewritten for these new physics as well.
 - Character & model editor that operates on voxels and outputs a .js file that can be easily included in final game. It can use either GL_POINTS with current shader for rendering or even operate on multiple spheres, at least in Chracter Editor preview. 3D physics needs to be re-impelmented in order to allow joints etc.
 - Create sdEntity.js class that will be responsible for various objects with logic of any type.
@@ -15,12 +14,12 @@
 - Perhaps Starship Troopers-like mode? Something like "team vs horde of aliens". Originally I've seen this game as team of players in cooperative mode that is trying to capture randomly generated planet with randomized creatures (to some extent) that have randomized attacks, properties etc. Not sure how it will work with destructible physics, but seems possible once stable model destruction, shape rebuilding into smaller bodies and their physics are working well together.
 - Level Editor needs to be done at some point. Would be best to let it have random-based conditional world generation as well.
 - Few more classes for weaponry should be added: sdGunClass.js and sdGun.js. 1st keeps info like gun names, slot, spread, default stats etc and sdGun.js should be more like gun instances in shared pool. In addition to that sdCharacter could use some array like inventory_guns elements of which will point towards sdGun instances. They also might be inventory_guns2 if we will be going the route of PB2.5/3 where players can dual wield.
-- Try to render world/entity voxels using WebGL shaders that get huge RGBA array of 3D voxels as input. Leave one that is faster or both if it is device-dependent.
 
 # dev: My personal notes
 
 - I'd suggest not to go with server-side logic for now - I'm afraid it will complicate things too much before it is time (it is important to rewrite classes like sdCharacter and make few more like sdGun, sdGunClass and sdEntity). I'm pretty sure JavaScript is perfect language to support addition of late netcode. In any case I might return back to this project and redo netcode to what I'll end up with for PB2.5/3.
 - It should be fine to use server on gevanni.com for match making (or suggest changes to it) - this way more players will be online until real distribution will start.
+- Removed sphere-based renderer and it heavily impacts mobile support now. Mobile support was unplayable anyway though.
 
 # dev: Short feature/class description FAQ
 
