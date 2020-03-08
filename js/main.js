@@ -171,7 +171,7 @@ class main
 		else
 		main.turn_method = Number( main.turn_method );
 	
-		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.6 );
+		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.4 );
 	
 		//main.ai_difficulty = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 1.5 );
 		main.ai_difficulty = Number( localStorage.getItem( 'ai_difficulty' ) || 0.5 );
@@ -392,7 +392,7 @@ class main
 		if ( upd )
 		main.UpdateScreenSize();
 		
-		localStorage.setItem( 'pixel_ratio', v );
+		localStorage.setItem( 'stardefenders_pixelratio', v );
 	}
 	static InitEngine()
 	{
@@ -4332,6 +4332,11 @@ class main
 		x2 = ~~x2;
 		y2 = ~~y2;
 		z2 = ~~z2;
+		
+		const main_level_chunks_x_mul_chunk_size = main.level_chunks_x * chunk_size;
+		const main_level_chunks_y_mul_chunk_size = main.level_chunks_y * chunk_size;
+		const main_level_chunks_z_mul_chunk_size = main.level_chunks_z * chunk_size;
+		
 		function CheckBounds( x3, y3, z3, needs_round )
 		{
 			if ( needs_round )
@@ -4347,11 +4352,11 @@ class main
 			if ( z3 < 0 )
 			return false;
 
-			if ( x3 >= main.level_chunks_x * chunk_size )
+			if ( x3 >= main_level_chunks_x_mul_chunk_size )
 			return false;
-			if ( y3 >= main.level_chunks_y * chunk_size )
+			if ( y3 >= main_level_chunks_y_mul_chunk_size )
 			return false;
-			if ( z3 >= main.level_chunks_z * chunk_size )
+			if ( z3 >= main_level_chunks_z_mul_chunk_size )
 			return false;
 			return true;
 		}
@@ -4365,20 +4370,27 @@ class main
 	
 		if ( steps > 1000 )
 		steps = 1000;
+	
+		var s = offset * step_scale;
+		var s_max = steps + 1;
 
-		for ( var s = offset * step_scale; s < steps + 1; s++ )
+		for ( ; s < s_max; ++s )
 		{
 			var morph = s / steps;
 			var i_morph = 1 - morph;
 
-			var av_x = ( x * i_morph + x2 * morph );
-			var av_y = ( y * i_morph + y2 * morph );
-			var av_z = ( z * i_morph + z2 * morph );
+			var av_x = x * i_morph + x2 * morph;
+			var av_y = y * i_morph + y2 * morph;
+			var av_z = z * i_morph + z2 * morph;
 
 			// Fix math errors
-			av_x = ~~( Math.round( av_x * 1000 ) / 1000 );
-			av_y = ~~( Math.round( av_y * 1000 ) / 1000 );
-			av_z = ~~( Math.round( av_z * 1000 ) / 1000 );
+			//av_x = ~~( Math.round( av_x * 1000 ) / 1000 );
+			//av_y = ~~( Math.round( av_y * 1000 ) / 1000 );
+			//av_z = ~~( Math.round( av_z * 1000 ) / 1000 );
+			// Faster version? Is there real need to keep non-integer accuracy. It is actually bad when "var i" is calculated...
+			av_x = ~~( av_x );
+			av_y = ~~( av_y );
+			av_z = ~~( av_z );
 			
 			if ( needs_bounds_check )
 			{

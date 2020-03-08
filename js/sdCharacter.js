@@ -2264,7 +2264,8 @@ class sdCharacter
 						c.z + last_direction.z * step_up_size, 
 					-last_direction.x * step_up_size, 
 					-last_direction.y * step_up_size, 
-					-last_direction.z * step_up_size, 0.1, c.sit );
+					//-last_direction.z * step_up_size, 0.1, c.sit );
+					-last_direction.z * step_up_size, 1, c.sit ); // Should work with 1 now since traceline method fixed
 				if ( morph2 < 1 )
 				if ( morph2 > 0 )
 				{
