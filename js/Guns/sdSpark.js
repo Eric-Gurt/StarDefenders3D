@@ -1,0 +1,3 @@
+class sdSpark extends sdGun
+{
+}

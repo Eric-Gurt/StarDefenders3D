@@ -124,9 +124,9 @@ class sdAI
 				{
 					var targ = new THREE.Vector3( c.x-c2.x, c.y-c2.y, c.z-c2.z );
 					
-					targ.x += ( c2.tox - c.tox ) / sdCharacter.weapon_speed[ this.fav_gun + ( this.fav_fire_mode - 1 ) * 2 ];
-					targ.y += ( c2.toy - c.toy ) / sdCharacter.weapon_speed[ this.fav_gun + ( this.fav_fire_mode - 1 ) * 2 ];
-					targ.z += ( c2.toz - c.toz ) / sdCharacter.weapon_speed[ this.fav_gun + ( this.fav_fire_mode - 1 ) * 2 ];
+					targ.x += ( c2.tox - c.tox ) / sdGunClass.weapon_speed[ this.fav_gun + ( this.fav_fire_mode - 1 ) * 2 ];
+					targ.y += ( c2.toy - c.toy ) / sdGunClass.weapon_speed[ this.fav_gun + ( this.fav_fire_mode - 1 ) * 2 ];
+					targ.z += ( c2.toz - c.toz ) / sdGunClass.weapon_speed[ this.fav_gun + ( this.fav_fire_mode - 1 ) * 2 ];
 					
 					var di = main.Dist3D( targ.x, targ.y, targ.z, 0, 0, 0 );
 					var spread = { x:0, y:0, z:0 };

@@ -1,0 +1,3 @@
+class sdSniper extends sdGun
+{
+}
