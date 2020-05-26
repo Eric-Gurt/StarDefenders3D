@@ -284,6 +284,10 @@ class Chunk
 				var uv_scale_x = 1 / ( chunk_size ); // 1024 / 32 = 32
 				var uv_scale_y = 1 / ( 4 ); // 96 / 3 = 32
 				
+				//const micro_border_offset = 0; // Pointless solution?
+				const micro_border_offset_0 = 0; // Slightly better
+				const micro_border_offset_1 = 1 - 0.000065; // Slightly better (solution for GPU inaccuracy. Probably will be different for different drivers/GPUs)
+				
 				for ( var side = 0; side <= 1; side++ )
 				//var side = 0;
 				{
@@ -331,17 +335,17 @@ class Chunk
 						vertices[ vert++ ] = 0;
 						vertices[ vert++ ] = x + side;
 
-						uvs[ uv++ ] = 0 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 1 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_y + uv_y;
 
-						uvs[ uv++ ] = 0 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 0 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_y + uv_y;
 
-						uvs[ uv++ ] = 1 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 0 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_y + uv_y;
 
-						uvs[ uv++ ] = 1 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 1 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_y + uv_y;
 					}
 				
 					//if ( false )
@@ -388,17 +392,17 @@ class Chunk
 						vertices[ vert++ ] = x + side;
 						vertices[ vert++ ] = main.chunk_size;
 
-						uvs[ uv++ ] = 0 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 1 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_y + uv_y;
 
-						uvs[ uv++ ] = 0 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 0 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_y + uv_y;
 
-						uvs[ uv++ ] = 1 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 0 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_y + uv_y;
 
-						uvs[ uv++ ] = 1 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 1 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_y + uv_y;
 					}
 				
 					//if ( false )
@@ -445,17 +449,17 @@ class Chunk
 						vertices[ vert++ ] = main.chunk_size;
 						vertices[ vert++ ] = 0;
 
-						uvs[ uv++ ] = 0 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 1 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_y + uv_y;
 
-						uvs[ uv++ ] = 0 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 0 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_y + uv_y;
 
-						uvs[ uv++ ] = 1 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 0 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_0 * uv_scale_y + uv_y;
 
-						uvs[ uv++ ] = 1 * uv_scale_x + uv_x;
-						uvs[ uv++ ] = 1 * uv_scale_y + uv_y;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_x + uv_x;
+						uvs[ uv++ ] = micro_border_offset_1 * uv_scale_y + uv_y;
 					}
 				}
 				

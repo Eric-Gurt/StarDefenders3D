@@ -171,7 +171,7 @@ class main
 		else
 		main.turn_method = Number( main.turn_method );
 	
-		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.6 );
+		main.pixel_ratio = Number( localStorage.getItem( 'stardefenders_pixelratio' ) || 0.4 );
 	
 		//main.ai_difficulty = Number( localStorage.getItem( 'stardefenders_lodratio' ) || 1.5 );
 		main.ai_difficulty = Number( localStorage.getItem( 'ai_difficulty' ) || 0.5 );
@@ -392,7 +392,7 @@ class main
 		if ( upd )
 		main.UpdateScreenSize();
 		
-		localStorage.setItem( 'pixel_ratio', v );
+		localStorage.setItem( 'stardefenders_pixelratio', v );
 	}
 	static InitEngine()
 	{
@@ -441,41 +441,41 @@ class main
 			
 			// Lag prevention
 			{
-				sdGunClass.weapon_hp_damage[ 2 ] *= 3;
-				sdGunClass.weapon_hp_damage_head[ 2 ] *= 3;
-				sdGunClass.weapon_knock_count[ 2 ] /= 3;
+				sdCharacter.weapon_hp_damage[ 2 ] *= 3;
+				sdCharacter.weapon_hp_damage_head[ 2 ] *= 3;
+				sdCharacter.weapon_knock_count[ 2 ] /= 3;
 			}
-
+			
 			main.device_orientation_control = new THREE.DeviceOrientationControls( main.main_camera );
 			/*
 			var unfiltered_xx = 0;
 			var unfiltered_yy = 0;
 			var unfiltered_zz = 0;
-
+			
 			// Current (last) velocity
 			var xx_vel = 0;
 			var yy_vel = 0;
 			var zz_vel = 0;
-
+			
 			main.device_orientation_control = {};
 			main.device_orientation_control.update = function( GSPEED )
 			{
 				unfiltered_xx += xx_vel * GSPEED * 32; // 32
 				unfiltered_yy += yy_vel * GSPEED * 16; // 16
 				unfiltered_zz += zz_vel * GSPEED;
-
+				
 				xx_vel /= 2;
 				yy_vel /= 2;
 				zz_vel /= 2;
-
+				
 				var dec_unfill_xx = main.MorphWithTimeScale( 0, unfiltered_xx, 0.8, GSPEED );
 				var dec_unfill_yy = main.MorphWithTimeScale( 0, unfiltered_yy, 0.8, GSPEED );
 				var dec_unfill_zz = main.MorphWithTimeScale( 0, unfiltered_zz, 0, GSPEED );
-
+				
 				main.ang -= dec_unfill_xx;
 				main.ang2 -= dec_unfill_yy;
 				main.ang3 -= dec_unfill_zz;
-
+				
 				unfiltered_xx -= dec_unfill_xx;
 				unfiltered_yy -= dec_unfill_yy;
 				unfiltered_zz -= dec_unfill_zz;
@@ -499,18 +499,18 @@ class main
 				var q2 = new THREE.Quaternion();
 				q2.setFromAxisAngle( new THREE.Vector3( 1, 0, 0 ), main.ang2 );
 				m2.makeRotationFromQuaternion( q2 );
-
+			
 				var m3 = new THREE.Matrix4();
 				var q3 = new THREE.Quaternion();
 				q3.setFromAxisAngle( new THREE.Vector3( 0, 0, 1 ), main.ang3 );
 				m3.makeRotationFromQuaternion( q3 );
-
+				
 				m.multiply( m2 );
-
+				
 				m.multiply( m3 );
 
 				main.main_camera.rotation.setFromRotationMatrix( m );
-
+				
 				main.ang3 = main.MorphWithTimeScale( main.ang3, 0, 0.95, GSPEED );
 			};
 			window.ondevicemotion = function( e )
@@ -519,13 +519,13 @@ class main
 				//var orbital_intens = ( 1 / 180 * Math.PI / 60 );
 				//var orbital_intens = ( 1 / 180 * Math.PI / 60 / 4 / 4 ) * ( main.sensitivity / 0.0016 );
 				var orbital_intens = ( 1 / 180 * Math.PI / 60 );
-
+				
 				xx_vel += -e.rotationRate.alpha * orbital_intens * ( main.sensitivity / 0.0016 ) * main.zoom_intensity;
 				yy_vel += e.rotationRate.beta * orbital_intens * ( main.sensitivity / 0.0016 ) * main.zoom_intensity;
 				zz_vel += -e.rotationRate.gamma * orbital_intens;
 			};
 			*/
-
+			
 			document.ontouchstart = start_handler;
 			document.ontouchmove = move_handler;
 
@@ -535,7 +535,7 @@ class main
 			var buttons = [];
 			function RegisterButton( element_id, radius_mult, action_hold, action_release=null ) // action_hold( dx, dy, button_radius ) is called on tap and during move
 			{
-				buttons.push({
+				buttons.push({ 
 								element: document.getElementById( element_id ),
 								radius_mult: radius_mult,
 								action_hold: action_hold,
@@ -543,11 +543,11 @@ class main
 								touch_id: -1
 							});
 			}
-
+			
 			setTimeout( function()
 			{
 				document.getElementById('mobile_ui').style.display = 'block';
-
+			
 				RegisterButton( 'mobile_move_button', 1.2, function( dx, dy, button_radius ){
 					main.hold_d = 0;
 					main.hold_s = 0;
@@ -570,21 +570,21 @@ class main
 				RegisterButton( 'mobile_4_button', 1, function(){ main.action_weapon = main.WEAPON_SNIPER; });
 				RegisterButton( 'mobile_5_button', 1, function(){ main.action_weapon = main.WEAPON_ROCKET; });
 				RegisterButton( 'mobile_x_button', 1, function(){ main.OpenEscMenu(); });
-
+				
 			}, 100 );
-
+			
 			function start_handler( e )
 			{
 				if ( document.getElementById( 'ingame_hud' ).style.display === 'none' )
 				return;
-
+				
 				for ( var i = 0; i < buttons.length; i++ )
 				{
 					var button_rect = buttons[ i ].element.getBoundingClientRect();
 					var button_x = ( button_rect.right + button_rect.left ) / 2;
 					var button_y = ( button_rect.top + button_rect.bottom ) / 2;
 					var button_radius = ( button_rect.right - button_rect.left ) / 2;
-
+					
 					if ( main.Dist3D( e.changedTouches[ 0 ].pageX, e.changedTouches[ 0 ].pageY, 0, button_x, button_y, 0 ) <= button_radius * buttons[ i ].radius_mult )
 					{
 						buttons[ i ].touch_id = e.changedTouches[ 0 ].identifier;
@@ -612,7 +612,7 @@ class main
 			{
 				if ( document.getElementById( 'ingame_hud' ).style.display === 'none' )
 				return;
-
+			
 				for ( var i = 0; i < buttons.length; i++ )
 				{
 					if ( buttons[ i ].touch_id === e.changedTouches[ 0 ].identifier )
@@ -627,18 +627,18 @@ class main
 					}
 				}
 			}
-
+			
 			main.turn_method = 2;
 		};
-
+		
 		main.composer = new THREE.EffectComposer( main.renderer );
-
+		
 		var in_game_pass = new THREE.RenderPass( main.scene, main.main_camera );
 		in_game_pass.clear = true;
 		in_game_pass.clearDepth = true;
 		in_game_pass.renderToScreen = true;
 		main.composer.addPass( in_game_pass );
-
+		
 		main.composer.renderer.domElement.style.imageRendering = 'pixelated';
 	}
 	static onChatMessage( from, t, character=null, color='255,255,255' )
@@ -660,7 +660,7 @@ class main
 				a.r = ~~( a.r * 255 );
 				a.g = ~~( a.g * 255 );
 				a.b = ~~( a.b * 255 );
-
+				
 				//if ( character === main.my_character )
 				//TTS_Speak( t, 'Google US Male', 0.5, sdSound.MASTER_SOUND_VOLUME * 0.5, 1 );
 				//else
@@ -671,20 +671,20 @@ class main
 			else
 			main.chat_messages.push( '<div><span style="color:rgba(255,255,255,0.5)">'+from+':</span> '+t+'</div>' );
 		}
-
+		
 		if ( main.chat_messages.length > 5 )
 		{
 			main.chat_messages.shift();
 		}
-
+		
 		var s = '';
-
+		
 		for ( var i = 0; i < main.chat_messages.length; i++ )
 		{
 			s += main.chat_messages[ i ];
 		}
 		document.getElementById('chat_box').innerHTML = s;
-
+		
 		main.chat_off_timer = 7;
 	}
 	static onKeyDown( e )
@@ -693,13 +693,13 @@ class main
 		{
 			return true;
 		}
-
+		
 		if ( document.activeElement.isContentEditable )
 		{
 			if ( e.keyCode === 13 ) // Enter
 			{
 				document.getElementById('chat_input_box').style.display = 'none';
-
+				
 				if ( document.getElementById('chat_input_box').value.length > 0 )
 				{
 					if ( main.MP_mode )
@@ -715,17 +715,17 @@ class main
 			if ( e.keyCode === 13 ) // Enter
 			{
 				document.getElementById('chat_input_box').style.display = 'inherit';
-
+				
 				document.getElementById('chat_input_box').value = '';
 				document.getElementById('chat_input_box').focus();
 				return true;
 			}
 		}
-
+		
 		var v = 1;
-
+		
 		// Holdable keys
-
+		
 		if ( e.keyCode === 87 ) // W
 		main.hold_w = v;
 		else
@@ -753,7 +753,7 @@ class main
 		{
 			if ( main.my_character !== null )
 			main.my_character.ReloadIfPossible();
-
+		
 			if ( e.ctrlKey )
 			if ( !e.shiftKey )
 			{
@@ -787,7 +787,7 @@ class main
 		{
 			if ( main.MP_mode )
 			{
-
+				
 			}
 			else
 			{
@@ -822,7 +822,7 @@ class main
 		{
 			main.OpenEscMenu();
 		}
-
+		
 		if ( e.keyCode === 90 ) // Z
 		{
 			if ( !main.MP_mode )
@@ -830,7 +830,7 @@ class main
 				main.GAME_FPS = ( main.GAME_FPS === 15 ) ? 30 : 15;
 			}
 		}
-
+		
 		if ( e.keyCode === 82 && e.ctrlKey ) // Allow Ctrl+R
 		{
 		}
@@ -867,20 +867,20 @@ class main
 	{
 		if ( c === main.my_character )
 		return;
-
+	
 		if ( main.my_character !== null )
 		main.my_character.UnhideForFPS();
-
+		
 		main.my_character = c;
-
+		
 		if ( c !== null )
 		{
 			c.HideForFPS();
 
 			c._UpdateHealthBarIfNeeded();
-
+			
 			c._UpdateAmmoBarIfNeeded();
-
+			
 			c.ApplyLimbImmortalityIfNeeded();
 
 		}
@@ -889,7 +889,7 @@ class main
 	{
 		//console.log( e );
 		var v = 0;
-
+		
 		if ( e.keyCode === 87 ) // W
 		main.hold_w = v;
 		else
@@ -914,7 +914,7 @@ class main
 	static onMouseDown( e )
 	{
 		main.GoFullscreen();
-
+		
 		if ( e.which === 2 )
 		if ( main.my_character !== null )
 		if ( main.my_character.hea > 0 )
@@ -927,16 +927,16 @@ class main
 			else
 			{
 				//main.my_character.hook_pos;
-
+				
 				var dx = -main.my_character.look_direction.x * 64;
 				var dy = -main.my_character.look_direction.y * 64;
 				var dz = -main.my_character.look_direction.z * 64;
-
-				var morph2 = main.TraceLine( main.my_character.x,
-											 main.my_character.y + sdCharacter.shoot_offset_y,
-											 main.my_character.z,
-											 main.my_character.x+dx,
-											 main.my_character.y+dy + sdCharacter.shoot_offset_y,
+				
+				var morph2 = main.TraceLine( main.my_character.x, 
+											 main.my_character.y + sdCharacter.shoot_offset_y, 
+											 main.my_character.z, 
+											 main.my_character.x+dx, 
+											 main.my_character.y+dy + sdCharacter.shoot_offset_y, 
 											 main.my_character.z+dz, null, 1, 0 );
 				if ( morph2 < 1 )
 				{
@@ -947,21 +947,21 @@ class main
 					main.my_character.hook_pos.x = main.my_character.x + dx * morph2;
 					main.my_character.hook_pos.y = main.my_character.y + dy * morph2 + sdCharacter.shoot_offset_y;
 					main.my_character.hook_pos.z = main.my_character.z + dz * morph2;
-
+					
 					main.my_character.hook_di = 64 * morph2;
-
+					
 					sdSprite.CreateSprite({ type: sdSprite.TYPE_SPARK, x:main.my_character.hook_pos.x, y:main.my_character.hook_pos.y, z:main.my_character.hook_pos.z, tox:0, toy:0, toz:0 });
-
+					
 					sdSound.PlaySound({ sound: lib.blocked_damage, position: main.my_character.hook_pos.clone(), volume: 1 });*/
 				}
 				else
 				sdSound.PlaySound({ sound: lib.blocked_damage, parent_mesh: main.my_character.mesh, volume: 1, pitch: 0.5 });
 			}
 		}
-
+		
 		if ( e.which === 1 )
 		main.hold_fire = 1;
-
+	
 		if ( e.which === 3 )
 		main.zoom_intensity_target = 0.5;
 		//main.hold_fire = 2;
@@ -969,7 +969,7 @@ class main
 	static onMouseUp( e )
 	{
 		main.hold_fire = 0;
-
+		
 		if ( e.which === 3 )
 		main.zoom_intensity_target = 1;
 	}
@@ -977,7 +977,7 @@ class main
 	{
 		if ( main.ingame_menu_visible )
 		return;
-
+	
 		main.mouse_move_sequence.push( { movementX:e.movementX, movementY:e.movementY, screenX:e.screenX, screenY:e.screenY, executed:false, filtered:false } ); // Perhaps e.movementX/Y values are not set yet?
 		main.mouse_move_any_movement = true;
 	}*/
@@ -1006,7 +1006,7 @@ class main
 				}, 1000 );
 			}
 		}
-
+		
 		while ( main.mouse_move_sequence.length > 0 )
 		{
 			main._onMouseMove( main.mouse_move_sequence[ 0 ] );
@@ -1014,20 +1014,20 @@ class main
 		}
 		//main.mouse_move_sequence = [];
 		return;
-
+		
 		/*if ( main.mouse_move_sequence.length > 5 )
 		{
 			main.mouse_move_sequence.shi
 		}*/
-
+		
 		var buffer_length = 3;
-
+		
 		/*if ( !main.mouse_move_any_movement )
 		{
 			main.mouse_move_sequence.push( { movementX:0, movementY:0, executed:false, filtered:false } );
 		}
 		main.mouse_move_any_movement = false;*/
-
+		
 		if ( main.mouse_move_sequence.length >= buffer_length )
 		{
 			//console.log( main.mouse_move_sequence );
@@ -1038,13 +1038,13 @@ class main
 					var e = main.mouse_move_sequence[ i ];
 					trace( e.timeStamp + ' :: ' + e.movementX + ', ' + e.movementY );
 				}
-
+			
 				// Results:
 					-63, -9 :: 147482.31999995187
-					-12, -1	:: 147483.8949998375
+					-12, -1	:: 147483.8949998375 
 					-11, -2 :: 147488.14499983564
 					0, 0 :: 147488.53500001132
-					-685, -136 :: 147488.6899997946
+					-685, -136 :: 147488.6899997946 
 					0, 0 :: 147488.90999983996
 				//
 					-427, 36 :: 437072.18499993905
@@ -1072,25 +1072,25 @@ class main
 					3, -1
 					3, -1
 				//
-
-
-
+			
+			
+			
 			*/
-
+		   
 			/*for ( var i = 0; i < main.mouse_move_sequence.length - 1; i++ )
 			{
 				var e = main.mouse_move_sequence[ i ];
 				var e2 = main.mouse_move_sequence[ i + 1 ];
-
+				
 				var delta = main.Dist3D( e.movementX, e.movementY, 0, e2.movementX, e2.movementY, 0 );
-
+				
 				if ( i < main.mouse_move_sequence.length - 2 )
 				{
 					e.filtered = true;
 					e2.filtered = true;
-
+					
 					var e3 = main.mouse_move_sequence[ i + 2 ];
-
+					
 					var delta_skip = main.Dist3D( e.movementX, e.movementY, 0, e3.movementX, e3.movementY, 0 );
 
 					if ( delta > 10 )
@@ -1098,25 +1098,25 @@ class main
 					{
 						e2.movementX = 0;//( e.movementX + e3.movementX ) / 2;
 						e2.movementY = 0;//( e.movementY + e3.movementY ) / 2;
-
+						
 						//console.log('fixing mouse move event...');
 					}
 				}
 			}*/
-
-
+			
+			
 			// Check ALL delta sums for case of removal of [ i ]
 			var best_i = -1;
 			var best_delta = -1;
 			var best_mov_x = 0;
 			var best_mov_y = 0;
-
+			
 			for ( var i = 1; i < main.mouse_move_sequence.length - 1; i++ )
 			{
 				var test_pattern = main.mouse_move_sequence.slice();
-
+				
 				test_pattern[ i ] = { movementX:test_pattern[ i ].movementX, movementY:test_pattern[ i ].movementY, executed:test_pattern[ i ].executed, filtered:test_pattern[ i ].filtered }; // Clone
-
+				
 
 				var average_movement_x = 0;
 				var average_movement_y = 0;
@@ -1128,22 +1128,22 @@ class main
 				}
 				average_movement_x /= main.mouse_move_sequence.length - 1;
 				average_movement_y /= main.mouse_move_sequence.length - 1;
-
-
+				
+				
 				test_pattern[ i ].movementX = average_movement_x;
 				test_pattern[ i ].movementY = average_movement_y;
-
+				
 				var deltas_sum = 0;
-
+				
 				for ( var i2 = 0; i2 < test_pattern.length - 1; i2++ )
 				{
 					var e = test_pattern[ i2 ];
 					var e2 = test_pattern[ i2 + 1 ];
 					var delta = main.Dist3D( e.movementX, e.movementY, 0, e2.movementX, e2.movementY, 0 );
-
+					
 					deltas_sum += delta;
 				}
-
+				
 				if ( deltas_sum > best_delta )
 				{
 					best_delta = deltas_sum;
@@ -1152,10 +1152,10 @@ class main
 					best_mov_y = average_movement_y;
 				}
 			}
-
+			
 			main.mouse_move_sequence[ best_i ].movementX = best_mov_x;
 			main.mouse_move_sequence[ best_i ].movementY = best_mov_y;
-
+			
 			for ( var i = 0; i < main.mouse_move_sequence.length; i++ )
 			{
 				if ( i < main.mouse_move_sequence.length - 1 )
@@ -1163,7 +1163,7 @@ class main
 					main.mouse_move_sequence[ i ].executed = true;
 				}
 			}
-
+			
 			for ( var i = 0; i < main.mouse_move_sequence.length; i++ )
 			{
 				if ( main.mouse_move_sequence[ 0 ].executed )
@@ -1174,7 +1174,7 @@ class main
 				else
 				break;
 			}
-
+				
 			//main.mouse_move_sequence = [];
 		}
 	}
@@ -1183,17 +1183,17 @@ class main
 	{
 		if ( main.ingame_menu_visible )
 		return;
-
+	
 		/*if ( main.Dist3D( e.movementX, e.movementY, 0, 0,0,0) > 400 ) // Chrome MouseLock bug (cursor thrown in random direction when cursor leaves browser window, or something like that
 		{
 			trace( e ); // e.movementX and e.movementY are bugged
 			debugger;
 			return;
 		}*/
-
+		
 		var xx = e.movementX * main.sensitivity * main.zoom_intensity;
 		var yy = e.movementY * main.sensitivity * main.zoom_intensity;
-
+		
 		if ( main.turn_method === 1 )
 		{
 			main.ang -= xx;
@@ -1233,14 +1233,14 @@ class main
 			q1.setFromAxisAngle( new THREE.Vector3( -1, 0, 0 ), yy * orbital_intens );
 			main.main_camera.quaternion.multiply( q1 );
 		}
-
+		
 	}
 	static GoFullscreen()
 	{
 		//return;
-
+		
 		//if ( false )
-		if (!document.fullscreenElement &&
+		if (!document.fullscreenElement && 
 			!document.mozFullScreenElement && !document.webkitFullscreenElement) {
 			if (document.documentElement.requestFullscreen) {
 			document.documentElement.requestFullscreen();
@@ -1268,9 +1268,9 @@ class main
 		main.base_resolution_x = window.innerWidth / window.innerHeight * main.base_resolution_y;
 
 		main.renderer.setSize( window.innerWidth, window.innerHeight, true );
-
+		
 		var DisplayedScreen = main.DisplayedScreen = { x:0, y:0, width:window.innerWidth, height:window.innerHeight };
-
+		
 		if ( window.innerWidth / main.base_resolution_x * main.base_resolution_y > window.innerHeight ) // Copy [ 1 / 2 ]
 		{
 			DisplayedScreen.height = parseInt( window.innerHeight );
@@ -1287,10 +1287,10 @@ class main
 			DisplayedScreen.x = 0;
 			DisplayedScreen.y = ( window.innerHeight - DisplayedScreen.height ) / 2;
 		}
-
+		
 		main.composer.setSize( DisplayedScreen.width, DisplayedScreen.height ); // or else it will be blurry
-
-		main.renderer.setViewport( DisplayedScreen.x, DisplayedScreen.y,
+		
+		main.renderer.setViewport( DisplayedScreen.x, DisplayedScreen.y, 
 									 DisplayedScreen.width, DisplayedScreen.height );
 
 		main.main_camera.aspect = DisplayedScreen.width / DisplayedScreen.height;
@@ -1302,7 +1302,7 @@ class main
 		sdAtom.material.ScreenUpdated();
 
 	}
-
+	
 	static Dist3D_Vector_pow2( tox, toy, toz )
 	{
 		return ( tox*tox + toy*toy + toz*toz );
@@ -1333,13 +1333,13 @@ class main
 	{
 		main.game_loop_started = false;
 		window.cancelAnimationFrame( main.anim_frame );
-
+		
 		if ( main.voxel_static !== null )
 		{
 			for ( var i = 0; i < main.voxel_static.length; i++ )
 			main.voxel_static[ i ].remove();
 		}
-
+		
 		for ( var i = 0; i < sdCharacter.characters.length; i++ )
 		{
 			sdCharacter.characters[ i ].remove( false );
@@ -1355,82 +1355,82 @@ class main
 		for ( var i = 0; i < sdChain.chains.length; i++ )
 		if ( sdChain.chains[ i ] !== undefined ) // Not sure why it happens but it does.
 		sdChain.chains[ i ].remove();
-
+	
 		sdCharacter.characters.length = 0;
 		sdBullet.bullets.length = 0;
 		sdAtom.atoms.length = 0;
 		sdAtom.pseudo_atoms.length = 0;
 		sdChain.chains.length = 0;
-
+		
 		main.materials_with_dyn_light = [];
 		main.voxel_static = [];
-
+		
 		sdLamp.lamps = [];
-
+		
 		if ( main.pb3driver !== null )
 		{
 			main.scene.remove( main.pb3driver );
 			main.pb3driver = null;
 		}
-
+		
 		if ( main.song_channel !== null )
 		{
 			main.song_channel.CancelPlayback();
 			main.song_channel = null;
 		}
-
+		
 		if ( main.wind_channel !== null )
 		{
 			main.wind_channel.CancelPlayback();
 			main.wind_channel = null;
 		}
-
-
+		
+		
 	}
 	static BuildLevel( seed )
 	{
 		EnableHistoryHashProtection();
-
+		
 		sdRandomPattern.SetSeed( seed ); // 43223
-
+		
 		var old_rand = Math.random;
 		Math.random = function()
 		{
 			throw new Error('Potential seed corruption'); // Another source of problem is setting... Like when music was random, but wasn't touching seed unless loaded.
 		};
-
+		
 		main.crosshair = document.getElementById('crosshair');
-
+		
 		main.GAME_FPS = 30;
-
+		
 		main.pb3driver = new THREE.Object3D();
 		main.pb3driver.position.x = 10000;
 		main.pb3driver.position.y = 10000;
 		main.pb3driver.position.z = 10000;
 		main.scene.add( main.pb3driver );
-
+		
 		main.pb3driver_channel = new SimplePanVolumeDriver();
-
+		
 		sdSound.PlaySound({ sound: lib.pb3_spoiler, parent_mesh: main.pb3driver, channel:main.pb3driver_channel, volume: 0, loop: true });
-
+		
 		main.PlaySongIfNeeded( sdRandomPattern.random() );
 
 		var radius = 32;
 		var bmp = new BitmapData( radius, radius, true );
-
+		
 		var context = bmp.ctx;
 		context.fillStyle = '#ffffff';
-
+		
 		main.date_match_started = new Date();
-
+		
 		context.beginPath();
 		context.arc( radius/2, radius/2, radius/2-1, 0, 2 * Math.PI ); // lt
 		context.fill();
-
+		
 		var texture = new THREE.CanvasTexture( bmp.ctx.canvas );
 		texture.magFilter = THREE.NearestFilter;
 		texture.minFilter = THREE.NearestMipMapNearestFilter;
-
+		
 		var chunk_size = 32; // 16
 		main.chunk_size = chunk_size;
 		/*
@@ -1446,23 +1446,23 @@ class main
 		var level_chunks_x = ~~( 8 * 32 / chunk_size ); // 10
 		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
 		var level_chunks_z = ~~( 8 * 32 / chunk_size ); // 4
-
+		
 		/*if ( confirm('Build simple world? (not for multiplayer)') )
 		{
 			level_chunks_x = 1;
 			level_chunks_y = 2;
 			level_chunks_z = 1;
 		}*/
-
-
+		
+		
 		var block_height = 16;
-
+		
 		function AllowLevelBuildingAt( x, y, z, initial )
 		{
 			var max_x = size_x / 32 - 1;
 			var max_y = size_y / block_height - 1;
 			var max_z = size_z / 32 - 1;
-
+			
 			/*if ( x === 0 || z === 0 || x === max_x || z === max_z )
 			{
 				return false;
@@ -1472,36 +1472,36 @@ class main
 			{
 				if ( y <= 0 + ( sdRandomPattern.random() < 0.5 ? 1 : 0 ) )
 				return true;
-
+			
 				return false;
 			}
 			*/
 			if ( y === max_y )
 			return false;
-
+		
 			if ( x < 5 )
 			return true;
-
+		
 			if ( x >= level_chunks_x - 1 - 5 )
 			return true;
-
+		
 			if ( y < max_y - 2 )
 			if ( z > 0 && z < max_z )
 			{
 				return true;
 			}
-
+		
 			return false;
-
+			
 			//return ( ( y < max_y ) && ( x === 0 || x === max_x || z === 0 || z === max_z ) );
 		}
-
-
-
+		
+		
+		
 		var add_concrete = true;
 		var add_terrain = true;
 		var test_trace_setup = false;
-
+		
 		// Hack, speed up loading
 		/*level_chunks_x = 2;
 		level_chunks_y = 1;
@@ -1509,30 +1509,30 @@ class main
 		add_concrete = true;
 		add_terrain = false;
 		test_trace_setup = true;*/
-
+		
 		main.level_bitmap.starDefendersRandomize();
-
+		
 		sdSprite.RandomizeGlobalExplosionColor();
-
+		
 		main.level_chunks_x = level_chunks_x;
 		main.level_chunks_y = level_chunks_y;
 		main.level_chunks_z = level_chunks_z;
-
+		
 		var solve_random_factor = 0.025; // 0.1
 		var edge_density = 0.85; // 0.5
-
+		
 		var sky_ground_contrast = 0; // 0.05
 		var extra_sky_ground_contrast = 0.005; // 0.05
 		var completely_random_percentage = 0.03; // 0
-
+		
 		var horizon_offset = 0.1; // More = lower // 0 // 0.35 = little ground on bottom
-
+		
 		var size_x = level_chunks_x * chunk_size;
 		var size_y = level_chunks_y * chunk_size;
 		var size_z = level_chunks_z * chunk_size;
-
+		
 		var size_array = size_x * size_y * size_z;
-
+		
 		var fill = [];
 		var solved = [];
 		var brightness = [];
@@ -1543,10 +1543,10 @@ class main
 		brightness.length = size_array;
 		noise_tex.length = size_array;
 		world_rgb.length = size_array * 3;
-
+		
 		var reusable_coords = [];
 		reusable_coords.length = size_array;
-
+		
 		var x = 0;
 		var y = 0;
 		var z = 0;
@@ -1566,17 +1566,17 @@ class main
 				x++;
 				y = 0;
 			}
-
+			
 			brightness[ i ] = 0;
 		}
-
+		
 		var size_z_mul_size_y = size_z * size_y;
 		function Coord( x, y, z )
 		{
 			//return ( x * size_z * size_y + y * size_z + z );
 			return ( x * size_z_mul_size_y + y * size_z + z );
 		}
-
+		
 		function FromCoord( x,y,z )
 		{
 			return reusable_coords[ Coord( x,y,z ) ];
@@ -1584,10 +1584,10 @@ class main
 		function FilledDensityByXYZ( x, y, z ) // new
 		{
 			var morph = y / ( size_y - 1 ) + horizon_offset;
-
-			var ret = ( edge_density - sdRandomPattern.random() * sky_ground_contrast - extra_sky_ground_contrast ) * morph +
+			
+			var ret = ( edge_density - sdRandomPattern.random() * sky_ground_contrast - extra_sky_ground_contrast ) * morph + 
 					  ( edge_density + sdRandomPattern.random() * sky_ground_contrast + extra_sky_ground_contrast ) * ( 1 - morph );
-
+			  
 			if ( completely_random_percentage > 0 )
 			{
 				ret = ret * ( 1 - completely_random_percentage ) + sdRandomPattern.random() * completely_random_percentage;
@@ -1654,8 +1654,8 @@ class main
 			var left_middle_far = FromCoord( x1, mid_y, z2 );
 			var right_middle_close = FromCoord( x2, mid_y, z1 );
 			var right_middle_far = FromCoord( x2, mid_y, z2 );
-			//
-
+			// 
+			
 			// Fast check
 			if ( x2 - x1 <= 1 )
 			if ( y2 - y1 <= 1 )
@@ -1743,7 +1743,7 @@ class main
 			// right bottom far
 			SolveCube( mid_x, mid_y, mid_z, x2, y2, z2 );
 		}
-
+		
 		var all_solvable_based_ons_x = [];
 		function SolveBasedOn( solvable, arr, size )
 		{
@@ -1770,7 +1770,7 @@ class main
 			all_solvable_based_ons_x[ solvable.x ] = 1;
 			else
 			all_solvable_based_ons_x[ solvable.x ]++;
-
+	
 			if ( solvable.y === 0 )
 			{
 				sum = Math.max( edge_density + 0.02, sum );
@@ -1783,7 +1783,7 @@ class main
 					sum = Math.min( edge_density - 0.02, sum );
 				}
 			}
-
+			
 			fill[ solvable.coord ] = sum;
 			noise_tex[ solvable.coord ] = noise;
 
@@ -1797,7 +1797,7 @@ class main
 
 			fill[ i ] = val;
 			noise_tex[ i ] = val;
-
+			
 			solved[ i ] = true;
 
 		}
@@ -1817,7 +1817,7 @@ class main
 			SolveIfNotSolved( Coord( x2, y1, z1 ), FilledDensityByXYZ( x2, y1, z1 ) );
 			SolveIfNotSolved( Coord( x1, y1, z2 ), FilledDensityByXYZ( x1, y1, z2 ) );
 			SolveIfNotSolved( Coord( x2, y1, z2 ), FilledDensityByXYZ( x2, y1, z2 ) );
-
+		
 			// under-ground
 			SolveIfNotSolved( Coord( x1, y2, z1 ), FilledDensityByXYZ( x1, y2, z1 ) );
 			SolveIfNotSolved( Coord( x2, y2, z1 ), FilledDensityByXYZ( x2, y2, z1 ) );
@@ -1825,9 +1825,9 @@ class main
 			SolveIfNotSolved( Coord( x2, y2, z2 ), FilledDensityByXYZ( x2, y2, z2 ) );
 
 		}
-
-
-
+		
+		
+		
 		//main.fog_color = 0xf6d08f;//0xffdd94;
 		var c = new pb2HighRangeColor().rand_pattern();
 		while ( c.g * 0.5 > c.r + c.b )
@@ -1856,19 +1856,19 @@ class main
 		{
 			if ( main.materials_with_dyn_light.length === i )
 			main.materials_with_dyn_light[ i ] = sdShaderMaterial.CreateMaterial( texture, 'particle' );
-
+		
 			main.materials_with_dyn_light[ i ].uniforms.fog.value = new THREE.Color( main.fog_color );
 			main.materials_with_dyn_light[ i ].uniforms.dot_scale.value = Math.pow( 2, i * 0.75 );
 		}*/
-
-
+		
+		
 		sdAtom.RandomizeStars();
-
+		
 		if ( main.ground_mesh )
 		{
 			main.DestroyMovieClip( main.ground_mesh );
 		}
-
+		
 		main.RandomizeGroundColor();
 		var g = new THREE.PlaneBufferGeometry( 800, 800, 32, 32 );
 		var m = sdShaderMaterial.CreateMaterial( main.world_end_texture, 'sprite' );
@@ -1885,14 +1885,14 @@ class main
 		main.ground_mesh.position.z = size_z / 2;
 		main.ground_mesh.position.y = main.world_end_y;
 		main.scene.add( main.ground_mesh );
-
+		
 		var g = new THREE.PlaneBufferGeometry( 6000, 6000, 32, 32 );
 		var ground_mesh_huge = new THREE.Mesh( g, m );
 		ground_mesh_huge.position.z = -5;
 		main.ground_mesh.add( ground_mesh_huge );
-
+		
 		//sdSprite.RandomizeSpriteEffects();
-
+		
 		var fractal_cube_size = chunk_size * 2;
 		var step_size = ~~( fractal_cube_size );
 		if ( add_terrain )
@@ -1930,17 +1930,17 @@ class main
 		}
 
 		// Making some level
-
+		
 		//var concrete_ops = 40;
-
+		
 		if ( size_x % 32 !== 0 )
 		throw new Error('Size X is not supported by level builder');
 		if ( size_y % block_height !== 0 )
 		throw new Error('Size Y is not supported by level builder');
 		if ( size_z % 32 !== 0 )
 		throw new Error('Size Z is not supported by level builder');
-
-
+		
+		
 		class Entry
 		{
 			constructor( v=false )
@@ -1951,24 +1951,24 @@ class main
 				this.is_lamp = false;
 			}
 		}
-
+		
 		var level_grid = [];
 		for ( var x = 0; x < size_x / 32; x++ )
 		{
 			level_grid[ x ] = [];
-
+			
 			for ( var y = 0; y < size_y / block_height; y++ )
 			{
 				level_grid[ x ][ y ] = [];
 				level_grid[ x ][ y ].length = size_z / 32;
-
+				
 				for ( var z = 0; z < level_grid[ x ][ y ].length; z++ )
 				{
 					level_grid[ x ][ y ][ z ] = new Entry( AllowLevelBuildingAt( x, y, z, true ) && ( sdRandomPattern.random() < 0.35 ) ); // 0.5
 				}
 			}
 		}
-
+		
 		// Evolute step
 		//if ( false )
 		for ( var x = 0; x < level_grid.length; x++ )
@@ -2007,15 +2007,15 @@ class main
 				}
 			}
 		}
-
+		
 		var cut_ops = [];
-
+		
 		var MAT_WALL = 0;
 		var MAT_DOOR = 1;
 		var MAT_STAIRS = 2;
 		var MAT_BORDER = 3;
 		var MAT_LAMP = 4;
-
+		
 		function WallExists( x, y, z )
 		{
 			if ( x < 0 )
@@ -2024,14 +2024,14 @@ class main
 			return true; // !
 			if ( z < 0 )
 			return false;
-
+		
 			if ( x >= level_grid.length )
 			return false;
 			if ( y >= level_grid[ x ].length )
 			return false;
 			if ( z >= level_grid[ x ][ y ].length )
 			return false;
-
+		
 			return level_grid[ x ][ y ][ z ].is_wall;
 		}
 		function LampExists( x, y, z )
@@ -2042,17 +2042,17 @@ class main
 			return false; // !
 			if ( z < 0 )
 			return false;
-
+		
 			if ( x >= level_grid.length )
 			return false;
 			if ( y >= level_grid[ x ].length )
 			return false;
 			if ( z >= level_grid[ x ][ y ].length )
 			return false;
-
+		
 			return level_grid[ x ][ y ][ z ].is_lamp;
 		}
-
+		
 		function StairsExists( x, y, z )
 		{
 			if ( x < 0 )
@@ -2061,14 +2061,14 @@ class main
 			return false;
 			if ( z < 0 )
 			return false;
-
+		
 			if ( x >= level_grid.length )
 			return false;
 			if ( y >= level_grid[ x ].length )
 			return false;
 			if ( z >= level_grid[ x ][ y ].length )
 			return false;
-
+		
 			return level_grid[ x ][ y ][ z ].is_stairs;
 		}
 		function GetStairsAt( x, y, z )
@@ -2079,20 +2079,20 @@ class main
 			return null;
 			if ( z < 0 )
 			return null;
-
+		
 			if ( x >= level_grid.length )
 			return null;
 			if ( y >= level_grid[ x ].length )
 			return null;
 			if ( z >= level_grid[ x ][ y ].length )
 			return null;
-
+		
 			if ( level_grid[ x ][ y ][ z ].is_stairs )
 			return level_grid[ x ][ y ][ z ];
-
+		
 			return null;
 		}
-
+		
 		for ( var x = 0; x < level_grid.length; x++ )
 		for ( var y = 0; y < level_grid[ x ].length; y++ )
 		for ( var z = 0; z < level_grid[ x ][ y ].length; z++ )
@@ -2123,11 +2123,11 @@ class main
 						var y2 = y1 + 32;
 						var z1 = z * 32;
 						var z2 = z1 + 32;
-
+						
 						var cz = ( z1 + z2 ) / 2;
 						z1 = ~~( cz - 3 );
 						z2 = ~~( cz + 3 );
-
+						
 						cut_ops.push({ mat:MAT_DOOR, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 						level_grid[ x ][ y ][ z ].is_door = true;
 						continue;
@@ -2142,18 +2142,18 @@ class main
 						var y2 = y1 + 32;
 						var z1 = z * 32;
 						var z2 = z1 + 32;
-
+						
 						var cx = ( x1 + x2 ) / 2;
 						x1 = ~~( cx - 3 );
 						x2 = ~~( cx + 3 );
-
+						
 						cut_ops.push({ mat:MAT_DOOR, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 						level_grid[ x ][ y ][ z ].is_door = true;
 						level_grid[ x ][ y+1 ][ z ].is_door = true;
 						continue;
 					}
 				}
-
+				
 				// Spawn lamps
 				if ( sdRandomPattern.random() < 0.666 )
 				if ( y > 0 )
@@ -2166,7 +2166,7 @@ class main
 					var y2 = y1 + block_height;
 					var z1 = z * 32;
 					var z2 = z1 + 32;
-
+					
 					if ( sdRandomPattern.random() < 0.5 )
 					{
 						var cx = ( x1 + x2 ) / 2;
@@ -2202,7 +2202,7 @@ class main
 						sdLamp.CreateLamp({ x:cx, y:y1, z:cz, collision_radius:3, glow_radius:20, ceiling:true });
 					}
 				}
-
+				
 				// Stairs
 				if ( !WallExists( x, y+1, z ) ) // Nothing on top
 				if ( WallExists( x, y-1, z ) ) // Anything under
@@ -2220,61 +2220,61 @@ class main
 						 !StairsExists( x, y, z + 1 ) && !StairsExists( x, y, z - 1 ) && !StairsExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z - 1 )*/ ) // x+
 					if ( sdRandomPattern.random() < 0.666 )
 					{
-						cut_ops.push({ mat:MAT_STAIRS, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2,
-							riseZInc:!WallExists( x, y, z+1 ) && !WallExists( x, y-1, z+1 ) && !StairsExists( x, y-1, z+1 ),
-							riseZDec:!WallExists( x, y, z-1 ) && !WallExists( x, y-1, z-1 ) && !StairsExists( x, y-1, z-1 ),
-							riseXInc:false,
+						cut_ops.push({ mat:MAT_STAIRS, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
+							riseZInc:!WallExists( x, y, z+1 ) && !WallExists( x, y-1, z+1 ) && !StairsExists( x, y-1, z+1 ), 
+							riseZDec:!WallExists( x, y, z-1 ) && !WallExists( x, y-1, z-1 ) && !StairsExists( x, y-1, z-1 ), 
+							riseXInc:false, 
 							riseXDec:false });
 						level_grid[ x ][ y ][ z ].is_stairs = true;
 						//continue;
 					}
 					//else
-					if ( WallExists( x - 1, y, z ) && !WallExists( x - 1, y + 1, z ) /*&&
+					if ( WallExists( x - 1, y, z ) && !WallExists( x - 1, y + 1, z ) /*&& 
 						 !StairsExists( x, y, z + 1 ) && !StairsExists( x, y, z - 1 ) && !StairsExists( x, y - 1, z + 1 ) && !StairsExists( x, y - 1, z - 1 )*/ ) // x-
 					if ( sdRandomPattern.random() < 0.666 )
 					{
-						cut_ops.push({ mat:MAT_STAIRS, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2,
-							riseZInc:!WallExists( x, y, z+1 ) && !WallExists( x, y-1, z+1 ) && !StairsExists( x, y-1, z+1 ),
-							riseZDec:!WallExists( x, y, z-1 ) && !WallExists( x, y-1, z-1 ) && !StairsExists( x, y-1, z-1 ),
-							riseXInc:false,
+						cut_ops.push({ mat:MAT_STAIRS, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
+							riseZInc:!WallExists( x, y, z+1 ) && !WallExists( x, y-1, z+1 ) && !StairsExists( x, y-1, z+1 ), 
+							riseZDec:!WallExists( x, y, z-1 ) && !WallExists( x, y-1, z-1 ) && !StairsExists( x, y-1, z-1 ), 
+							riseXInc:false, 
 							riseXDec:false });
 						level_grid[ x ][ y ][ z ].is_stairs = true;
 						//continue;
 					}
 					//else
-					if ( WallExists( x, y, z + 1 ) && !WallExists( x, y + 1, z + 1 ) /*&&
+					if ( WallExists( x, y, z + 1 ) && !WallExists( x, y + 1, z + 1 ) /*&& 
 						 !StairsExists( x + 1, y, z ) && !StairsExists( x - 1, y, z ) && !StairsExists( x + 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z )*/ ) // z+
 					if ( sdRandomPattern.random() < 0.666 )
 					{
-						cut_ops.push({ mat:MAT_STAIRS, orientation:2, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2,
-							riseXInc:!WallExists( x+1, y, z ) && !WallExists( x+1, y-1, z ) && !StairsExists( x+1, y-1, z ),
-							riseXDec:!WallExists( x-1, y, z ) && !WallExists( x-1, y-1, z ) && !StairsExists( x-1, y-1, z ),
-							riseZInc:false,
+						cut_ops.push({ mat:MAT_STAIRS, orientation:2, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
+							riseXInc:!WallExists( x+1, y, z ) && !WallExists( x+1, y-1, z ) && !StairsExists( x+1, y-1, z ), 
+							riseXDec:!WallExists( x-1, y, z ) && !WallExists( x-1, y-1, z ) && !StairsExists( x-1, y-1, z ), 
+							riseZInc:false, 
 							riseZDec:false });
 						level_grid[ x ][ y ][ z ].is_stairs = true;
 						//continue;
 					}
 					//else
-					if ( WallExists( x, y, z - 1 ) && !WallExists( x, y + 1, z - 1 ) /*&&
+					if ( WallExists( x, y, z - 1 ) && !WallExists( x, y + 1, z - 1 ) /*&& 
 						 !StairsExists( x + 1, y, z ) && !StairsExists( x - 1, y, z ) && !StairsExists( x + 1, y - 1, z ) && !StairsExists( x - 1, y - 1, z )*/ ) // z-
 					if ( sdRandomPattern.random() < 0.666 )
 					{
-						cut_ops.push({ mat:MAT_STAIRS, orientation:3, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2,
-							riseXInc:!WallExists( x+1, y, z ) && !WallExists( x+1, y-1, z ) && !StairsExists( x+1, y-1, z ),
-							riseXDec:!WallExists( x-1, y, z ) && !WallExists( x-1, y-1, z ) && !StairsExists( x-1, y-1, z ),
-							riseZInc:false,
+						cut_ops.push({ mat:MAT_STAIRS, orientation:3, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2, 
+							riseXInc:!WallExists( x+1, y, z ) && !WallExists( x+1, y-1, z ) && !StairsExists( x+1, y-1, z ), 
+							riseXDec:!WallExists( x-1, y, z ) && !WallExists( x-1, y-1, z ) && !StairsExists( x-1, y-1, z ), 
+							riseZInc:false, 
 							riseZDec:false });
 						level_grid[ x ][ y ][ z ].is_stairs = true;
 						//continue;
 					}
-
+					
 					if ( level_grid[ x ][ y ][ z ].is_stairs )
 					continue;
 				}
 
 			}
 		}
-
+		
 		// Solve stairs conflicts regarding borders being spawned between perpendicular stairs
 		for ( var i = 0; i < cut_ops.length; i++ )
 		for ( var i2 = 0; i2 < cut_ops.length; i2++ )
@@ -2327,7 +2327,7 @@ class main
 				}
 			}
 		}
-
+		
 		// Some borders
 		for ( var x = 0; x < level_grid.length; x++ )
 		for ( var y = 0; y < level_grid[ x ].length; y++ )
@@ -2341,18 +2341,18 @@ class main
 			{
 				var y1 = y * block_height;
 				var y2 = y1 + block_height;
-
+				
 				y2 -= block_height / 2;
-
+				
 				if ( !WallExists( x + 1, y, z ) && !WallExists( x + 1, y - 1, z ) && ( !WallExists( x + 1, y - 2, z ) || sdRandomPattern.random() < 0.333 ) && !StairsExists( x + 1, y - 1, z ) )
 				{
 					var x1 = x * 32;
 					var x2 = x1 + 32;
 					var z1 = z * 32;
 					var z2 = z1 + 32;
-
+					
 					x1 = x2 - 2;
-
+					
 					cut_ops.push({ mat:MAT_BORDER, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 				}
 				if ( !WallExists( x - 1, y, z ) && !WallExists( x - 1, y - 1, z ) && ( !WallExists( x - 1, y - 2, z ) || sdRandomPattern.random() < 0.333 ) && !StairsExists( x - 1, y - 1, z ) )
@@ -2361,9 +2361,9 @@ class main
 					var x2 = x1 + 32;
 					var z1 = z * 32;
 					var z2 = z1 + 32;
-
+					
 					x2 = x1 + 2;
-
+					
 					cut_ops.push({ mat:MAT_BORDER, orientation:0, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 				}
 				if ( !WallExists( x, y, z + 1 ) && !WallExists( x, y - 1, z + 1 ) && ( !WallExists( x, y - 2, z + 1 ) || sdRandomPattern.random() < 0.333 ) && !StairsExists( x, y - 1, z + 1 ) )
@@ -2372,9 +2372,9 @@ class main
 					var x2 = x1 + 32;
 					var z1 = z * 32;
 					var z2 = z1 + 32;
-
+					
 					z1 = z2 - 2;
-
+					
 					cut_ops.push({ mat:MAT_BORDER, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 				}
 				if ( !WallExists( x, y, z - 1 ) && !WallExists( x, y - 1, z - 1 ) && ( !WallExists( x, y - 2, z - 1 ) || sdRandomPattern.random() < 0.333 ) && !StairsExists( x, y - 1, z - 1 ) )
@@ -2383,14 +2383,14 @@ class main
 					var x2 = x1 + 32;
 					var z1 = z * 32;
 					var z2 = z1 + 32;
-
+					
 					z2 = z1 + 2;
-
+					
 					cut_ops.push({ mat:MAT_BORDER, orientation:1, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 				}
 			}
 		}
-
+		
 		// On-border lights
 		for ( var i = 0; i < cut_ops.length; i++ )
 		if ( cut_ops[ i ].mat === MAT_BORDER )
@@ -2405,7 +2405,7 @@ class main
 
 			var cx = ( x2 + x1 ) / 2;
 			var cz = ( z2 + z1 ) / 2;
-
+			
 			if ( x2 - x1 > z2 - z1 )
 			{
 				x1 = cx - 1;
@@ -2416,40 +2416,40 @@ class main
 				z1 = cz - 1;
 				z2 = cz + 1;
 			}
-
+			
 			cut_ops.push({ mat:MAT_LAMP, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 			//level_grid[ x ][ y ][ z ].is_lamp = true;
 
 			sdLamp.CreateLamp({ x:cx, y:(y2+y1)/2, z:cz, collision_radius:(y2-y1)/2, glow_radius:16, ceiling:false });
 		}
-
+		
 		/*
 		var cut_ops = [];
 		var cut_ops_y = 0;
 		var cluster_size = 32;
-
+		
 		var max_size_y = 32;
 		for ( var i = 0; i < concrete_ops; i++ )
 		{
 			var max_size = 32;
 			var min_size = 32;
-
+			
 			var cur_size_x = 32;
 			var cur_size_y = 32;
 			var cur_size_z = 32;
-
+			
 			var x1 = ~~( sdRandomPattern.random() * ( size_x - cur_size_x ) / cluster_size ) * cluster_size;
 			var x2 = x1 + cur_size_x;
-
+			
 			var y1 = Math.ceil( sdRandomPattern.random() * ( size_y - cur_size_y ) / cluster_size ) * cluster_size;
 			var y2 = y1 + cur_size_y;
-
+			
 			var z1 = ~~( sdRandomPattern.random() * ( size_z - cur_size_z ) / cluster_size ) * cluster_size;
 			var z2 = z1 + cur_size_z;
-
+			
 			cut_ops.push({ mat_x:~~(sdRandomPattern.random()*2) * 32, mat_y:~~(sdRandomPattern.random()*2) * 32, x1:x1, y1:y1, z1:z1, x2:x2, y2:y2, z2:z2 });
 		}*/
-
+		
 		var level_bitmap_pixels = [];
 		level_bitmap_pixels.length = main.level_bitmap.width;
 		for ( var x = 0; x < main.level_bitmap.width; x++ )
@@ -2470,14 +2470,14 @@ class main
 		{
 			return level_bitmap_pixels[ x ][ y ];
 		}
-
+		
 		var c = 0;
 		for ( x = 0; x < size_x; x++ )
 		for ( y = 0; y < size_y; y++ )
 		for ( z = 0; z < size_z; z++ )
 		{
 			var i = Coord( x,y,z );
-
+			
 			if ( test_trace_setup )
 			{
 				if ( y < 5 )
@@ -2504,7 +2504,7 @@ class main
 				}
 				continue;
 			}
-
+			
 			if ( fill[ i ] > 0 )
 			{
 				if ( !add_concrete )
@@ -2533,14 +2533,14 @@ class main
 				if ( z < cut_ops[ op ].z2 )
 				if ( y >= cut_ops[ op ].y1 )
 				if ( y < cut_ops[ op ].y2 )*/
-
+				
 				for ( x = cut_ops[ op ].x1; x < cut_ops[ op ].x2; x++ )
 				for ( y = cut_ops[ op ].y1; y < cut_ops[ op ].y2; y++ )
 				for ( z = cut_ops[ op ].z1; z < cut_ops[ op ].z2; z++ )
 				{
 					var i = Coord( x,y,z );
 					var c = i * 3;
-
+					
 					var fill_power = 1;
 					/*
 					world_rgb[ c   ] = ~~( 127 + Math.sin( op ) * 50 );
@@ -2548,15 +2548,15 @@ class main
 					world_rgb[ c+2 ] = ~~( 127 + Math.sin( op + 2 ) * 50 );
 					*/
 					var rgba = null;
-
+					
 					if ( cut_ops[ op ].mat === MAT_WALL )
 					{
 						var off_x = 0;
 						var off_y = 0;
-
+						
 						var on_border = ( x === cut_ops[ op ].x1 || x === cut_ops[ op ].x2-1 || z === cut_ops[ op ].z1 || z === cut_ops[ op ].z2-1 );
 						var on_deeper = ( x === cut_ops[ op ].x1+1 || x === cut_ops[ op ].x2-2 || z === cut_ops[ op ].z1+1 || z === cut_ops[ op ].z2-2 );
-
+						
 						/*if ( x === cut_ops[ op ].x1 || z === cut_ops[ op ].z2-1 )
 						rgba = GetPixelFromLevelBitmap( ( x + z ) % 32 + off_x, ( 31 - ( y % 32 ) ) + off_y );
 						else
@@ -2575,7 +2575,7 @@ class main
 							{
 								bit_x = x % 32;
 							}
-
+							
 							if ( on_deeper || bit_x < 2 || bit_x >= 30 || bit_y < 2 || bit_y >= 30 || ( bit_y >= 14 && bit_y < 18 ) || ( bit_x >= 3 && bit_y >= 3 && bit_x < 29 && bit_y < 13 ) )
 							rgba = GetPixelFromLevelBitmap( bit_x, bit_y );
 							else
@@ -2593,7 +2593,7 @@ class main
 					{
 						var off_x = 0;
 						var off_y = 32;
-
+						
 						if ( cut_ops[ op ].orientation === 0 )
 						{
 							if ( x === cut_ops[ op ].x1 )
@@ -2636,15 +2636,15 @@ class main
 					if ( cut_ops[ op ].mat === MAT_STAIRS )
 					{
 						var rise_potential = 0;
-
+						
 						var elevation = 0;
-
+						
 						if ( cut_ops[ op ].riseXDec && x < cut_ops[ op ].x1 + 2 ||
 							 cut_ops[ op ].riseXInc && x >= cut_ops[ op ].x2 - 2 ||
 							 cut_ops[ op ].riseZDec && z < cut_ops[ op ].z1 + 2 ||
 							 cut_ops[ op ].riseZInc && z >= cut_ops[ op ].z2 - 2 )
 						rise_potential = block_height / 2;
-
+						
 						if ( cut_ops[ op ].orientation === 0 )
 						{
 							elevation = ( x - cut_ops[ op ].x1 ) * 0.75 - 8;
@@ -2664,24 +2664,24 @@ class main
 						{
 							elevation = -( z - cut_ops[ op ].z2 + 1 ) * 0.75 - 8;
 						}
-
+					
 						if ( ( y - cut_ops[ op ].y1 - rise_potential ) > elevation || // + 1 because in else case stair will be higher than floor by 1 voxel
 							 elevation < 0 )
 						fill_power = 0;
-
-
+					
+						
 						if ( fill_power > 0 )
 						{
 							if ( rise_potential > 0 )
 							{
 								var off_x = 32;
 								var off_y = 32;
-
+								
 								if ( cut_ops[ op ].orientation >= 2 )
 								rgba = GetPixelFromLevelBitmap( ~~((y-cut_ops[ op ].y2+34 - elevation)*0.25 + 1 ) % 32 + off_x, ~~(z*0.25) % 32 + off_y );
 								else
 								rgba = GetPixelFromLevelBitmap( ~~((y-cut_ops[ op ].y2+34 - elevation)*0.25 + 1 ) % 32 + off_x, ~~(x*0.25) % 32 + off_y );
-
+					
 								if ( rgba.r < 30 )
 								fill_power = 0;
 							}
@@ -2705,7 +2705,7 @@ class main
 						rgba = GetPixelFromLevelBitmap( ~~((y-cut_ops[ op ].y2+34)*0.25) % 32 + off_x, ~~(z*0.25) % 32 + off_y );
 						else
 						rgba = GetPixelFromLevelBitmap( ~~((y-cut_ops[ op ].y2+34)*0.25) % 32 + off_x, ~~(x*0.25) % 32 + off_y );
-
+					
 						if ( rgba.r < 30 )
 						fill_power = -10;
 						//fill_power = 0;
@@ -2717,7 +2717,7 @@ class main
 						rgba.r = 255;
 						rgba.g = 255;
 						rgba.b = 255;
-
+						
 						noise_tex[ i ] = 1;
 					}
 
@@ -2727,13 +2727,13 @@ class main
 						world_rgb[ c+1 ] = rgba.g;
 						world_rgb[ c+2 ] = rgba.b;
 					}
-
+					
 					fill[ i ] += fill_power;
 				}
 			}
 		}
-
-
+		
+		
 		// Remove isolated AND hide deeply invisible
 		for ( x = 1; x < size_x-1; x++ )
 		for ( y = 1; y < size_y-1; y++ )
@@ -2741,12 +2741,12 @@ class main
 		{
 			var i = Coord( x,y,z );
 			// ( x * size_z_mul_size_y + y * size_z + z );
-
+			
 			var cur_fill = fill[ i ] > edge_density;
 			if ( cur_fill )
 			{
 				var filled_around = 0;
-
+				
 				/*if ( i - 1 !== Coord( x,y,z - 1 ) )
 				throw new Error();
 				if ( i + 1 !== Coord( x,y,z + 1 ) )
@@ -2759,27 +2759,27 @@ class main
 				throw new Error();
 				if ( i + size_z * size_y !== Coord( x + 1,y,z ) )
 				throw new Error();*/
-
-
-
-
-
-
+				
+				
+				
+				
+				
+				
 				if ( cur_fill === ( fill[ i - 1 ] > edge_density ) ) // z
 				filled_around++;
 				if ( cur_fill === ( fill[ i + 1 ] > edge_density ) )
 				filled_around++;
-
+			
 				if ( cur_fill === ( fill[ i - size_z ] > edge_density ) ) // y
 				filled_around++;
 				if ( cur_fill === ( fill[ i + size_z ] > edge_density ) )
 				filled_around++;
-
+			
 				if ( cur_fill === ( fill[ i - size_z * size_y ] > edge_density ) ) // x
 				filled_around++;
 				if ( cur_fill === ( fill[ i + size_z * size_y ] > edge_density ) )
 				filled_around++;
-
+			
 				//if ( filled_around === 14 )
 				if ( filled_around === 6 )
 				{
@@ -2792,12 +2792,12 @@ class main
 				}*/
 			}
 		}
-
-
-
+		
+		
+									
 		Math.random = old_rand;
 		sdRandomPattern.RestoreSeed(); ////////////////////////////////////////////////// END OF SEED ///////////
-
+		
 		main.lightmap_rays_per_direction = 2;
 		main.lightmap_beam_power = 0.1;
 		main.lightmap_rare_scale = 3;
@@ -2805,12 +2805,12 @@ class main
 		main.lightmap_hit_power_multiplier = 0.5;
 		main.lightmap_non_existent_power = 0.025;
 		main.lightmap_ambient = 0.2;
-
+		
 		var global_brightness = ( Math.max( main.fog_color_color.r, main.fog_color_color.g, main.fog_color_color.b ) + ( main.fog_color_color.r + main.fog_color_color.g + main.fog_color_color.b ) / 3 ) / 2;
-
+		
 		main.lightmap_ambient *= global_brightness;
 		main.lightmap_beam_power *= global_brightness;
-
+		
 		// Shadows
 		for ( x = 0; x < size_x; x++ )
 		for ( y = 0; y < size_y; y++ )
@@ -2821,50 +2821,50 @@ class main
 			if ( fill[ i ] > edge_density )
 			{
 				var orig_beam_power = main.lightmap_beam_power;
-
+				
 				for ( var b = 0; b < main.lightmap_rays_per_direction; b++ )
 				for ( var xx = -1; xx <= 1; xx++ )
 				for ( var zz = -1; zz <= 1; zz++ )
 				if ( xx !== 0 || zz !== 0 )
 				{
-
+					
 					var beam_power = orig_beam_power;
-
+					
 					// May calc brightness
 					var i2 = i;
 					var till_sun = size_y - y - 1;
-
+					
 					if ( xx > 0 )
 					till_sun = Math.min( till_sun, ( size_x - x - 1 ) * 2 );
 					else
 					if ( xx < 0 )
 					till_sun = Math.min( till_sun, ( x - 1 ) * 2 );
-
+			
 					if ( zz > 0 )
 					till_sun = Math.min( till_sun, ( size_z - z - 1 ) * 2 );
 					else
 					if ( zz < 0 )
 					till_sun = Math.min( till_sun, ( z - 1 ) * 2 );
-
+			
 					var speed = size_z;
 					var rare_speed = xx * size_y * size_z + zz;
-
+					
 					var rare = 0;
 					var rare_scale = main.lightmap_rare_scale + Math.random() * main.lightmap_rare_random;
-
+					
 					while ( till_sun > 0 )
 					{
 						till_sun--;
-
+						
 						i2 += speed;
-
+						
 						if ( rare <= 0 )
 						{
 							i2 += rare_speed;
 							rare += rare_scale;
 						}
 						rare--;
-
+						
 						if ( fill[ i2 ] > edge_density )
 						{
 							beam_power *= main.lightmap_hit_power_multiplier;
@@ -2875,11 +2875,11 @@ class main
 					if ( till_sun <= 0 )
 					brightness[ i ] += beam_power;
 				}
-
+				
 				brightness[ i ] += main.lightmap_ambient; // Ambient
 			}
 		}
-
+		
 		if ( main.isWinter )
 		{
 			for ( x = 0; x < size_x; x++ )
@@ -2896,25 +2896,25 @@ class main
 						world_rgb[ c   ] = 255;
 						world_rgb[ c+1 ] = 255;
 						world_rgb[ c+2 ] = 255;
-
+						
 						break;
 					}
 				}
 			}
 		}
-
+		
 		for ( var p = 0; p < sdLamp.lamps.length; p++ )
 		{
 			var m = sdLamp.lamps[ p ];
-
+			
 			var x1 = m.minx = Math.max( m.minx, 0 );
 			var y1 = m.miny = Math.max( m.miny, 0 );
 			var z1 = m.minz = Math.max( m.minz, 0 );
-
+			
 			var x2 = m.maxx = Math.min( m.maxx, size_x );
 			var y2 = m.maxy = Math.min( m.maxy, size_y );
 			var z2 = m.maxz = Math.min( m.maxz, size_z );
-
+			
 			for ( x = x1; x < x2; x++ )
 			for ( y = y1; y < y2; y++ )
 			for ( z = z1; z < z2; z++ )
@@ -2926,7 +2926,7 @@ class main
 					var di = main.Dist3D( x, y*m.any_distance_y_scale, z, m.x, m.y*m.any_distance_y_scale, m.z );
 					if ( di < m.glow_radius )
 					{
-						if ( di < m.collision_radius )
+						if ( di < m.collision_radius ) 
 						brightness[ i ] += 2;
 						else
 						brightness[ i ] += ( 1 - di / m.glow_radius ) * 2;
@@ -2934,7 +2934,7 @@ class main
 				}
 			}
 		}
-
+		
 		// Terrain generated
 		for ( var xx = 0; xx < level_chunks_x; xx++ )
 		for ( var yy = 0; yy < level_chunks_y; yy++ )
@@ -2955,17 +2955,17 @@ class main
 			for ( var z = 0; z < chunk_size; z++ )
 			{
 				var i = Coord( xx * chunk_size + x, yy * chunk_size + y, zz * chunk_size + z );
-
+				
 				vertices[ v++ ] = xx * chunk_size + x;
 				vertices[ v++ ] = yy * chunk_size + y;
 				vertices[ v++ ] = zz * chunk_size + z;
-
+				
 				var br = noise_tex[ i ];
 				rgba[ c++ ] = world_rgb[ i*3   ] / 255 * br;
 				rgba[ c++ ] = world_rgb[ i*3+1 ] / 255 * br;
 				rgba[ c++ ] = world_rgb[ i*3+2 ] / 255 * br;
-
-
+				
+				
 				if ( fill[ i ] > edge_density )
 				{
 					rgba[ c++ ] = 1; // Alpha
@@ -2973,18 +2973,18 @@ class main
 				}
 				else
 				rgba[ c++ ] = 0; // Alpha
-
-
+			
+				
 				uvs2[ b++ ] = brightness[ i ];
 			}
 
 			sub_geom.updateVertexDataTyped( vertices );
-
+			
 			//sub_geom.updateRGBADataTyped( rgba );
 			sub_geom.updateRGBADataTyped( sub_geom.initRGBAData( false, chunk_size * chunk_size * chunk_size * 4 ) ); // Remove later
-
+			
 			sub_geom.updateSecondaryUVDataTyped( uvs2 );
-
+			
 			sub_geom.boundingBox = new THREE.Box3( new THREE.Vector3( xx * chunk_size, yy * chunk_size, zz * chunk_size ),
 												   new THREE.Vector3( xx * chunk_size + chunk_size, yy * chunk_size + chunk_size, zz * chunk_size + chunk_size ) );
 			sub_geom.boundingSphere = new THREE.Sphere( new THREE.Vector3( ( xx + 0.5 ) * chunk_size, ( yy + 0.5 ) * chunk_size, ( zz + 0.5 ) * chunk_size ),
@@ -2995,25 +2995,25 @@ class main
 			mesh.position.x = 0.5;
 			mesh.position.y = 0.5;
 			mesh.position.z = 0.5;
-
+			
 			var lod = new THREE.Group();
 			lod.add( mesh );
 			main.scene.add( lod );
 			*/
 			var chunk = new Chunk( xx, yy, zz, null );
-
+			
 			chunk.dots_total = dots_total;
-
+			
 			chunk.rgba = rgba;
 			chunk.uvs2 = uvs2;
-
+			
 			chunk.recalc_brightness_current_update_hash = [];
 			chunk.recalc_brightness_current_update_hash.length = chunk_size * chunk_size * chunk_size;
 			for ( var i = 0; i < chunk.recalc_brightness_current_update_hash.length; i++ )
 			chunk.recalc_brightness_current_update_hash[ i ] = main.recalc_brightness_hash;
-
+			
 			chunk.GenerateLODModels();
-
+			
 			if ( zz > 0 )
 			{
 				chunk.Connect( main.voxel_static[ main.voxel_static.length - 1 ] );
@@ -3026,16 +3026,16 @@ class main
 			{
 				chunk.Connect( main.voxel_static[ main.voxel_static.length - level_chunks_z * level_chunks_y ] );
 			}
-
+			
 			main.voxel_static.push( chunk );
 		}
-
+		
 		sdAtom.init(); // updates fog
 
 		main.wind_channel = new SimplePanVolumeDriver();
 		sdSound.PlaySound({ sound: lib.wind, parent_mesh: main.main_camera, channel:main.wind_channel, volume: 0, loop: true });
 		//sdSound.SetSoundPitch( main.wind_channel, 0.5 );
-
+		
 	}
 	static DrawDebugPoint( x, y, z, color=0xFF0000, size=3, opacity=0.5, ms_duration=0 ) // debugdrawpoint
 	{
@@ -3069,13 +3069,13 @@ class main
 	}
 	static DestroyMovieClip( mc, keep_material=false )
 	{
-
+		
 		while ( mc.children.length > 0 )
 		{
-			main.DestroyMovieClip( mc.children[ mc.children.length - 1 ], keep_material );
+			main.DestroyMovieClip( mc.children[ mc.children.length - 1 ], keep_material ); 
 		}
 
-		if ( mc.isMesh || mc.isPoints )
+		if ( mc.isMesh || mc.isPoints ) 
 		{
 			if ( !keep_material )
 			main.DestroySingleMaterial( ( mc.material ) );
@@ -3092,7 +3092,7 @@ class main
 		mc.parent.remove( mc );
 	}
 
-	static DestroySingleMaterial( tex_mat )
+	static DestroySingleMaterial( tex_mat ) 
 	{
 		if ( tex_mat.dispose_pb2 !== undefined )
 		{
@@ -3134,55 +3134,55 @@ class main
 		if ( x <= min ) return min;
 		return x;
 	}
-
+	
 	static WorldPaintDamage( x, y, z, radius, mode=0/*is_gore_painter=false*/,red=0,green=0,blue=0 ) // mode: cutter=0, gore_paiter=1, builder=2
 	{
 		const MODE_CUTTER = 0;
 		const MODE_GORE_PAINTER = 1;
 		const MODE_BUILDER = 2;
-
+		
 		var chunk_size = main.chunk_size;
-
+		
 		var radius_int = main.FastCeil( radius );
-
+		
 		if ( mode === MODE_CUTTER )
 		radius_int += 2;
-
+	
 		if ( mode === MODE_GORE_PAINTER )
 		radius_int += 2; // Not sure about this one
-
+		
 		var radius_pow2 = radius * radius;
 		var radius_vis_upd = radius + 2;
 		var radius_pow2_vis_upd = radius_vis_upd * radius_vis_upd;
-
+		
 		var chunk_updates = [];
 		function chunk_update_function( chunk )
 		{
 			if ( chunk_updates.indexOf( chunk ) === -1 )
 			chunk_updates.push( chunk );
 		}
-
+		
 		if ( mode === MODE_CUTTER )
 		{
 			for ( var i = 0; i < sdLamp.lamps.length; i++ )
 			{
 				var m = sdLamp.lamps[ i ];
-
+				
 				//console.log( 'di = ' + Math.sqrt( main.Dist3D_Vector_pow2( m.x-x, m.y-y, m.z-z ) ) + ' ( required less than '+(m.collision_radius + radius)+' ) ' );
-
+				
 				if ( main.Dist3D_Vector_pow2( m.x-x, m.y-y, m.z-z ) <= Math.pow( m.collision_radius + radius, 2 ) )
 				{
 					//console.log('Lights out!');
 					sdLamp.lamps.splice( i, 1 );
 					i--;
-
+					
 					main.RecalcBrightness( ~~( m.x ), ~~( m.y ), ~~( m.z ), ~~( m.glow_radius ) );
-
+					
 					continue;
 				}
 			}
 		}
-
+		
 		// Smallest voxel
 		var av_x = ~~( x );
 		var av_y = ~~( y );
@@ -3195,28 +3195,28 @@ class main
 		var chunk_xx_max = ~~( ( av_x + radius_int ) / chunk_size );
 		var chunk_yy_max = ~~( ( av_y + radius_int ) / chunk_size );
 		var chunk_zz_max = ~~( ( av_z + radius_int ) / chunk_size );
-
+		
 		if ( chunk_xx_min < 0 )
 		chunk_xx_min = 0;
-
+		
 		if ( chunk_yy_min < 0 )
 		chunk_yy_min = 0;
-
+		
 		if ( chunk_zz_min < 0 )
 		chunk_zz_min = 0;
-
+		
 		if ( chunk_xx_max > main.level_chunks_x - 1 )
 		chunk_xx_max = main.level_chunks_x - 1;
-
+		
 		if ( chunk_yy_max > main.level_chunks_y - 1 )
 		chunk_yy_max = main.level_chunks_y - 1;
-
+		
 		if ( chunk_zz_max > main.level_chunks_z - 1 )
 		chunk_zz_max = main.level_chunks_z - 1;
-
+		
 		var anything_done = false;
 		var geometry_changed = false;
-
+		
 		for ( var chunk_xx = chunk_xx_min; chunk_xx <= chunk_xx_max; chunk_xx++ )
 		for ( var chunk_yy = chunk_yy_min; chunk_yy <= chunk_yy_max; chunk_yy++ )
 		for ( var chunk_zz = chunk_zz_min; chunk_zz <= chunk_zz_max; chunk_zz++ )
@@ -3224,7 +3224,7 @@ class main
 			var chunk = null;
 
 			var ch = chunk_xx * main.level_chunks_y * main.level_chunks_z + chunk_yy * main.level_chunks_z + chunk_zz;
-
+			
 			chunk = main.voxel_static[ ch ];
 
 			av_x = ~~x - chunk_xx * chunk_size;
@@ -3232,16 +3232,16 @@ class main
 			av_z = ~~z - chunk_zz * chunk_size;
 
 			var i = av_x * chunk_size * chunk_size + av_y * chunk_size + av_z;
-
+		
 		    var radius_int_x_min = Math.max( 0, av_x - radius_int ) - av_x;
 		    var radius_int_y_min = Math.max( 0, av_y - radius_int ) - av_y;
 		    var radius_int_z_min = Math.max( 0, av_z - radius_int ) - av_z;
-
+			
 			if ( chunk_yy === 0 )
 			{
 				radius_int_y_min = Math.max( 1, radius_int_y_min + av_y ) - av_y; // Disallows holes at the bottom of terrain.
 			}
-
+			
 		    var radius_int_x_max = Math.min( chunk_size, av_x + radius_int ) - av_x;
 		    var radius_int_y_max = Math.min( chunk_size, av_y + radius_int ) - av_y;
 		    var radius_int_z_max = Math.min( chunk_size, av_z + radius_int ) - av_z;
@@ -3251,9 +3251,9 @@ class main
 			for ( var zz = radius_int_z_min; zz < radius_int_z_max; zz++ )
 			{
 				var di = main.Dist3D_Vector_pow2( xx, yy, zz );
-
+					
 				var i = (av_x+xx) * chunk_size * chunk_size + (av_y+yy) * chunk_size + (av_z+zz);
-
+					
 				if ( di < radius_pow2 )
 				{
 					di = Math.sqrt( di );
@@ -3271,9 +3271,9 @@ class main
 						if ( mode === MODE_CUTTER )
 						{
 							anything_done = true;
-
+							
 							chunk.dots_total--;
-
+							
 							chunk.rgba[ i * 4 + 3 ] = 0;
 							geometry_changed = true;
 
@@ -3284,16 +3284,16 @@ class main
 								//var r_x = ( Math.random() - 0.5 );
 								//var r_y = ( Math.random() - 0.5 );
 								//var r_z = ( Math.random() - 0.5 );
-
+								
 								var r = new THREE.Vector3();
 								main.SetAsRandom3D( r );
 								r.x *= 0.5;
 								r.y *= 0.5;
 								r.z *= 0.5;
-
+								
 								//var sprite = sdSprite.CreateSprite({ type: sdSprite.TYPE_ROCK, x:x-xx, y:y-yy, z:z-zz, tox:(xx+r_x)*power, toy:(yy+r_y)*power, toz:(zz+r_z)*power });
 								var sprite = sdSprite.CreateSprite({ type: sdSprite.TYPE_ROCK, x:x-xx, y:y-yy, z:z-zz, tox:(xx+r.x)*power, toy:(yy+r.y)*power, toz:(zz+r.z)*power });
-
+								
 								sprite.mesh.material.uniforms.diffuse.value.r = chunk.rgba[ i * 4 + 0 ] * 2;
 								sprite.mesh.material.uniforms.diffuse.value.g = chunk.rgba[ i * 4 + 1 ] * 2;
 								sprite.mesh.material.uniforms.diffuse.value.b = chunk.rgba[ i * 4 + 2 ] * 2;
@@ -3304,18 +3304,18 @@ class main
 					if ( mode === MODE_BUILDER )
 					{
 						chunk.dots_total++;
-
+						
 						chunk.rgba[ i * 4 + 0 ] = red;
 						chunk.rgba[ i * 4 + 1 ] = green;
 						chunk.rgba[ i * 4 + 2 ] = blue;
 
 						chunk.rgba[ i * 4 + 3 ] = 1;
-
+						
 						if ( di >= radius - 1 )
 						chunk.uvs2[ i ] = Math.random();
 						else
-						chunk.uvs2[ i ] = -1;
-
+						chunk.uvs2[ i ] = -1;	
+						
 						geometry_changed = true;
 						anything_done = true;
 					}
@@ -3326,14 +3326,14 @@ class main
 				{
 					if ( chunk.uvs2[ i ] < 0 )
 					chunk.uvs2[ i ] = Math.random();
-
+					
 					di = Math.sqrt( di );
 					var morph = ( di - radius );
-
+					
 					if ( morph < 1 )
 					{
 						morph = 0.5 + morph * 0.5;
-
+						
 						chunk.rgba[ i * 4 ] *= morph;
 						chunk.rgba[ i * 4 + 1 ] *= morph;
 						chunk.rgba[ i * 4 + 2 ] *= morph;
@@ -3343,7 +3343,7 @@ class main
 
 			chunk_update_function( chunk );
 		}
-
+		
 		if ( anything_done )
 		{
 			if ( mode === MODE_GORE_PAINTER )
@@ -3364,7 +3364,7 @@ class main
 		}
 		return anything_done;
 	}
-
+						
 	static SetAsRandom3D( v )
 	{
 		var omega = Math.random() * Math.PI * 2;
@@ -3378,23 +3378,23 @@ class main
 
 		return v;
 	}
-
+	
 	static GetEntityBrightness( x, y, z )
 	{
 		if ( main.mobile )
 		return 1;
-
+		
 		var di = main.Dist3D( main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z, x, y, z );
 
 		var cache_size = ~~Math.max( 2, di * 0.1 ); // 2
-
+		
 		if ( Math.abs( main.GetEntityBrightness_lx - x ) <= cache_size )
 		if ( Math.abs( main.GetEntityBrightness_ly - y ) <= cache_size )
 		if ( Math.abs( main.GetEntityBrightness_lz - z ) <= cache_size )
 		{
 			return main.GetEntityBrightness_lr;
 		}
-
+		
 		function IncludeLamps( brightness )
 		{
 			for ( var p = 0; p < sdLamp.lamps.length; p++ )
@@ -3426,7 +3426,7 @@ class main
 
 						if ( di < m.glow_radius * m.glow_radius )
 						{
-							//if ( di < m.collision_radius )
+							//if ( di < m.collision_radius ) 
 							//brightness += 2;
 							//else
 							brightness += ( 1 - Math.sqrt( di ) / m.glow_radius ) * 2;
@@ -3436,23 +3436,23 @@ class main
 			}
 			return brightness;
 		}
-
+		
 		var chunk_size = main.chunk_size;
-
+		
 		var size_x = main.level_chunks_x * chunk_size;
 		var size_y = main.level_chunks_y * chunk_size;
 		var size_z = main.level_chunks_z * chunk_size;
-
+		
 		x = ~~x;
 		y = ~~y;
 		z = ~~z;
-
+		
 		if ( x < 0 || y < 0 || z < 0 )
 		return IncludeLamps( main.lightmap_ambient + main.lightmap_rays_per_direction * main.lightmap_beam_power * 4 );
-
+	
 		if ( x > size_x-1 || y > size_y-1 || z > size_z-1 )
 		return IncludeLamps( main.lightmap_ambient + main.lightmap_rays_per_direction * main.lightmap_beam_power * 4 );
-
+		
 		var chunk_xx = ~~( x / chunk_size );
 		var chunk_yy = ~~( y / chunk_size );
 		var chunk_zz = ~~( z / chunk_size );
@@ -3499,7 +3499,7 @@ class main
 
 				var rare = 0;
 				var rare_scale;
-
+				
 				rare_scale = 0.5 + 0.666 * main.lightmap_rare_random;
 
 				var current_av_x = av_x;
@@ -3594,7 +3594,7 @@ class main
 				if ( !was_stopped )
 				brightness += beam_power;
 			}
-
+			
 			brightness = IncludeLamps( brightness );
 
 			brightness += main.lightmap_ambient; // Ambient
@@ -3606,7 +3606,7 @@ class main
 		main.GetEntityBrightness_lr = brightness;
 		return brightness;
 	}
-	static RecalcBrightness( ux, uy, uz, radius_int=Infinity )
+	static RecalcBrightness( ux, uy, uz, radius_int=Infinity ) 
 	{
 		var arr = [ ux, uy, uz, radius_int, -1, 0, 0, 0, 0, 0, null, 0 ]; // All except first 4 are  "local variables" that change until whole height is done
 		/*
@@ -3616,7 +3616,7 @@ class main
 			main.recalc_brightness_tasks = [ arr ];
 			return;
 		}
-
+		
 		for ( var i = 0; i < main.recalc_brightness_tasks.length; i++ )
 		{
 			var arr2 = main.recalc_brightness_tasks[ i ];
@@ -3624,7 +3624,7 @@ class main
 			{
 				return;
 			}
-
+			
 			// Inclusion: New in scheduled
 			if ( ux - radius_int >= arr2[ 0 ] - arr2[ 3 ] )
 			if ( ux + radius_int < arr2[ 0 ] + arr2[ 3 ] )
@@ -3636,7 +3636,7 @@ class main
 				//console.log('New is in scheduled so cancel '+arr2[ 3 ] );
 				return;
 			}
-
+			
 			// Inclusion: Scheduled in new
 			if ( ux - radius_int < arr2[ 0 ] - arr2[ 3 ] )
 			if ( ux + radius_int >= arr2[ 0 ] + arr2[ 3 ] )
@@ -3649,7 +3649,7 @@ class main
 				//console.log('Smaller scheduled is overriden '+radius_int );
 				return;
 			}
-
+			
 			// Some collision
 			if ( false ) // Let's see if it can be carried by hashing updates instead
 			if ( Math.abs( ux - arr2[ 0 ] ) <= radius_int + arr2[ 3 ] )
@@ -3659,21 +3659,21 @@ class main
 				arr2[ 0 ] = ~~( ( ux + arr2[ 0 ] ) / 2 );
 				arr2[ 1 ] = ~~( ( uy + arr2[ 1 ] ) / 2 );
 				arr2[ 2 ] = ~~( ( uz + arr2[ 2 ] ) / 2 );
-
+				
 				arr2[ 3 ] += radius_int;
 				//console.log('Merge with already scheduled '+arr2[ 3 ]);
 				return;
 			}
 		}
 		*/
-
+	   
 		var insert_at = main.recalc_brightness_tasks.length;
-
+	   
 		// Try to insert before smallest that collide with this one (so lamps breaking is done in one step when shot with shotgun)
 		for ( var i = 0; i < main.recalc_brightness_tasks.length; i++ )
 		{
 			var arr2 = main.recalc_brightness_tasks[ i ];
-
+			
 			// Some collision
 			if ( Math.abs( ux - arr2[ 0 ] ) <= radius_int + arr2[ 3 ] )
 			if ( Math.abs( uy - arr2[ 1 ] ) <= radius_int + arr2[ 3 ] )
@@ -3686,23 +3686,23 @@ class main
 				}
 			}
 		}
-
+		
 		main.recalc_brightness_tasks.splice( insert_at, 0, arr );
-
+		
 		//main.recalc_brightness_tasks.push( arr );
-
+		
 		main.recalc_brightness_hash++;
 	}
-
-
-	//static _RecalcBrightness( ux, uy, uz, radius_int, current_y )
-	static _RecalcBrightness( arr )
+	
+	
+	//static _RecalcBrightness( ux, uy, uz, radius_int, current_y ) 
+	static _RecalcBrightness( arr ) 
 	{
 		var ux = arr[ 0 ];
 		var uy = arr[ 1 ];
 		var uz = arr[ 2 ];
 		var radius_int = arr[ 3 ];
-
+		
 		// Restore old values
 		function TryToRestoreVariables()
 		{
@@ -3719,7 +3719,7 @@ class main
 			}
 		}
 		//
-
+		
 		// Save back
 		function SaveVariables() // "return false;" after this
 		{
@@ -3733,61 +3733,61 @@ class main
 			arr[ 11 ] = next_y_for_chunk_update_flush;
 		}
 		//
-
+		
 		function FlushChunks( final )
 		{
 			for ( var i = 0; i < chunk_updates.length; i++ )
 			chunk_updates[ i ].UpdateChunk( false, false, true );
-
+		
 			if ( !final )
 			chunk_updates.length = 0;
 		}
-
-
-
+		
+		
+		
 		var chunk_updates = [];
-
+		
 		var chunk_size = main.chunk_size;
-
+		
 		var size_x = main.level_chunks_x * chunk_size;
 		var size_y = main.level_chunks_y * chunk_size;
 		var size_z = main.level_chunks_z * chunk_size;
-
+		
 		var highest_y = Math.min( size_y, uy + radius_int + 1 );
-
+		
 		if ( radius_int === Infinity )
 		highest_y = size_y;
-
+		
 		var from_x = 0;
 		var from_z = 0;
 		var to_x = size_x;
 		var to_z = size_z;
-
+		
 		if ( radius_int !== Infinity )
 		{
 			from_x = Math.max( 0, ux - 0 - radius_int );
 			to_x = Math.min( size_x, ux + 0 + radius_int + 1 );
-
+			
 			from_z = Math.max( 0, uz - 0 - radius_int );
 			to_z = Math.min( size_z, uz + 0 + radius_int + 1 );
 		}
-
+		
 		var pattern = new sdRandomPattern( Math.min( 256, radius_int * radius_int ) ).values;
 		var pattern_i = 0;
-
+		
 		var z,x,y;
-
+		
 		var y_rare_spread_inc = 0;
-
+		
 		y = highest_y - 1;
-
+		
 		var next_y_for_chunk_update_flush = ( ~( y / chunk_size ) ) * chunk_size - 1;
-
+		
 		TryToRestoreVariables(); ////////
-
+		
 		var y_steps_to_do = 8;//Math.ceil( 8 / ((to_x-from_x)*(to_z-from_z)/32/32) ); // 8
 		//var y_steps_to_do = 16 * 16*16 / ( (to_x-from_x)*(to_z-from_z) );
-
+		
 		for ( y; y >= 0; y-- )
 		{
 			if ( y === next_y_for_chunk_update_flush )
@@ -3795,23 +3795,23 @@ class main
 				FlushChunks( false );
 				next_y_for_chunk_update_flush = ( ~( y / chunk_size ) ) * chunk_size - 1;
 			}
-
+			
 			y_steps_to_do--;
 			if ( y_steps_to_do < 0 )
 			{
 				/*for ( x = from_x; x < to_x; x++ )
 				for ( z = from_z; z < to_z; z++ )
 				main.DrawDebugPoint( x, y, z, 0x0000FF, 2, 1, 3000 );*/
-
+				
 				SaveVariables(); ////////
 				return false;
 			}
-
-
+			
+			
 			//var anything_on_this_level = ( radius_int === Infinity || y > highest_y - radius_int * 2 );
-
+			
 			y_rare_spread_inc++;
-
+			
 			if ( y_rare_spread_inc >= 3 )
 			{
 				y_rare_spread_inc = 0;
@@ -3824,13 +3824,13 @@ class main
 				if ( to_z < size_z )
 				to_z += 1;
 			}
-
+			
 			var fills_on_this_level = 0;
 			var fills_on_this_level_to_stop = ( to_x - from_x ) * ( to_z - from_z );
-
+			
 			for ( x = from_x; x < to_x; x++ )
 			for ( z = from_z; z < to_z; z++ )
-			//if ( radius_int === Infinity ||
+			//if ( radius_int === Infinity || 
 			//	 main.FastCeil( Math.max( Math.abs( ux-x ), Math.abs( uz-z ) ) ) <= main.FastCeil( ( uy - y ) / 3 ) + radius_int )
 			{
 				var chunk_xx = ~~( x / chunk_size );
@@ -3848,21 +3848,21 @@ class main
 				var anything_done = false;
 
 				var i = av_x * chunk_size * chunk_size + av_y * chunk_size + av_z;
-
-
+				
+				
 				if ( chunk.rgba[ i * 4 + 3 ] > 0 )
 				//if ( chunk.uvs2[ i ] !== -1 )
 				//if ( chunk.recalc_brightness_current_update_hash[ i ] < main.recalc_brightness_hash )
 				{
 					//var i = av_x * chunk_size * chunk_size + av_y * chunk_size + av_z;
-
+					
 					fills_on_this_level++;
-
+					
 					//if ( chunk.uvs2[ i ] !== -1 )
 					if ( chunk.recalc_brightness_current_update_hash[ i ] < main.recalc_brightness_hash )
 					{
 						chunk.recalc_brightness_current_update_hash[ i ] = main.recalc_brightness_hash;
-
+					
 						//if ( chunk.rgba[ i * 4 + 3 ] <= 0 )
 						if ( chunk.uvs2[ i ] === -1 )
 						continue;
@@ -3881,7 +3881,7 @@ class main
 
 							// May calc brightness
 							var i2 = i;
-
+							
 							var till_sun = size_y - y - 1;
 
 							if ( xx > 0 )
@@ -3895,7 +3895,7 @@ class main
 							else
 							if ( zz < 0 )
 							till_sun = Math.min( till_sun, ( z - 1 ) * 2 );
-
+							
 							var speed = chunk_size;
 							var rare_speed = xx * chunk_size * chunk_size + zz;
 
@@ -3994,8 +3994,8 @@ class main
 						}
 
 						chunk.uvs2[ i ] += main.lightmap_ambient; // Ambient
-
-
+						
+						
 						for ( var p = 0; p < sdLamp.lamps.length; p++ )
 						{
 							var m = sdLamp.lamps[ p ];
@@ -4048,7 +4048,7 @@ class main
 					{
 						if ( chunk_updates[ search ] === chunk )
 						break;
-
+						
 						search--;
 						if ( search < 0 )
 						{
@@ -4063,76 +4063,76 @@ class main
 			if ( !anything_on_this_level )
 			break;
 			*/
-
+			
 			if ( fills_on_this_level === fills_on_this_level_to_stop ) // Stop only when wall is one the way
 			if ( y < uy ) // Stop only if below
 			{
 				/*for ( x = from_x; x < to_x; x++ )
 				for ( z = from_z; z < to_z; z++ )
 				main.DrawDebugPoint( x, y, z, 0x00FF00, 3, 1, 3000 );*/
-
+				
 				break;
 			}
-
+			
 			y_steps_to_do--;
 			if ( y_steps_to_do <= 0 )
 			{
 				/*for ( x = from_x; x < to_x; x++ )
 				for ( z = from_z; z < to_z; z++ )
 				main.DrawDebugPoint( x, y, z, 0x0000FF, 2, 1, 3000 );*/
-
+				
 				SaveVariables(); ////////
 				return false;
 			}
-
+			
 		}
-
+		
 		FlushChunks( true );
-
+		
 		return true;
 	}
-
-	/*static _RecalcBrightness( ux, uy, uz, radius_int )
+	
+	/*static _RecalcBrightness( ux, uy, uz, radius_int ) 
 	{
 		var chunk_updates = [];
-
+		
 		var chunk_size = main.chunk_size;
-
+		
 		var size_x = main.level_chunks_x * chunk_size;
 		var size_y = main.level_chunks_y * chunk_size;
 		var size_z = main.level_chunks_z * chunk_size;
-
+		
 		var highest_y = Math.min( size_y, uy + radius_int + 1 );
-
+		
 		if ( radius_int === Infinity )
 		highest_y = size_y;
-
+		
 		var from_x = 0;
 		var from_z = 0;
 		var to_x = size_x;
 		var to_z = size_z;
-
+		
 		if ( radius_int !== Infinity )
 		{
 			from_x = Math.max( 0, ux - main.FastCeil( uy / 3 ) - radius_int );
 			to_x = Math.min( size_x, ux + main.FastCeil( uy / 3 ) + radius_int + 1 );
-
+			
 			from_z = Math.max( 0, uz - main.FastCeil( uy / 3 ) - radius_int );
 			to_z = Math.min( size_z, uz + main.FastCeil( uy / 3 ) + radius_int + 1 );
 		}
-
+		
 		var pattern = new sdRandomPattern( Math.min( 256, radius_int * radius_int ) ).values;
 		var pattern_i = 0;
-
+		
 		var z,x,y;
-
+		
 		for ( y = highest_y - 1; y >= 0; y-- )
 		{
 			var anything_on_this_level = ( radius_int === Infinity || y > highest_y - radius_int * 2 );
-
+			
 			for ( x = from_x; x < to_x; x++ )
 			for ( z = from_z; z < to_z; z++ )
-			if ( radius_int === Infinity ||
+			if ( radius_int === Infinity || 
 				 main.FastCeil( Math.max( Math.abs( ux-x ), Math.abs( uz-z ) ) ) <= main.FastCeil( ( uy - y ) / 3 ) + radius_int )
 			{
 				var chunk_xx = ~~( x / chunk_size );
@@ -4171,7 +4171,7 @@ class main
 
 							// May calc brightness
 							var i2 = i;
-
+							
 							var till_sun = size_y - y - 1;
 
 							if ( xx > 0 )
@@ -4185,7 +4185,7 @@ class main
 							else
 							if ( zz < 0 )
 							till_sun = Math.min( till_sun, ( z - 1 ) * 2 );
-
+							
 							var speed = chunk_size;
 							var rare_speed = xx * chunk_size * chunk_size + zz;
 
@@ -4301,7 +4301,7 @@ class main
 					{
 						if ( chunk_updates[ search ] === chunk )
 						break;
-
+						
 						search--;
 						if ( search < 0 )
 						{
@@ -4311,27 +4311,32 @@ class main
 					}
 				}
 			}
-
+			
 			if ( !anything_on_this_level )
 			break;
 		}
-
+		
 		for ( var i = 0; i < chunk_updates.length; i++ )
 		chunk_updates[ i ].UpdateChunk( false, false, true );
 	}*/
-
+	
 	static TraceLine( x,y,z, x2,y2,z2, stop_condition_chunk=null, step_scale=1, offset=0 ) // First point and last point, not relative to each other.
 	{
 		var chunk_size = main.chunk_size;
-
+			
 		var TraceLine_depth = -1;
-
+		
 		x = ~~x;
 		y = ~~y;
 		z = ~~z;
 		x2 = ~~x2;
 		y2 = ~~y2;
 		z2 = ~~z2;
+		
+		const main_level_chunks_x_mul_chunk_size = main.level_chunks_x * chunk_size;
+		const main_level_chunks_y_mul_chunk_size = main.level_chunks_y * chunk_size;
+		const main_level_chunks_z_mul_chunk_size = main.level_chunks_z * chunk_size;
+		
 		function CheckBounds( x3, y3, z3, needs_round )
 		{
 			if ( needs_round )
@@ -4347,11 +4352,11 @@ class main
 			if ( z3 < 0 )
 			return false;
 
-			if ( x3 >= main.level_chunks_x * chunk_size )
+			if ( x3 >= main_level_chunks_x_mul_chunk_size )
 			return false;
-			if ( y3 >= main.level_chunks_y * chunk_size )
+			if ( y3 >= main_level_chunks_y_mul_chunk_size )
 			return false;
-			if ( z3 >= main.level_chunks_z * chunk_size )
+			if ( z3 >= main_level_chunks_z_mul_chunk_size )
 			return false;
 			return true;
 		}
@@ -4359,27 +4364,34 @@ class main
 		var needs_bounds_check = !CheckBounds( x,y,z, true ) || !CheckBounds( x2,y2,z2, true );
 
 		var steps = ~~( Math.max( Math.abs( x-x2 ), Math.abs( y-y2 ), Math.abs( z-z2 ) ) / step_scale );
-
+		
 		if ( steps < 1 )
 		steps = 1;
-
+	
 		if ( steps > 1000 )
 		steps = 1000;
+	
+		var s = offset * step_scale;
+		var s_max = steps + 1;
 
-		for ( var s = offset * step_scale; s < steps + 1; s++ )
+		for ( ; s < s_max; ++s )
 		{
 			var morph = s / steps;
 			var i_morph = 1 - morph;
 
-			var av_x = ( x * i_morph + x2 * morph );
-			var av_y = ( y * i_morph + y2 * morph );
-			var av_z = ( z * i_morph + z2 * morph );
+			var av_x = x * i_morph + x2 * morph;
+			var av_y = y * i_morph + y2 * morph;
+			var av_z = z * i_morph + z2 * morph;
 
 			// Fix math errors
-			av_x = ~~( Math.round( av_x * 1000 ) / 1000 );
-			av_y = ~~( Math.round( av_y * 1000 ) / 1000 );
-			av_z = ~~( Math.round( av_z * 1000 ) / 1000 );
-
+			//av_x = ~~( Math.round( av_x * 1000 ) / 1000 );
+			//av_y = ~~( Math.round( av_y * 1000 ) / 1000 );
+			//av_z = ~~( Math.round( av_z * 1000 ) / 1000 );
+			// Faster version? Is there real need to keep non-integer accuracy. It is actually bad when "var i" is calculated...
+			av_x = ~~( av_x );
+			av_y = ~~( av_y );
+			av_z = ~~( av_z );
+			
 			if ( needs_bounds_check )
 			{
 				if ( CheckBounds( av_x,av_y,av_z, false ) )
@@ -4396,13 +4408,13 @@ class main
 			var chunk = null;
 
 			var ch = chunk_xx * main.level_chunks_y * main.level_chunks_z + chunk_yy * main.level_chunks_z + chunk_zz;
-
+			
 			chunk = main.voxel_static[ ch ];
 
 			if ( chunk === stop_condition_chunk )
 			{
 				TraceLine_depth = 1;
-
+				
 				return TraceLine_depth;
 			}
 
@@ -4411,7 +4423,7 @@ class main
 			av_z -= chunk_zz * chunk_size;
 
 			var i = av_x * chunk_size * chunk_size + av_y * chunk_size + av_z;
-
+			
 			if ( chunk.rgba[ i * 4 + 3 ] > 0 )
 			{
 				TraceLine_depth = Math.max( 0, ( s - 1 ) / steps );
@@ -4426,14 +4438,14 @@ class main
 	static flush_fps()
 	{
 		var pb2_mp = main;
-
+		
 		pb2_mp.ticks_last = pb2_mp.ticks_passed = Date.now();
 		pb2_mp.ticks_last_delta = 1000 / 60;
 	}
 	static get_fps()
 	{
 		var pb2_mp = main;
-
+		
 		pb2_mp.ticks_last = pb2_mp.ticks_passed;
 		pb2_mp.ticks_passed = Date.now();
 
@@ -4441,7 +4453,7 @@ class main
 		{
 			pb2_mp.ticks_last_delta = pb2_mp.ticks_passed - pb2_mp.ticks_last;
 		}
-
+		
 		pb2_mp.ticks_todo += pb2_mp.ticks_last_delta;
 
 		if ( pb2_mp.ticks_todo > 0 )
@@ -4465,7 +4477,7 @@ class main
 			if ( pb2_mp.WSPEED > 10 )
 			pb2_mp.WSPEED = 10;
 		}
-
+		
 	}
 	static HitPulse( v )
 	{
@@ -4479,26 +4491,26 @@ class main
 		for ( var i = 0; i < main.materials_with_dyn_light.length; i++ )
 		{
 			var spawn_quick_uniform_links = ( main.materials_with_dyn_light[ i ].quick_uniform_links === undefined );
-
+			
 			if ( spawn_quick_uniform_links )
 			{
 				main.materials_with_dyn_light[ i ].quick_uniform_links = [];
 				main.materials_with_dyn_light[ i ].quick_uniform_links.length = sdShaderMaterial.max_lamps;
 			}
-
+			
 			for ( var m = 0; m < sdShaderMaterial.max_lamps; m++ )
 			{
 				if ( spawn_quick_uniform_links )
 				main.materials_with_dyn_light[ i ].quick_uniform_links[ m ] = main.materials_with_dyn_light[ i ].uniforms[ 'lamp' + m + '_color' ];
-
+				
 				var c = main.materials_with_dyn_light[ i ].quick_uniform_links[ m ].value;
-
+				
 				//var c = main.materials_with_dyn_light[ i ].uniforms[ 'lamp' + m + '_color' ].value;
 				c.r = 0;
 				c.g = 0;
 				c.b = 0;
 			}
-
+			
 		}
 		main.next_dynamic_lamp_id = 0;
 	}
@@ -4515,32 +4527,32 @@ class main
 		r *= main.dynamic_light_intensity;
 		g *= main.dynamic_light_intensity;
 		b *= main.dynamic_light_intensity;
-
+		
 		if ( r <= 0 && g <= 0 && b <= 0 )
 		return;
-
+		
 		var delta_pos = new THREE.Vector3( x-main.main_camera.position.x, y-main.main_camera.position.y, z-main.main_camera.position.z );
-
+		
 		var di = main.Dist3D( x,y,z, main.main_camera.position.x, main.main_camera.position.y, main.main_camera.position.z );
 		var an;
 		if ( delta_pos.x === 0 && delta_pos.y === 0 && delta_pos.z === 0 )
 		an = 0;
 		else
 		an = new THREE.Vector3( 0, 0, -1 ).applyQuaternion( main.main_camera.quaternion ).angleTo( delta_pos );
-
+		
 		var max_val = Math.max( r,g,b );
-
+		
 		var insert_at = main.next_dynamic_lamp_id;
-
+		
 		if ( main.next_dynamic_lamp_id >= sdShaderMaterial.max_lamps )
 		{
 			var ok = true;
-
+			
 			// Try to discard new one
 			if ( di > sdShaderMaterial.lamp_range )
 			if ( an > Math.PI / 2 )
 			return;
-
+			
 			// Try to replace ones that are not visible
 			if ( ok )
 			for ( var i = 0; i < sdShaderMaterial.max_lamps; i++ )
@@ -4551,7 +4563,7 @@ class main
 				ok = false;
 				break;
 			}
-
+			
 			// Try to replace ones that are further
 			if ( ok )
 			for ( var i = 0; i < sdShaderMaterial.max_lamps; i++ )
@@ -4561,17 +4573,17 @@ class main
 				ok = false;
 				break;
 			}
-
+			
 			if ( insert_at === main.next_dynamic_lamp_id )
 			return;
 		}
-
-
+	
+	
 		main.dynamic_lamp_cam_distances[ insert_at ] = di;
 		main.dynamic_lamp_cam_angles[ insert_at ] = an;
 		main.dynamic_lamp_max_value[ insert_at ] = max_val;
 		//console.log('angleto = '+main.dynamic_lamp_cam_angles[ insert_at ] );
-
+		
 		for ( var i = 0; i < main.materials_with_dyn_light.length; i++ )
 		{
 			var c = main.materials_with_dyn_light[ i ].uniforms[ 'lamp' + insert_at + '_color' ].value;
@@ -4583,30 +4595,30 @@ class main
 			v.y = y;
 			v.z = z;
 		}
-
+		
 		main.next_dynamic_lamp_id++;
 	}
 	static onEnterFrame()
 	{
 		//main.WorkWithMouseMovements();
 		main.EraseAllDynamicLights();
-
+		
 		var GSPEED = main.GSPEED;
-
+		
 		pb2_mp.get_fps();
-
+		
 		var xx = main.hold_d - main.hold_a;
 		var zz = main.hold_s - main.hold_w;
 		var yy = main.hold_space - main.hold_ctrl;
-
+		
 		if ( main.hit_pulse > 1 )
 		main.hit_pulse = Math.max( 1, main.hit_pulse - GSPEED * 0.05 );
 		else
 		if ( main.hit_pulse < 1 )
 		main.hit_pulse = Math.min( 1, main.hit_pulse + GSPEED * 0.01 );
-
+	
 		main.composer.renderer.domElement.style.filter = "brightness(" + Math.round( Math.min( 1.5, main.hit_pulse ) * 100 ) + "%)";
-
+		
 		if ( main.zoom_intensity_target !== main.zoom_intensity )
 		{
 			if ( main.zoom_intensity < main.zoom_intensity_target )
@@ -4627,13 +4639,13 @@ class main
 		{
 			main.main_camera.fov = main.fov * main.zoom_intensity;
 			main.main_camera.updateProjectionMatrix();
-
+			
 			main.UpdateScreenSize();
 		}
-
+		
 		if ( main.my_character === null )
 		{
-
+			
 			var move_speed = 0.2 * GSPEED;
 
 			if ( main.hold_shift === 1 )
@@ -4667,24 +4679,24 @@ class main
 		else
 		{
 			var scale = 1 + Math.max( 0, main.my_character.reload_timer * 0.5 );
-
+			
 			if ( main.my_character.time_to_reload > 0 )
 			scale += main.my_character.time_to_reload;
 			else
 			if ( main.my_character.ammo[ main.my_character.curwea ] <= 0 )
 			scale += Math.PI;
 			//( ( main.my_character.ammo[ main.my_character.curwea ] <= 0 || main.my_character.time_to_reload > 0 ) ? main.my_character.time_to_reload : 2 ) );
-
-			var recoil_scale = ( 0.6667 + 40/sdGunClass.weapon_speed[ main.my_character.curwea ] * ( 0.6667 * sdGunClass.weapon_knock_spread[ main.my_character.curwea ] + main.my_character.recoil * 2 / 5*sdGunClass.weapon_spread_from_recoil[ main.my_character.curwea ] ) ) * 103 / main.fov / main.zoom_intensity;
-
+			
+			var recoil_scale = ( 0.6667 + 40/sdCharacter.weapon_speed[ main.my_character.curwea ] * ( 0.6667 * sdCharacter.weapon_knock_spread[ main.my_character.curwea ] + main.my_character.recoil * 2 / 5*sdCharacter.weapon_spread_from_recoil[ main.my_character.curwea ] ) ) * 103 / main.fov / main.zoom_intensity;
+			
 			if ( recoil_scale > 1.5 )
 			recoil_scale = 1.5;
-
+			
 			if ( recoil_scale > 2 )
 			{
 				scale = 0;
 			}
-
+			
 			var normal_size = 89 / 2;
 			/*main.crosshair.style.width = ( normal_size * scale * 2 )+'px';
 			main.crosshair.style.height = ( normal_size * scale * 2 )+'px';
@@ -4697,29 +4709,29 @@ class main
 			main.crosshair.style.marginTop = ( - normal_size * recoil_scale )+'px';
 			main.crosshair.style.opacity = 0.6667 / ( 1 + Math.abs( 1 - scale ) );
 		}
-
+			
 		main.speed.x = main.MorphWithTimeScale( main.speed.x, 0, 0.7, GSPEED );
 		main.speed.y = main.MorphWithTimeScale( main.speed.y, 0, 0.7, GSPEED );
 		main.speed.z = main.MorphWithTimeScale( main.speed.z, 0, 0.7, GSPEED );
 
 		if ( main.speed.length < 0.01 )
 		main.speed.multiplyScalar( 0 );
-
+		
 		main.main_camera.position.x += main.speed.x * GSPEED;
 		main.main_camera.position.y += main.speed.y * GSPEED;
 		main.main_camera.position.z += main.speed.z * GSPEED;
-
+		
 		if ( main.main_camera.position.y < main.world_end_y + 5 )
 		main.main_camera.position.y = main.world_end_y + 5;
 		main.ground_mesh.position.x = main.main_camera.position.x;
 		main.ground_mesh.position.z = main.main_camera.position.z;
-
+		
 		sdSound.SetSoundPitch( main.wind_channel, 0.5 + Math.pow( main.speed.length() * 0.2, 1 ) );
 		sdSound.SetSoundVolume( main.wind_channel, Math.min( 3, 0.1 + 0.666 * Math.pow( main.speed.length() * 0.3, 1.5 ) ) ); // 0.1 + 0.4 , 2
-
-
+		
+		
 		// Passive restore
-
+		
 		main.main_camera.updateMatrixWorld();
 
 		var front_vector = new THREE.Vector3( 0, 0, 1 );
@@ -4741,7 +4753,7 @@ class main
 			{
 				main.device_orientation_control.update( GSPEED );
 			}
-
+			
 		}
 		else
 		{
@@ -4749,11 +4761,11 @@ class main
 			//main.main_camera.quaternion.slerp( old_quaternion, Math.pow( 1 - ( front_vector.y * front_vector.y ), 1 ) * 0.01 * GSPEED );
 			//main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.01 * GSPEED );
 			//main.main_camera.quaternion.slerp( old_quaternion, ( 1 - Math.pow( 0 - ( front_vector.y * front_vector.y ), 2 ) ) * 0.06 * GSPEED );
-
+			
 			if ( main.turn_method === 0 )
 			main.main_camera.quaternion.slerp( old_quaternion, 0.03 * GSPEED );
 		}
-
+		
 		/*
 		if ( main.my_character === null )
 		{
@@ -4761,18 +4773,18 @@ class main
 			{
 				main.hold_fire = false;
 				if ( !main.MP_mode )
-				sdBullet.CreateBullet({
-							x: main.main_camera.position.x,
-							y: main.main_camera.position.y,
+				sdBullet.CreateBullet({ 
+							x: main.main_camera.position.x, 
+							y: main.main_camera.position.y, 
 							z: main.main_camera.position.z,
 							tox: -front_vector.x * 7,
 							toy: -front_vector.y * 7,
 							toz: -front_vector.z * 7,
 							owner: sdCharacter.characters[ 0 ],
-							knock_power: sdGunClass.weapon_knock_power[ 0 ],
-							hp_damage: sdGunClass.weapon_hp_damage[ 0 ],
-							hp_damage_head: sdGunClass.weapon_hp_damage_head[ 0 ],
-							is_rocket: sdGunClass.weapon_is_rocket[ 0 ]
+							knock_power: sdCharacter.weapon_knock_power[ 0 ],
+							hp_damage: sdCharacter.weapon_hp_damage[ 0 ],
+							hp_damage_head: sdCharacter.weapon_hp_damage_head[ 0 ],
+							is_rocket: sdCharacter.weapon_is_rocket[ 0 ]
 						});
 			}
 		}*/
