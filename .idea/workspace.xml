@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="63635a16-12c2-4540-9a59-9ab243464bd0" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/js/Guns/sdBuild.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/js/Guns/sdGun.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/js/Guns/sdGunClass.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/js/Guns/sdRifle.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/js/Guns/sdRocket.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/js/Guns/sdSaw.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/js/Guns/sdShotgun.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/js/Guns/sdSniper.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/js/Guns/sdSpark.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/main.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/sdAI.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/sdAI.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/sdAtom.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/sdAtom.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/sdByteShifter.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/sdByteShifter.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/sdCharacter.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/sdCharacter.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="JavaScript File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="1W3GY8qOBMuUGofjGFlLSH6xxFO" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/js/Guns" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Gambi\Documents\GitHub\StarDefenders3D\js\Guns" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Gambi\Documents\GitHub\StarDefenders3D\js\Guns" />
+      <recent name="C:\Users\Gambi\Documents\GitHub\StarDefenders3D\js\Commands" />
+      <recent name="C:\Users\Gambi\Documents\GitHub\StarDefenders3D\js" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="index.html" type="JavascriptDebugType" temporary="true" nameIsGenerated="true" uri="http://localhost:63342/StarDefenders3D/index.html" useBuiltInWebServerPort="true">
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JavaScript Debug.index.html" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="ServiceViewManager">
+    <option name="viewStates">
+      <list>
+        <serviceView>
+          <treeState>
+            <expand />
+            <select />
+          </treeState>
+        </serviceView>
+      </list>
+    </option>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="63635a16-12c2-4540-9a59-9ab243464bd0" name="Default Changelist" comment="" />
+      <created>1578370910620</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1578370910620</updated>
+      <workItem from="1578370918540" duration="22592000" />
+      <workItem from="1578711386229" duration="1209000" />
+    </task>
+    <task id="LOCAL-00001" summary="t">
+      <created>1578371650825</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1578371650825</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="t" />
+    <option name="LAST_COMMIT_MESSAGE" value="t" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="679" y="207" key="#Command.js" timestamp="1578373952285">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="679" y="207" key="#Command.js/0.0.1920.1040@0.0.1920.1040" timestamp="1578373952285" />
+    <state x="690" y="268" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1578375473288">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="690" y="268" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1578375473288" />
+    <state x="585" y="115" key="CommitChangelistDialog2" timestamp="1578371649895">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="585" y="115" key="CommitChangelistDialog2/0.0.1920.1040@0.0.1920.1040" timestamp="1578371649895" />
+    <state x="740" y="276" key="FileChooserDialogImpl" timestamp="1578380069563">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="740" y="276" key="FileChooserDialogImpl/0.0.1920.1040@0.0.1920.1040" timestamp="1578380069563" />
+    <state width="1899" height="192" key="GridCell.Tab.0.bottom" timestamp="1578550517249">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.0.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517249" />
+    <state width="1899" height="192" key="GridCell.Tab.0.center" timestamp="1578550517249">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.0.center/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517249" />
+    <state width="1899" height="192" key="GridCell.Tab.0.left" timestamp="1578550517249">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.0.left/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517249" />
+    <state width="1899" height="192" key="GridCell.Tab.0.right" timestamp="1578550517249">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.0.right/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517249" />
+    <state width="1899" height="192" key="GridCell.Tab.1.bottom" timestamp="1578550537620">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.1.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1578550537620" />
+    <state width="1899" height="192" key="GridCell.Tab.1.center" timestamp="1578550537619">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.1.center/0.0.1920.1040@0.0.1920.1040" timestamp="1578550537619" />
+    <state width="1899" height="192" key="GridCell.Tab.1.left" timestamp="1578550537619">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.1.left/0.0.1920.1040@0.0.1920.1040" timestamp="1578550537619" />
+    <state width="1899" height="192" key="GridCell.Tab.1.right" timestamp="1578550537619">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.1.right/0.0.1920.1040@0.0.1920.1040" timestamp="1578550537619" />
+    <state width="1899" height="192" key="GridCell.Tab.2.bottom" timestamp="1578550517037">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.2.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517037" />
+    <state width="1899" height="192" key="GridCell.Tab.2.center" timestamp="1578550517036">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.2.center/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517036" />
+    <state width="1899" height="192" key="GridCell.Tab.2.left" timestamp="1578550517036">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.2.left/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517036" />
+    <state width="1899" height="192" key="GridCell.Tab.2.right" timestamp="1578550517036">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.2.right/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517036" />
+    <state width="1899" height="192" key="GridCell.Tab.3.bottom" timestamp="1578550517037">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.3.bottom/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517037" />
+    <state width="1899" height="192" key="GridCell.Tab.3.center" timestamp="1578550517037">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.3.center/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517037" />
+    <state width="1899" height="192" key="GridCell.Tab.3.left" timestamp="1578550517037">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.3.left/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517037" />
+    <state width="1899" height="192" key="GridCell.Tab.3.right" timestamp="1578550517037">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="1899" height="192" key="GridCell.Tab.3.right/0.0.1920.1040@0.0.1920.1040" timestamp="1578550517037" />
+    <state width="498" height="446" key="SwitcherDM" timestamp="1578377724751">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state width="498" height="446" key="SwitcherDM/0.0.1920.1040@0.0.1920.1040" timestamp="1578377724751" />
+    <state x="482" y="44" width="737" height="909" key="find.popup" timestamp="1578380486809">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="482" y="44" width="737" height="909" key="find.popup/0.0.1920.1040@0.0.1920.1040" timestamp="1578380486809" />
+    <state x="616" y="240" width="672" height="677" key="run.anything.popup" timestamp="1578530406783">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="616" y="240" width="672" height="677" key="run.anything.popup/0.0.1920.1040@0.0.1920.1040" timestamp="1578530406783" />
+  </component>
+</project>
