@@ -4683,11 +4683,11 @@ class main
 			if ( main.my_character.time_to_reload > 0 )
 			scale += main.my_character.time_to_reload;
 			else
-			if ( main.my_character.ammo[ main.my_character.curwea ] <= 0 )
+			if ( main.my_character.ammo[ main.my_character.cur_weapon.gun_id ] <= 0 )
 			scale += Math.PI;
 			//( ( main.my_character.ammo[ main.my_character.curwea ] <= 0 || main.my_character.time_to_reload > 0 ) ? main.my_character.time_to_reload : 2 ) );
 			
-			var recoil_scale = ( 0.6667 + 40/sdGunClass.weapon_speed[ main.my_character.curwea ] * ( 0.6667 * sdGunClass.weapon_knock_spread[ main.my_character.curwea ] + main.my_character.recoil * 2 / 5*sdGunClass.weapon_spread_from_recoil[ main.my_character.curwea ] ) ) * 103 / main.fov / main.zoom_intensity;
+			var recoil_scale = ( 0.6667 + 40/sdGunClass.weapon_speed[ main.my_character.cur_weapon.gun_id ] * ( 0.6667 * sdGunClass.weapon_knock_spread[ main.my_character.cur_weapon.gun_id ] + main.my_character.recoil * 2 / 5*sdGunClass.weapon_spread_from_recoil[ main.my_character.cur_weapon.gun_id ] ) ) * 103 / main.fov / main.zoom_intensity;
 			
 			if ( recoil_scale > 1.5 )
 			recoil_scale = 1.5;

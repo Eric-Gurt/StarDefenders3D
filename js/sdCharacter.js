@@ -669,11 +669,11 @@ class sdCharacter
 	*/
 	get reload_timer()
 	{
-		return this.reload_timers[ this.curwea ];
+		return this.reload_timers[ this.cur_weapon.gun_id ];
 	}
 	set reload_timer( v )
 	{
-		this.reload_timers[ this.curwea ] = v;
+		this.reload_timers[ this.cur_weapon.gun_id ] = v;
 	}
 	constructor( params )
 	{
@@ -748,7 +748,6 @@ class sdCharacter
 		this.idle_phase = 0;
 		this.look_direction = new THREE.Vector3( 1, 0, 0 );
 		
-		this.curwea = 0; // 0 is rifle, 1 is rocket
 		this.cur_weapon = null;
 		this.act_weapon = 0; // 
 		this.act_fire = 0;
@@ -1516,53 +1515,53 @@ class sdCharacter
 		if ( sdCharacter.first_person_view )
 		{
 			for_fps = !for_fps;
-			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_RIFLE ], for_fps || this.curwea === main.WEAPON_RIFLE );
-			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ROCKET ], for_fps || this.curwea === main.WEAPON_ROCKET );
-			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SNIPER ], for_fps || this.curwea === main.WEAPON_SNIPER );
-			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SHOTGUN ], for_fps || this.curwea === main.WEAPON_SHOTGUN );
-			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SPARK ], for_fps || this.curwea === main.WEAPON_SPARK );
-			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_BUILD1 ], for_fps || this.curwea === main.WEAPON_BUILD1 );
-			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SAW ], for_fps || this.curwea === main.WEAPON_SAW );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_RIFLE ], for_fps || this.cur_weapon.gun_id === main.WEAPON_RIFLE );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_ROCKET ], for_fps || this.cur_weapon.gun_id === main.WEAPON_ROCKET );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SNIPER ], for_fps || this.cur_weapon.gun_id === main.WEAPON_SNIPER );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SHOTGUN ], for_fps || this.cur_weapon.gun_id === main.WEAPON_SHOTGUN );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SPARK ], for_fps || this.cur_weapon.gun_id === main.WEAPON_SPARK );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_BUILD1 ], for_fps || this.cur_weapon.gun_id === main.WEAPON_BUILD1 );
+			this.SetLimbIsVisible( this.atoms[ sdCharacter.ATOMS_SAW ], for_fps || this.cur_weapon.gun_id === main.WEAPON_SAW );
 		}
 	}
 	
-	PlayShotSound( curwea )
+	PlayShotSound( gun_id )
 	{
 		var c = this;
 		if ( c === main.my_character && sdCharacter.first_person_view )
 		{
-			if ( curwea === main.WEAPON_RIFLE )
+			if ( gun_id === main.WEAPON_RIFLE )
 			sdSound.PlaySound({ sound: lib.rifle_fire, parent_mesh: c.mesh, volume: 0.25 });
 			else
-			if ( curwea === main.WEAPON_SNIPER )
+			if ( gun_id === main.WEAPON_SNIPER )
 			sdSound.PlaySound({ sound: lib.sniper, parent_mesh: c.mesh, volume: 0.75 });
 			else
-			if ( curwea === main.WEAPON_SHOTGUN )
+			if ( gun_id === main.WEAPON_SHOTGUN )
 			sdSound.PlaySound({ sound: lib.shotgun, parent_mesh: c.mesh, volume: 1 });
 			else
-			if ( curwea === main.WEAPON_SPARK )
+			if ( gun_id === main.WEAPON_SPARK )
 			sdSound.PlaySound({ sound: lib.spark2, parent_mesh: c.mesh, volume: 1 });
 			else
-			if ( curwea === main.WEAPON_BUILD1 )
+			if ( gun_id === main.WEAPON_BUILD1 )
 			sdSound.PlaySound({ sound: lib.player_step, parent_mesh: c.mesh, volume: 1 });
 			else
 			sdSound.PlaySound({ sound: lib.rocket_fire, parent_mesh: c.mesh, volume: 0.25 });
 		}
 		else
 		{
-			if ( curwea === main.WEAPON_RIFLE )
+			if ( gun_id === main.WEAPON_RIFLE )
 			sdSound.PlaySound({ sound: lib.rifle_fire, parent_mesh:c.body, volume: 0.25 });
 			else
-			if ( curwea === main.WEAPON_SNIPER )
+			if ( gun_id === main.WEAPON_SNIPER )
 			sdSound.PlaySound({ sound: lib.sniper, parent_mesh:c.body, volume: 0.75 });
 			else
-			if ( curwea === main.WEAPON_SHOTGUN )
+			if ( gun_id === main.WEAPON_SHOTGUN )
 			sdSound.PlaySound({ sound: lib.shotgun, parent_mesh:c.body, volume: 2 });
 			else
-			if ( curwea === main.WEAPON_SPARK )
+			if ( gun_id === main.WEAPON_SPARK )
 			sdSound.PlaySound({ sound: lib.spark2, parent_mesh:c.body, volume: 1 });
 			else
-			if ( curwea === main.WEAPON_BUILD1 )
+			if ( gun_id === main.WEAPON_BUILD1 )
 			sdSound.PlaySound({ sound: lib.player_step, parent_mesh:c.body, volume: 1 });
 			else
 			sdSound.PlaySound({ sound: lib.rocket_fire, parent_mesh:c.body, volume: 0.25 });
@@ -1581,15 +1580,7 @@ class sdCharacter
 		if ( !(this.cur_weapon instanceof sdSpark) && (passive_weapons !== null) ) passive_weapons.push( c.spark );
 		if ( !(this.cur_weapon instanceof sdBuild) && (passive_weapons !== null) ) passive_weapons.push( c.build1 );
 		if ( !(this.cur_weapon instanceof sdSaw) && (passive_weapons !== null) ) passive_weapons.push( c.saw );
-		/*
-			if ( c.curwea === main.WEAPON_RIFLE ) active_weapon = c.rifle; else if ( passive_weapons !== null ) passive_weapons.push( c.rifle );
-			if ( c.curwea === main.WEAPON_ROCKET ) active_weapon = c.rocket; else if ( passive_weapons !== null ) passive_weapons.push( c.rocket );
-			if ( c.curwea === main.WEAPON_SHOTGUN ) active_weapon = c.shotgun; else if ( passive_weapons !== null ) passive_weapons.push( c.shotgun );
-			if ( c.curwea === main.WEAPON_SNIPER ) active_weapon = c.sniper; else if ( passive_weapons !== null ) passive_weapons.push( c.sniper );
-			if ( c.curwea === main.WEAPON_SPARK ) active_weapon = c.spark; else if ( passive_weapons !== null ) passive_weapons.push( c.spark );
-			if ( c.curwea === main.WEAPON_BUILD1 ) active_weapon = c.build1; else if ( passive_weapons !== null ) passive_weapons.push( c.build1 );
-			if ( c.curwea === main.WEAPON_SAW ) active_weapon = c.saw; else if ( passive_weapons !== null ) passive_weapons.push( c.saw );
-		*/
+		
 		return active_weapon;
 	}
 	
@@ -1817,8 +1808,8 @@ class sdCharacter
 				}
 				else
 				{
-					c.curwea = c.act_weapon;
 					c.cur_weapon = sdGun.Guns[ c.act_weapon ];
+					c.cur_weapon.gun_id = c.act_weapon;
 
 					c._UpdateAmmoBarIfNeeded();
 
@@ -1857,19 +1848,18 @@ class sdCharacter
 					{
 						if ( c.cur_weapon.ammo > 0 )
 						{
-							var curwea = c.curwea;
-							var curweap = c.cur_weapon;
+							var gun_id = c.cur_weapon.gun_id;
 
-							c.reload_timer = sdGunClass.weapon_reload_times[ curwea ];
+							c.reload_timer = sdGunClass.weapon_reload_times[ gun_id ];
 
 							if ( !c.stand )
 							{
-								c.tox += c.look_direction.x * sdGunClass.weapon_self_knockbacks[ curwea ];
-								c.toy += c.look_direction.y * sdGunClass.weapon_self_knockbacks[ curwea ];
-								c.toz += c.look_direction.z * sdGunClass.weapon_self_knockbacks[ curwea ];
+								c.tox += c.look_direction.x * sdGunClass.weapon_self_knockbacks[ gun_id ];
+								c.toy += c.look_direction.y * sdGunClass.weapon_self_knockbacks[ gun_id ];
+								c.toz += c.look_direction.z * sdGunClass.weapon_self_knockbacks[ gun_id ];
 							}
 							
-							if ( sdGunClass.weapon_spawn_shell[ curwea ] )
+							if ( sdGunClass.weapon_spawn_shell[ gun_id ] )
 							{
 								var v = new THREE.Vector3();
 								main.SetAsRandom3D( v );
@@ -1890,22 +1880,22 @@ class sdCharacter
 								sdSprite.CreateSprite({ type: sdSprite.TYPE_SHELL, x:gun_world_pos.x, y:gun_world_pos.y, z:gun_world_pos.z, tox:v.x + c.tox, toy:v.y + c.toy, toz:v.z + c.toz });
 							}
 							
-							var speed = sdGunClass.weapon_speed[ curwea ];
+							var speed = sdGunClass.weapon_speed[ gun_id ];
 
 							var visual = c.cur_weapon.children[ 0 ].getWorldPosition();
 
 							if ( !main.MP_mode || main.my_character === c )
 							{
-								c.PlayShotSound( curwea );
+								c.PlayShotSound( gun_id );
 
-								for ( var p = 0; p < sdGunClass.weapon_knock_count[ curwea ]; p++ )
+								for ( var p = 0; p < sdGunClass.weapon_knock_count[ gun_id ]; p++ )
 								{
 									var spread = { x:0, y:0, z:0 };
 
-									if ( sdGunClass.weapon_knock_spread[ curwea ] > 0 || sdGunClass.weapon_spread_from_recoil[ curwea ] > 0 )
+									if ( sdGunClass.weapon_knock_spread[ gun_id ] > 0 || sdGunClass.weapon_spread_from_recoil[ gun_id ] > 0 )
 									{
 										main.SetAsRandom3D( spread );
-										var r = Math.random() * ( sdGunClass.weapon_knock_spread[ curwea ] + sdGunClass.weapon_spread_from_recoil[ curwea ] * c.recoil );
+										var r = Math.random() * ( sdGunClass.weapon_knock_spread[ gun_id ] + sdGunClass.weapon_spread_from_recoil[ gun_id ] * c.recoil );
 										spread.x *= r;
 										spread.y *= r;
 										spread.z *= r;
@@ -1925,14 +1915,14 @@ class sdCharacter
 										dy: -c.look_direction.y * speed * 0.2,
 										dz: -c.look_direction.z * speed * 0.2,
 										owner: c,
-										knock_power: sdGunClass.weapon_knock_power[ curwea ],
-										hp_damage: sdGunClass.weapon_hp_damage[ curwea ],
-										hp_damage_head: sdGunClass.weapon_hp_damage_head[ curwea ],
-										is_rocket: sdGunClass.weapon_is_rocket[ curwea ],
-										is_sniper: sdGunClass.weapon_is_sniper[ curwea ],
-										is_plasma: sdGunClass.weapon_is_plasma[ curwea ],
-										is_melee: sdGunClass.weapon_melee[ curwea ],
-										splash_radius: sdGunClass.weapon_splash_radius[ curwea ]
+										knock_power: sdGunClass.weapon_knock_power[ gun_id ],
+										hp_damage: sdGunClass.weapon_hp_damage[ gun_id ],
+										hp_damage_head: sdGunClass.weapon_hp_damage_head[ gun_id ],
+										is_rocket: sdGunClass.weapon_is_rocket[ gun_id ],
+										is_sniper: sdGunClass.weapon_is_sniper[ gun_id ],
+										is_plasma: sdGunClass.weapon_is_plasma[ gun_id ],
+										is_melee: sdGunClass.weapon_melee[ gun_id ],
+										splash_radius: sdGunClass.weapon_splash_radius[ gun_id ]
 									});
 									
 									c.muzzle_r = bullet.r;
@@ -1942,15 +1932,15 @@ class sdCharacter
 									if ( main.MP_mode )
 									{
 										bullet.GiveLocalPeerUID();
-										sdSync.MP_SendEvent( sdSync.COMMAND_I_SPAWN_BULLET, bullet, curwea, p );
+										sdSync.MP_SendEvent( sdSync.COMMAND_I_SPAWN_BULLET, bullet, gun_id, p );
 									}
 								}
 								
 								c.muzzle_a = 1;
 								
-								if ( curwea === main.WEAPON_BUILD1 )
+								if ( gun_id === main.WEAPON_BUILD1 )
 								{
-									var rad = sdGunClass.weapon_splash_radius[ curwea ];
+									var rad = sdGunClass.weapon_splash_radius[ gun_id ];
 									
 									var new_x = c.x - c.look_direction.x * ( rad + sdCharacter.player_half_height + 1 );
 									var new_y = c.y + sdCharacter.shoot_offset_y - c.look_direction.y * ( rad + sdCharacter.player_half_height + 1 );
@@ -1998,7 +1988,7 @@ class sdCharacter
 							c._UpdateAmmoBarIfNeeded();
 						
 
-							c.recoil += sdGunClass.weapon_self_knockbacks[ curwea ];
+							c.recoil += sdGunClass.weapon_self_knockbacks[ gun_id ];
 						}
 						else
 						{
@@ -2603,16 +2593,16 @@ class sdCharacter
 				c.cur_weapon.rotation.x -= shake * 0.2;
 				
 				
-				if ( c.cur_weapon.ammo < sdGunClass.weapon_ammo_per_clip[ c.curwea ] )
+				if ( c.cur_weapon.ammo < sdGunClass.weapon_ammo_per_clip[ c.cur_weapon.gun_id ] )
 				{
 					sdSound.PlaySound({ sound: lib.reload, parent_mesh: this.mesh, volume: 1.5 });
 					
-					c.cur_weapon.ammo = sdGunClass.weapon_ammo_per_clip[ c.curwea ];
+					c.cur_weapon.ammo = sdGunClass.weapon_ammo_per_clip[ c.cur_weapon.gun_id ];
 					c._UpdateAmmoBarIfNeeded();
 				}
 			}
 
-			if ( c.curwea === c.act_weapon ) // if not switching
+			if ( c.cur_weapon.gun_id === c.act_weapon ) // if not switching
 			c.time_to_reload -= GSPEED * 0.25;
 			
 			/*if ( c.time_to_reload <= 0 )
@@ -2745,7 +2735,7 @@ class sdCharacter
 		{
 			var rel = 0;
 			
-			if ( c.curwea === main.WEAPON_SAW )
+			if ( c.cur_weapon.gun_id === main.WEAPON_SAW )
 			{
 				var prog = c.reload_timer / sdGunClass.weapon_reload_times[ main.WEAPON_SAW ];
 
