@@ -733,10 +733,10 @@ class sdAtom
 			}
 			
 			if ( c.muzzle_a > 0 )
-			if ( !(c.curweap instanceof(sdBuild)) )
-			if ( !(c.curweap instanceof(sdSaw)) )
+			if ( !(c.cur_weapon instanceof(sdBuild)) )
+			if ( !(c.cur_weapon instanceof(sdSaw)) )
 			{
-				var visual = c.curweap.children[ 0 ].getWorldPosition();
+				var visual = c.cur_weapon.children[ 0 ].getWorldPosition();
 
 				for ( var f = 0; f < 16; f++ )
 				{

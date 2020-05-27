@@ -1,7 +1,7 @@
 
 
 
-/* global THREE, main, sdAtom, sdChain, sdBullet, sdSync, lib, sdSound, sdNet, sdAI */
+/* global THREE, main, sdAtom, sdChain, sdBullet, sdSync, lib, sdSound, sdNet, sdAI, sdGunClass */
 
 class sdCharacter
 {
@@ -50,6 +50,7 @@ class sdCharacter
 		sdCharacter.arm_cross_left = 0.6; // how much arms are rotated towards each other
 		sdCharacter.arm_cross_right = 0.0; // how much arms are rotated towards each other
 		
+		/*  Moved to sdGunClass
 		//										[ rifle,	rocket,		shotgun,	sniper,		spark,		build1,	saw ]
 		sdCharacter.weapon_ammo_per_clip =		[ 25,		Infinity,	8,			Infinity,	15,			15,		Infinity ];
 		sdCharacter.weapon_reload_times =		[ 2.5,		25,			30 * 0.3,	30,			5,			5,		10 ];
@@ -60,8 +61,8 @@ class sdCharacter
 
 		sdCharacter.weapon_speed =				[ 40,		4,			40,			80,			40,			0,		40 ];
 		sdCharacter.weapon_knock_power =		[ 0.02,		0.1,		0.01,		0.04,		0.1,		9,		0.1 ]; // Splash damage depends on this value too, besides hp_damage
-		sdCharacter.weapon_hp_damage =			[ 30,		115,		10,			90,			20/*40*/,	0,		80 ];
-		sdCharacter.weapon_hp_damage_head =		[ 60,		115,		20,			180,		22/*45*/,	0,		110 ];
+		sdCharacter.weapon_hp_damage =			[ 30,		115,		10,			90,			20/*40*,	0,		80 ];
+		sdCharacter.weapon_hp_damage_head =		[ 60,		115,		20,			180,		22/*45*,	0,		110 ];
 		sdCharacter.weapon_knock_count =		[ 1,		1,			15,			1,			1,			0,		1 ];
 		sdCharacter.weapon_knock_spread =		[ 0,		0,			5 * 4/3,	0.5,		2.5,		0,		0 ];
 		sdCharacter.weapon_spread_from_recoil =	[ 5,		0,			0,			0,			5,			0,		0 ];
@@ -70,6 +71,7 @@ class sdCharacter
 		sdCharacter.weapon_melee =				[ false,	false,		false,		false,		false,		false,	true ];
 		sdCharacter.weapon_zeros =				[ 0,		0,			0,			0,			0,			0,		0 ]; // Used as copy source for starter reload times per weapon
 		sdCharacter.weapon_switch_time = 7; // 15
+		*/
 		
 		sdCharacter.collision_dots = [];
 		sdCharacter.collision_normals = [];
@@ -114,10 +116,11 @@ class sdCharacter
 	
 	ReloadIfPossible()
 	{
-		if ( this.ammo[ this.curwea ] < sdCharacter.weapon_ammo_per_clip[ this.curwea ] )
+		var active_weapon = this.GetActiveWeapon();
+		if ( this.cur_weapon.ammo < sdGunClass.weapon_ammo_per_clip[ this.cur_weapon.gun_id ] )
 		if ( this.time_to_reload <= 0 )
 		{
-			this.ammo[ this.curwea ] = 0;
+			this.cur_weapon.ammo = 0;
 			this._UpdateAmmoBarIfNeeded();
 			
 			this.time_to_reload = Math.PI * 2;
@@ -146,21 +149,21 @@ class sdCharacter
 	{
 		if ( this === main.my_character )
 		{
-			document.getElementById('ammo_bar').style.display = ( this.ammo[ this.curwea ] !== Infinity ) ? 'block' : 'none';
-		//	document.getElementById('ammo_bar').innerHTML = this.ammo[ this.curwea ] + ' | ' + sdCharacter.weapon_ammo_per_clip[ this.curwea ];
-			
-			if ( this.ammo[ this.curwea ] !== Infinity )
+			document.getElementById('ammo_bar').style.display = ( this.cur_weapon.ammo !== Infinity ) ? 'block' : 'none';
+		//	document.getElementById('ammo_bar').innerHTML = this.ammo[ this.curwea ] + ' | ' + sdGunClass.weapon_ammo_per_clip[ this.curwea ];
+
+			if ( this.cur_weapon.ammo !== Infinity )
 			{
 				var s = '';
-				for ( var i = 0; i < sdCharacter.weapon_ammo_per_clip[ this.curwea ]; i++ )
+				for ( var i = 0; i < sdGunClass.weapon_ammo_per_clip[ this.cur_weapon.gun_id ]; i++ )
 				{
-					if ( this.ammo[ this.curwea ] > i )
+					if ( this.cur_weapon.ammo > i )
 					s += '|';
 					else
 					s += '.';
 				}
 				
-				var offs = ( sdCharacter.weapon_ammo_per_clip[ this.curwea ] * 0.6 + 2 );
+				var offs = ( sdGunClass.weapon_ammo_per_clip[ this.cur_weapon.gun_id ] * 0.6 + 2 );
 				document.getElementById('ammo_bar').style.width = offs + 'vh';
 				document.getElementById('ammo_bar').style.marginLeft = ( -offs/2 ) + 'vh';
 				
@@ -329,7 +332,7 @@ class sdCharacter
 		if ( this.ai !== null )
 		this.ai.ResetFavGun();
 	
-		this.ammo = sdCharacter.weapon_ammo_per_clip.slice(); // Copy
+		this.ammo = sdGunClass.weapon_ammo_per_clip.slice(); // Copy
 					
 		this.time_to_reload = 0; // Reset reload
 		
@@ -693,7 +696,7 @@ class sdCharacter
 		
 		//this.glow_color = new THREE.Color( 0xff0000 );
 		
-		this.ammo = sdCharacter.weapon_ammo_per_clip.slice(); // Copy
+		this.ammo = sdGunClass.weapon_ammo_per_clip.slice(); // Copy
 		
 		this.ai = ( main.MP_mode ? null : new sdAI( this ) );
 		
@@ -727,7 +730,7 @@ class sdCharacter
 		
 		this.sit = 0;
 		
-		this.reload_timers = sdCharacter.weapon_zeros.slice(); // Arry for each gun. Can shoot if <= 0
+		this.reload_timers = sdGunClass.weapon_zeros.slice(); // Arry for each gun. Can shoot if <= 0
 		//this.reload_timer = 0; // is getter now
 		
 		var bmp = params.bmp;
@@ -746,6 +749,7 @@ class sdCharacter
 		this.look_direction = new THREE.Vector3( 1, 0, 0 );
 		
 		this.curwea = 0; // 0 is rifle, 1 is rocket
+		this.cur_weapon = null;
 		this.act_weapon = 0; // 
 		this.act_fire = 0;
 		this.weapon_change_tim = 0; // Value grows whenever weapon needs to be changed. Once it reaches certain ponit - weapon switched and value goes down.
@@ -812,25 +816,25 @@ class sdCharacter
 			this.leg2b.position.y = 0;
 			this.leg2a.add( this.leg2b );
 		
-		this.rifle = new THREE.Object3D();
+		this.cur_weapon = this.rifle = new sdRifle( 0 );
 		this.mesh.add( this.rifle );
 		
-		this.rocket = new THREE.Object3D();
+		this.rocket = new sdRocket( 1 );
 		this.mesh.add( this.rocket );
 		
-		this.sniper = new THREE.Object3D();
-		this.mesh.add( this.sniper );
-		
-		this.shotgun = new THREE.Object3D();
+		this.shotgun = new sdShotgun( 2 );
 		this.mesh.add( this.shotgun );
 		
-		this.spark = new THREE.Object3D();
+		this.sniper = new sdSniper( 3 );
+		this.mesh.add( this.sniper );
+		
+		this.spark = new sdSpark( 4 );
 		this.mesh.add( this.spark );
 		
-		this.build1 = new THREE.Object3D();
+		this.build1 = new sdBuild( 5 );
 		this.mesh.add( this.build1 );
 		
-		this.saw = new THREE.Object3D();
+		this.saw = new sdSaw( 6 );
 		this.mesh.add( this.saw );
 		
 		var f = new THREE.Object3D();
@@ -1569,15 +1573,23 @@ class sdCharacter
 	{
 		var c = this;
 		var active_weapon = null;
-
-		if ( c.curwea === main.WEAPON_RIFLE ) active_weapon = c.rifle; else if ( passive_weapons !== null ) passive_weapons.push( c.rifle );
-		if ( c.curwea === main.WEAPON_ROCKET ) active_weapon = c.rocket; else if ( passive_weapons !== null ) passive_weapons.push( c.rocket );
-		if ( c.curwea === main.WEAPON_SHOTGUN ) active_weapon = c.shotgun; else if ( passive_weapons !== null ) passive_weapons.push( c.shotgun );
-		if ( c.curwea === main.WEAPON_SNIPER ) active_weapon = c.sniper; else if ( passive_weapons !== null ) passive_weapons.push( c.sniper );
-		if ( c.curwea === main.WEAPON_SPARK ) active_weapon = c.spark; else if ( passive_weapons !== null ) passive_weapons.push( c.spark );
-		if ( c.curwea === main.WEAPON_BUILD1 ) active_weapon = c.build1; else if ( passive_weapons !== null ) passive_weapons.push( c.build1 );
-		if ( c.curwea === main.WEAPON_SAW ) active_weapon = c.saw; else if ( passive_weapons !== null ) passive_weapons.push( c.saw );
 		
+		if ( !(this.cur_weapon instanceof sdRifle) && (passive_weapons !== null) ) passive_weapons.push( c.rifle );
+		if ( !(this.cur_weapon instanceof sdRocket) && (passive_weapons !== null) ) passive_weapons.push( c.rocket );
+		if ( !(this.cur_weapon instanceof sdShotgun) && (passive_weapons !== null) ) passive_weapons.push( c.shotgun );
+		if ( !(this.cur_weapon instanceof sdSniper) && (passive_weapons !== null) ) passive_weapons.push( c.sniper );
+		if ( !(this.cur_weapon instanceof sdSpark) && (passive_weapons !== null) ) passive_weapons.push( c.spark );
+		if ( !(this.cur_weapon instanceof sdBuild) && (passive_weapons !== null) ) passive_weapons.push( c.build1 );
+		if ( !(this.cur_weapon instanceof sdSaw) && (passive_weapons !== null) ) passive_weapons.push( c.saw );
+		/*
+			if ( c.curwea === main.WEAPON_RIFLE ) active_weapon = c.rifle; else if ( passive_weapons !== null ) passive_weapons.push( c.rifle );
+			if ( c.curwea === main.WEAPON_ROCKET ) active_weapon = c.rocket; else if ( passive_weapons !== null ) passive_weapons.push( c.rocket );
+			if ( c.curwea === main.WEAPON_SHOTGUN ) active_weapon = c.shotgun; else if ( passive_weapons !== null ) passive_weapons.push( c.shotgun );
+			if ( c.curwea === main.WEAPON_SNIPER ) active_weapon = c.sniper; else if ( passive_weapons !== null ) passive_weapons.push( c.sniper );
+			if ( c.curwea === main.WEAPON_SPARK ) active_weapon = c.spark; else if ( passive_weapons !== null ) passive_weapons.push( c.spark );
+			if ( c.curwea === main.WEAPON_BUILD1 ) active_weapon = c.build1; else if ( passive_weapons !== null ) passive_weapons.push( c.build1 );
+			if ( c.curwea === main.WEAPON_SAW ) active_weapon = c.saw; else if ( passive_weapons !== null ) passive_weapons.push( c.saw );
+		*/
 		return active_weapon;
 	}
 	
@@ -1797,15 +1809,16 @@ class sdCharacter
 				c.muzzle_a = 0;
 			}
 
-			if ( c.curwea !== c.act_weapon )
+			if ( c.cur_weapon !== sdGun.Guns[ c.act_weapon ] )
 			{
-				if ( c.weapon_change_tim < sdCharacter.weapon_switch_time )
+				if ( c.weapon_change_tim < sdGunClass.weapon_switch_time )
 				{
-					c.weapon_change_tim = Math.min( c.weapon_change_tim + GSPEED, sdCharacter.weapon_switch_time );
+					c.weapon_change_tim = Math.min( c.weapon_change_tim + GSPEED, sdGunClass.weapon_switch_time );
 				}
 				else
 				{
 					c.curwea = c.act_weapon;
+					c.cur_weapon = sdGun.Guns[ c.act_weapon ];
 
 					c._UpdateAmmoBarIfNeeded();
 
@@ -1842,30 +1855,31 @@ class sdCharacter
 					if ( c.act_fire > 0 )
 					if ( c.time_to_reload <= 0 )
 					{
-						if ( c.ammo[ c.curwea ] > 0 )
+						if ( c.cur_weapon.ammo > 0 )
 						{
 							var curwea = c.curwea;
+							var curweap = c.cur_weapon;
 
-							c.reload_timer = sdCharacter.weapon_reload_times[ curwea ];
+							c.reload_timer = sdGunClass.weapon_reload_times[ curwea ];
 
 							if ( !c.stand )
 							{
-								c.tox += c.look_direction.x * sdCharacter.weapon_self_knockbacks[ curwea ];
-								c.toy += c.look_direction.y * sdCharacter.weapon_self_knockbacks[ curwea ];
-								c.toz += c.look_direction.z * sdCharacter.weapon_self_knockbacks[ curwea ];
+								c.tox += c.look_direction.x * sdGunClass.weapon_self_knockbacks[ curwea ];
+								c.toy += c.look_direction.y * sdGunClass.weapon_self_knockbacks[ curwea ];
+								c.toz += c.look_direction.z * sdGunClass.weapon_self_knockbacks[ curwea ];
 							}
 							
-							if ( sdCharacter.weapon_spawn_shell[ curwea ] )
+							if ( sdGunClass.weapon_spawn_shell[ curwea ] )
 							{
 								var v = new THREE.Vector3();
 								main.SetAsRandom3D( v );
 								v.x *= 0.1;
 								v.y *= 0.1;
 								v.z *= 0.1;
-								var gun_world_pos = active_weapon.getWorldPosition();
+								var gun_world_pos = c.cur_weapon.getWorldPosition();
 
 								var quaternion = new THREE.Quaternion();
-								active_weapon.getWorldQuaternion( quaternion );
+								c.cur_weapon.getWorldQuaternion( quaternion );
 								var gun_world_dir = new THREE.Vector3( -0.5, 1, -1 );
 								gun_world_dir.applyQuaternion( quaternion );
 
@@ -1876,22 +1890,22 @@ class sdCharacter
 								sdSprite.CreateSprite({ type: sdSprite.TYPE_SHELL, x:gun_world_pos.x, y:gun_world_pos.y, z:gun_world_pos.z, tox:v.x + c.tox, toy:v.y + c.toy, toz:v.z + c.toz });
 							}
 							
-							var speed = sdCharacter.weapon_speed[ curwea ];
+							var speed = sdGunClass.weapon_speed[ curwea ];
 
-							var visual = active_weapon.children[ 0 ].getWorldPosition();
+							var visual = c.cur_weapon.children[ 0 ].getWorldPosition();
 
 							if ( !main.MP_mode || main.my_character === c )
 							{
 								c.PlayShotSound( curwea );
 
-								for ( var p = 0; p < sdCharacter.weapon_knock_count[ curwea ]; p++ )
+								for ( var p = 0; p < sdGunClass.weapon_knock_count[ curwea ]; p++ )
 								{
 									var spread = { x:0, y:0, z:0 };
 
-									if ( sdCharacter.weapon_knock_spread[ curwea ] > 0 || sdCharacter.weapon_spread_from_recoil[ curwea ] > 0 )
+									if ( sdGunClass.weapon_knock_spread[ curwea ] > 0 || sdGunClass.weapon_spread_from_recoil[ curwea ] > 0 )
 									{
 										main.SetAsRandom3D( spread );
-										var r = Math.random() * ( sdCharacter.weapon_knock_spread[ curwea ] + sdCharacter.weapon_spread_from_recoil[ curwea ] * c.recoil );
+										var r = Math.random() * ( sdGunClass.weapon_knock_spread[ curwea ] + sdGunClass.weapon_spread_from_recoil[ curwea ] * c.recoil );
 										spread.x *= r;
 										spread.y *= r;
 										spread.z *= r;
@@ -1911,14 +1925,14 @@ class sdCharacter
 										dy: -c.look_direction.y * speed * 0.2,
 										dz: -c.look_direction.z * speed * 0.2,
 										owner: c,
-										knock_power: sdCharacter.weapon_knock_power[ curwea ],
-										hp_damage: sdCharacter.weapon_hp_damage[ curwea ],
-										hp_damage_head: sdCharacter.weapon_hp_damage_head[ curwea ],
-										is_rocket: sdCharacter.weapon_is_rocket[ curwea ],
-										is_sniper: sdCharacter.weapon_is_sniper[ curwea ],
-										is_plasma: sdCharacter.weapon_is_plasma[ curwea ],
-										is_melee: sdCharacter.weapon_melee[ curwea ],
-										splash_radius: sdCharacter.weapon_splash_radius[ curwea ]
+										knock_power: sdGunClass.weapon_knock_power[ curwea ],
+										hp_damage: sdGunClass.weapon_hp_damage[ curwea ],
+										hp_damage_head: sdGunClass.weapon_hp_damage_head[ curwea ],
+										is_rocket: sdGunClass.weapon_is_rocket[ curwea ],
+										is_sniper: sdGunClass.weapon_is_sniper[ curwea ],
+										is_plasma: sdGunClass.weapon_is_plasma[ curwea ],
+										is_melee: sdGunClass.weapon_melee[ curwea ],
+										splash_radius: sdGunClass.weapon_splash_radius[ curwea ]
 									});
 									
 									c.muzzle_r = bullet.r;
@@ -1936,7 +1950,7 @@ class sdCharacter
 								
 								if ( curwea === main.WEAPON_BUILD1 )
 								{
-									var rad = sdCharacter.weapon_splash_radius[ curwea ];
+									var rad = sdGunClass.weapon_splash_radius[ curwea ];
 									
 									var new_x = c.x - c.look_direction.x * ( rad + sdCharacter.player_half_height + 1 );
 									var new_y = c.y + sdCharacter.shoot_offset_y - c.look_direction.y * ( rad + sdCharacter.player_half_height + 1 );
@@ -1974,17 +1988,17 @@ class sdCharacter
 									else
 									{
 										// Nothing was changed, return bullet
-										c.ammo[ c.curwea ] += 1;
+										c.cur_weapon.ammo += 1;
 									}
 								}
 							}
 							
-							c.ammo[ c.curwea ] -= 1;
+							c.cur_weapon.ammo -= 1;
 							
 							c._UpdateAmmoBarIfNeeded();
 						
 
-							c.recoil += sdCharacter.weapon_self_knockbacks[ curwea ];
+							c.recoil += sdGunClass.weapon_self_knockbacks[ curwea ];
 						}
 						else
 						{
@@ -2406,21 +2420,15 @@ class sdCharacter
 		active_weapon = c.GetActiveWeapon( passive_weapons );
 		
 		//
-		WeaponLogic( c, GSPEED, active_weapon );
+		WeaponLogic( c, GSPEED, this.cur_weapon );
 
-		if ( active_weapon.parent !== c.arm2 )
+		if ( c.cur_weapon.parent !== c.arm2 )
 		{
-			active_weapon.parent.remove( active_weapon );
-			c.arm2.add( active_weapon );
+			c.cur_weapon.parent.remove( c.cur_weapon );
+			c.arm2.add( c.cur_weapon );
 		}
 		
-		active_weapon.position.x = -10 - c.recoil * 0.5;
-		active_weapon.position.y = 0 + c.recoil * 1;
-		active_weapon.position.z = 0;
-
-		active_weapon.rotation.x = 0;
-		active_weapon.rotation.y = -sdCharacter.arm_cross_right;
-		active_weapon.rotation.z = 0 - c.recoil * 0.2;
+		c.cur_weapon.init_pos();
 		
 		
 		for ( var p = 0; p < passive_weapons.length; p++ )
@@ -2535,23 +2543,23 @@ class sdCharacter
 
 			if ( sdCharacter.first_person_view )
 			{
-				if ( active_weapon.parent !== main.main_camera )
+				if ( c.cur_weapon.parent !== main.main_camera )
 				{
-					active_weapon.parent.remove( active_weapon );
-					main.main_camera.add( active_weapon );
+					c.cur_weapon.parent.remove( c.cur_weapon );
+					main.main_camera.add( c.cur_weapon );
 
-					active_weapon.scale.x = active_weapon.scale.y = active_weapon.scale.z = 0.5;
+					c.cur_weapon.scale.x = c.cur_weapon.scale.y = c.cur_weapon.scale.z = 0.5;
 				}
 
 				if ( main.zoom_intensity === 1 )
-				active_weapon.position.set( 
+				c.cur_weapon.position.set( 
 					main.gun_x_offset + Math.sin( c.walk_phase * 0.5 ) * 0.3, 
 					main.gun_y_offset - Math.abs( Math.sin( c.walk_phase ) ) * 0.2, 
 					main.gun_z_offset + c.recoil * main.gun_recoil 
 				);
 				else
 				if ( main.zoom_intensity === 0.5 )
-				active_weapon.position.set( 
+				c.cur_weapon.position.set( 
 					0, 
 					-3.25, 
 					-4.5 + c.recoil * main.gun_recoil 
@@ -2561,102 +2569,22 @@ class sdCharacter
 					var morph = main.zoom_intensity * 2 - 1;
 					var m_morph = 1 - morph;
 
-					active_weapon.position.set( 
+					c.cur_weapon.position.set( 
 						( main.gun_x_offset + Math.sin( c.walk_phase * 0.5 ) * 0.3 ) * morph + 0 * m_morph, 
 						( main.gun_y_offset - Math.abs( Math.sin( c.walk_phase ) ) * 0.2 ) * morph + (-3.25) * m_morph, 
 						( main.gun_z_offset + c.recoil * main.gun_recoil ) * morph + (-4.5 + c.recoil * main.gun_recoil) * m_morph
 					);
 				}
 
-				active_weapon.rotation.set( 0, -Math.PI * 0.5, 0 - Math.pow( c.recoil * 0.5, 2 ) * 3 );
+				c.cur_weapon.rotation.set( 0, -Math.PI * 0.5, 0 - Math.pow( c.recoil * 0.5, 2 ) * 3 );
 
-				if ( c.curwea === main.WEAPON_SNIPER )
-				{
-					const sniper_reload_offset = -5;
-					if ( c.reload_timer + sniper_reload_offset > 0 && c.reload_timer + sniper_reload_offset < Math.PI * 2 )
-					active_weapon.position.z += Math.sin( c.reload_timer + sniper_reload_offset ) * 0.2;
-				}
-				else
-				if ( c.curwea === main.WEAPON_BUILD1 )
-				{
-					if ( c.reload_timer > 0 && c.reload_timer < Math.PI * 2 )
-					{
-						active_weapon.position.z -= Math.sin( c.reload_timer * 0.5 );
+				c.cur_weapon.change_transformations( c );
 
-						active_weapon.rotation.y += Math.sin( c.reload_timer * 0.5 ) * 0.2;
-						active_weapon.rotation.z += Math.sin( c.reload_timer * 0.5 ) * 0.2;
-					}
-				}
-				else
-				if ( c.curwea === main.WEAPON_SAW )
-				{
-					var prog = c.reload_timer / sdCharacter.weapon_reload_times[ main.WEAPON_SAW ];
-
-					var rel;
-
-					var mid = 0.9;
-
-					if ( prog > mid )
-					rel = ( prog - mid ) / ( 1 - mid );
-					else
-					{
-						rel = 1 - prog / mid;
-						rel *= rel;
-					}
-					rel = rel * 1.2 - 0.2;
-
-					active_weapon.rotation.y -= Math.PI / 4 * rel;
-					active_weapon.rotation.x += Math.PI / 2 * rel;
-					active_weapon.rotation.z -= Math.PI / 8 * rel;
-
-
-					active_weapon.position.x = 0;
-					active_weapon.position.y = -4 * (1-rel) + (-5.25) * rel;
-					active_weapon.position.z = -4.5;
-
-					active_weapon.position.x += 4 * rel;
-					active_weapon.position.y += 4 * rel;
-					active_weapon.position.z += 4 * rel;
-				}
-
-				active_weapon.position.y -= Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 4 ) * 7;
-
-				active_weapon.rotation.x -= Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 2 ) * 1;
-				active_weapon.rotation.y -= Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 2 ) * 0.5;
-				active_weapon.position.x += Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 2 ) * 4;
+				c.cur_weapon.set_fpspos( c );
 			}
 			else
 			{
-				if ( c.curwea === main.WEAPON_SAW )
-				{
-					var prog = c.reload_timer / sdCharacter.weapon_reload_times[ main.WEAPON_SAW ];
-
-					var rel;
-
-					var mid = 0.9;
-
-					if ( prog > mid )
-					rel = ( prog - mid ) / ( 1 - mid );
-					else
-					{
-						rel = 1 - prog / mid;
-						rel *= rel;
-					}
-					rel = rel * 1.2 - 0.2;
-
-					active_weapon.rotation.y -= Math.PI / 4 * rel;
-					active_weapon.rotation.x += Math.PI / 2 * rel;
-					active_weapon.rotation.z -= Math.PI / 8 * rel;
-
-					/*
-					active_weapon.position.x = 0;
-					active_weapon.position.y = -4 * (1-rel) + (-5.25) * rel;
-					active_weapon.position.z = -4.5;
-
-					active_weapon.position.x += 4 * rel;
-					active_weapon.position.y += 4 * rel;
-					active_weapon.position.z += 4 * rel;*/
-				}
+				c.cur_weapon.change_transformations( c, true );
 			}
 		}
 		
@@ -2664,22 +2592,22 @@ class sdCharacter
 		{
 			var turn = 1 - Math.cos( c.time_to_reload );
 
-			active_weapon.rotation.z -= ( 1 - Math.pow( 1 - turn / 2, 4 ) ) * 2 * 0.5;
+			c.cur_weapon.rotation.z -= ( 1 - Math.pow( 1 - turn / 2, 4 ) ) * 2 * 0.5;
 
 			var shake_time = -8;
 			if ( c.time_to_reload * 4 + shake_time > 0 && c.time_to_reload * 4 + shake_time < Math.PI * 2 )
 			{
 				var shake = 1 - Math.cos( c.time_to_reload * 4 + shake_time );
-				active_weapon.position.x += shake * 0.25;
+				c.cur_weapon.position.x += shake * 0.25;
 
-				active_weapon.rotation.x -= shake * 0.2;
+				c.cur_weapon.rotation.x -= shake * 0.2;
 				
 				
-				if ( c.ammo[ c.curwea ] < sdCharacter.weapon_ammo_per_clip[ c.curwea ] )
+				if ( c.cur_weapon.ammo < sdGunClass.weapon_ammo_per_clip[ c.curwea ] )
 				{
 					sdSound.PlaySound({ sound: lib.reload, parent_mesh: this.mesh, volume: 1.5 });
 					
-					c.ammo[ c.curwea ] = sdCharacter.weapon_ammo_per_clip[ c.curwea ];
+					c.cur_weapon.ammo = sdGunClass.weapon_ammo_per_clip[ c.curwea ];
 					c._UpdateAmmoBarIfNeeded();
 				}
 			}
@@ -2747,7 +2675,7 @@ class sdCharacter
 		var rot = new THREE.Quaternion();
 		if ( c.weapon_change_tim > 0 )
 		{
-			var prog = Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 0.5 );
+			var prog = Math.pow( c.weapon_change_tim / sdGunClass.weapon_switch_time, 0.5 );
 			rot.setFromEuler( new THREE.Euler( 0 + prog * 0.5, Math.PI * 0.5 - prog * 0.5, 0 - prog * 0.25 ) );
 		}
 		else
@@ -2790,7 +2718,7 @@ class sdCharacter
 
 		if ( c.weapon_change_tim > 0 )
 		{
-			var prog = Math.pow( c.weapon_change_tim / sdCharacter.weapon_switch_time, 2 );
+			var prog = Math.pow( c.weapon_change_tim / sdGunClass.weapon_switch_time, 2 );
 
 			var rot = new THREE.Quaternion();
 			rot.setFromEuler( new THREE.Euler( 0, -sdCharacter.arm_cross_left, prog ) );
@@ -2819,7 +2747,7 @@ class sdCharacter
 			
 			if ( c.curwea === main.WEAPON_SAW )
 			{
-				var prog = c.reload_timer / sdCharacter.weapon_reload_times[ main.WEAPON_SAW ];
+				var prog = c.reload_timer / sdGunClass.weapon_reload_times[ main.WEAPON_SAW ];
 
 				
 
