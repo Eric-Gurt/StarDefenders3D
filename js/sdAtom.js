@@ -757,12 +757,10 @@ class sdAtom
 			}
 			
 			if ( c.muzzle_a > 0 )
-			if ( c.curwea !== main.WEAPON_BUILD1 )
-			if ( c.curwea !== main.WEAPON_SAW )
+			if ( !(c.cur_weapon instanceof(sdBuild)) )
+			if ( !(c.cur_weapon instanceof(sdSaw)) )
 			{
-				var active_weapon = c.GetActiveWeapon();
-
-				var visual = active_weapon.children[ 0 ].getWorldPosition();
+				var visual = c.cur_weapon.children[ 0 ].getWorldPosition();
 
 				for ( var f = 0; f < 16; f++ )
 				{
@@ -1006,12 +1004,12 @@ class sdAtom
 		}
 		
 		if ( main.my_character !== null )
-		if ( main.my_character.curwea === main.WEAPON_BUILD1 )
+		if ( main.my_character.cur_weapon.gun_id === main.WEAPON_BUILD1 )
 		{
-			var curwea = main.my_character.curwea;
+			var gun_id = main.my_character.cur_weapon.gun_id;
 			var c = main.my_character;
 			
-			var rad = sdCharacter.weapon_splash_radius[ curwea ];
+			var rad = sdGunClass.weapon_splash_radius[ gun_id ];
 									
 			var new_x = c.x - c.look_direction.x * ( rad + sdCharacter.player_half_height + 1 );
 			var new_y = c.y + sdCharacter.shoot_offset_y - c.look_direction.y * ( rad + sdCharacter.player_half_height + 1 );

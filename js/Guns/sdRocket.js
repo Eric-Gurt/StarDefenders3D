@@ -1,0 +1,3 @@
+class sdRocket extends sdGun
+{
+}

@@ -589,14 +589,14 @@ class sdByteShifter
 		if ( command === sdSync.COMMAND_I_SPAWN_BULLET )
 		{
 			let c = this.parent_dataConnection.character;
-			let curwea = Number( parts[ 10 ] );
+			let gun_id = Number( parts[ 10 ] );
 			let local_peer_uid = Number( parts[ 11 ] );
 			let i = 1;
 			
 			if ( Number( parts[ 12 ] ) === 0 ) // spawn sound for 1st bullet only
-			c.PlayShotSound( curwea );
+			c.PlayShotSound( gun_id );
 			
-			let active_weapon = ( c.curwea === 0 ) ? c.rifle : c.rocket;
+			let active_weapon = ( c.cur_weapon.gun_id === 0 ) ? c.rifle : c.rocket;
 			let visual = active_weapon.children[ 0 ].getWorldPosition();
 			
 			let bullet = sdBullet.CreateBullet({ 
@@ -613,14 +613,14 @@ class sdByteShifter
 				dy: Number( parts[ i++ ] ),
 				dz: Number( parts[ i++ ] ),
 				owner: c,
-				knock_power: sdCharacter.weapon_knock_power[ curwea ],
-				hp_damage: sdCharacter.weapon_hp_damage[ curwea ],
-				hp_damage_head: sdCharacter.weapon_hp_damage_head[ curwea ],
-				is_rocket: sdCharacter.weapon_is_rocket[ curwea ],
-				is_sniper: sdCharacter.weapon_is_sniper[ curwea ],
-				is_plasma: sdCharacter.weapon_is_plasma[ curwea ],
-				is_melee: sdCharacter.weapon_melee[ curwea ],
-				splash_radius: sdCharacter.weapon_splash_radius[ curwea ]
+				knock_power: sdGunClass.weapon_knock_power[ gun_id ],
+				hp_damage: sdGunClass.weapon_hp_damage[ gun_id ],
+				hp_damage_head: sdGunClass.weapon_hp_damage_head[ gun_id ],
+				is_rocket: sdGunClass.weapon_is_rocket[ gun_id ],
+				is_sniper: sdGunClass.weapon_is_sniper[ gun_id ],
+				is_plasma: sdGunClass.weapon_is_plasma[ gun_id ],
+				is_melee: sdGunClass.weapon_melee[ gun_id ],
+				splash_radius: sdGunClass.weapon_splash_radius[ gun_id ]
 			});
 			bullet.local_peer_uid = local_peer_uid;
 			
