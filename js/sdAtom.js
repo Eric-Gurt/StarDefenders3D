@@ -111,7 +111,7 @@ class sdAtom
 		
 		sdAtom.material = null; // Created at main.InitEngine() because we need to know extension support
 
-		sdAtom.atom_limit = 4096 * 2 * 2;
+		sdAtom.atom_limit = 4096 * 2 * 2 * 2; // Used to be 4096 * 2 * 2
 		
 		sdAtom.stars = [];
 		

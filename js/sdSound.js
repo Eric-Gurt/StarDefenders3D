@@ -24,7 +24,7 @@ class sdSound
 			
 			sdSound.channels = [];
 			
-			sdSound.max_soundchannels = 32; // 64 was causing glitches sometimes
+			sdSound.max_soundchannels = 64; // 64 was causing glitches sometimes
 			
 		}
 		static GetChannel( forced=false ) // forced might be needed in case of music

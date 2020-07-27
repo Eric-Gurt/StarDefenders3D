@@ -529,7 +529,7 @@ class sdNet
 		
 		if ( enemies === 2 )
 		{
-			max_players = 10;
+			max_players = 16;
 			mode = main.MODE_ONE_VS_ALL;
 		}
 		if ( enemies === 0 )
