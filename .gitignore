@@ -1,5 +1,7 @@
 maD*.mp3
 /sources/*
+/js old stable/*
 /nbproject/*
+/.idea/*
 /.git/*
 *.zip

@@ -78,8 +78,8 @@ class sdChain
 				
 				//if ( id >= 0 )
 				sdChain.chains.splice( id, 1 );
-			}
-		}
+	}
+}
 	}
 }
 sdChain.init_class();
@@ -381,10 +381,10 @@ class sdAtom
 			if ( main.low_physics === 0 )
 			{
 				const chains = sdChain.chains;
-				
+
 				var i = 0;
 				var len = chains.length;
-				
+
 				//for ( var i = 0; i < sdChain.chains.length; i++ )
 				while ( i < len ) // Faster by almost a 1/3
 				{
@@ -468,7 +468,7 @@ class sdAtom
 							}
 						}
 					}
-					
+
 					i++;
 				}
 			}
@@ -757,10 +757,9 @@ class sdAtom
 			}
 			
 			if ( c.muzzle_a > 0 )
-			if ( !(c.cur_weapon instanceof(sdBuild)) )
-			if ( !(c.cur_weapon instanceof(sdSaw)) )
+			if ( c.cur_weapon_object.gun_class.has_muzzle_flash )
 			{
-				var visual = c.cur_weapon.children[ 0 ].getWorldPosition();
+				var visual = c.cur_weapon_mesh.children[ 0 ].getWorldPosition();
 
 				for ( var f = 0; f < 16; f++ )
 				{
@@ -1004,12 +1003,12 @@ class sdAtom
 		}
 		
 		if ( main.my_character !== null )
-		if ( main.my_character.cur_weapon.gun_id === main.WEAPON_BUILD1 )
+		if ( main.my_character.cur_weapon_object.gun_class.is_build_tool )
 		{
-			var gun_id = main.my_character.cur_weapon.gun_id;
+			//var gun_id = main.my_character.cur_weapon_mesh.gun_id;
 			var c = main.my_character;
 			
-			var rad = sdGunClass.weapon_splash_radius[ gun_id ];
+			var rad = main.my_character.cur_weapon_object.gun_class.splash_radius;
 									
 			var new_x = c.x - c.look_direction.x * ( rad + sdCharacter.player_half_height + 1 );
 			var new_y = c.y + sdCharacter.shoot_offset_y - c.look_direction.y * ( rad + sdCharacter.player_half_height + 1 );
