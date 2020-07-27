@@ -138,8 +138,8 @@ class sdCharacter
 	{
 		if ( this === main.my_character )
 		{
-			document.getElementById('hp_bar').style.width = Math.max( 0, this.hea )+'%';
-			document.getElementById('hp_bar').innerHTML = Math.ceil( Math.max( 0, this.hea ) )+'%';
+			document.getElementById('hp_bar').style.width = Math.max( 0, this.hea / this.max_hea * 100 )+'%';
+			document.getElementById('hp_bar').innerHTML = Math.ceil( Math.max( 0, this.hea ) )+' HP';
 		}
 	}
 	_UpdateAmmoBarIfNeeded()
@@ -311,7 +311,7 @@ class sdCharacter
 		this.last_valid_y = this.y;
 		this.last_valid_z = this.z;
 		
-		this.hea = 100;
+		this.hea = this.max_hea;
 		
 		this.tox = 0;
 		this.toy = 0;
@@ -740,6 +740,12 @@ class sdCharacter
 		this.hook_di = 0;
 		
 		this.team = params.team || 0;
+		
+		if ( main.game_mode === main.MODE_ONE_VS_ALL )
+		if ( this.team === 0 )
+		this.hea = 1000;
+
+		this.max_hea = this.hea;
 		
 		this.walk_phase = 0;
 		this.idle_phase = 0;
@@ -2053,7 +2059,7 @@ class sdCharacter
 	
 		if ( !main.MP_mode && c === main.my_character )
 		{
-			if ( c.hea < 100 )
+			if ( c.hea < this.max_hea )
 			{
 				if ( c.regen_timer < 90 )
 				{
@@ -2061,10 +2067,10 @@ class sdCharacter
 				}
 				else
 				{
-					c.hea = Math.min( 100, c.hea + GSPEED );
+					c.hea = Math.min( this.max_hea, c.hea + GSPEED );
 					c._UpdateHealthBarIfNeeded();
 					
-					if ( c.hea === 100 )
+					if ( c.hea === this.max_hea )
 					{
 						c.RestoreLimbs( false );
 					}

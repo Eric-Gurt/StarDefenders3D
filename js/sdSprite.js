@@ -45,7 +45,8 @@ class sdSprite
 				bmp.ctx.drawImage( mini_texture, 0, 0 );
 
 				sdSprite.texture_blood = new THREE.CanvasTexture( bmp.canvas );
-				sdSprite.texture_blood.magFilter = THREE.NearestFilter;
+				//sdSprite.texture_blood.magFilter = THREE.NearestFilter;
+				sdSprite.texture_blood.magFilter = THREE.LinearFilter;
 				sdSprite.texture_blood.minFilter = THREE.NearestMipMapNearestFilter;
 				sdSprite.texture_blood.flipY = false;
 			};

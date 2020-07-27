@@ -229,12 +229,17 @@ class sdShaderMaterial
 				{
 					gl_FragColor.rgba = texture2D( tDiffuse, vUv ).rgba;
 					
-					if ( gl_FragColor.a < 0.5 )
+					//if ( gl_FragColor.a < 0.5 )
+					if ( gl_FragColor.a < 0.01 )
 					{
 						discard;
 					}
+					gl_FragColor.r /= gl_FragColor.a;
+					gl_FragColor.g /= gl_FragColor.a;
+					gl_FragColor.b /= gl_FragColor.a;
 				
 					gl_FragColor.rgb *= diffuse.rgb;
+				
 					gl_FragColor.a *= opacity;
 				
 					if ( fog_final < 1.0 )
@@ -542,7 +547,82 @@ class sdShaderMaterial
 					}
 				}
 				`,
-				fragmentShader: `
+				fragmentShader: /* More of a volume-based solution. Needs 3 times as less data to upload, 3 times as less data to update in bitmap, 3 times as less polygons and just needs camera front vector to be passed so proper side of a mesh is chosen.
+						
+						
+				`
+				
+				uniform sampler2D tDiffuse;
+				varying vec2 vUv;
+				
+				varying vec4 pos;
+				varying vec4 world_pos;
+				
+				varying float fog_final;
+				uniform vec3 fog;
+				
+				uniform float depth_offset;
+				
+				`+sdShaderMaterial.GenerateDynamicLightUniformsCode()+`
+				
+				void main()
+				{
+					vec2 xy = vec2( 0.0, 0.0 );
+
+                    xy.x += mod( world_pos.x, 32.0 ) * ( 1.0 / 1024.0 );
+                    xy.y += 1.0 - mod( world_pos.y, 32.0 ) * ( 1.0 / 128.0 );
+
+                    xy.x += floor( mod( world_pos.z, 32.0 ) ) * ( 1.0 / 1024.0 ) * 32.0;
+
+					gl_FragColor.rgba = texture2D( tDiffuse, xy ).rgba;
+
+                    if ( world_pos.x < 1.0 || world_pos.y < 1.0 || world_pos.z < 1.0 )
+                    if ( world_pos.x < 10.0 && world_pos.y < 10.0 && world_pos.z < 10.0 )
+                    {
+						gl_FragColor.a = 1.0;
+						gl_FragColor.rgb = vec3( world_pos.x / 32.0, world_pos.y / 32.0, world_pos.z / 32.0 );
+					}
+					
+					if ( gl_FragColor.a < 0.5 )
+					{
+						discard;
+					}
+					gl_FragColor.a = 1.0;
+                    
+
+				
+					vec3 dyn_light_intens = vec3( 0.0, 0.0, 0.0 );
+				
+					`+sdShaderMaterial.GenerateDynamicLightAffectionCodeForColor( `world_pos`, `dyn_light_intens` )+`
+				
+					//gl_FragColor.rgb += dyn_light_intens.rgb;
+					gl_FragColor.rgb += dyn_light_intens.rgb * ( vec3( 0.05 ) + gl_FragColor.rgb * 0.95 );
+				
+				
+					if ( fog_final < 1.0 )
+					{
+						//gl_FragColor.rgb *= vec3( brightness_r, brightness_g, brightness_b );
+
+						gl_FragColor.rgb = gl_FragColor.rgb * vec3( fog_final ) + fog.rgb * vec3( 1.0 - fog_final );
+					}
+					
+				
+					`+( sdShaderMaterial.EXT_frag_depth ? `
+						gl_FragDepthEXT = ( pos.z - depth_offset ) / 1024.0;
+					` : '' )+`
+				
+				}	
+			`
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						*/`
 				
 				uniform sampler2D tDiffuse;
 				varying vec2 vUv;

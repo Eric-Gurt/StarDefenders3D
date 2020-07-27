@@ -1,6 +1,6 @@
 /*
 
-	(C) 2018 Eric Gurt http://www.gevanni.com
+	(C) 2018-2020 Eric Gurt http://www.gevanni.com
 
 */
 	
@@ -91,6 +91,17 @@ class main
 		main.base_resolution_y = 1080;
 		
 		main.mobile = false;
+		
+		
+		function define( n, v )
+		{ main[ n ] = v; }
+		
+		define( 'MODE_FFA', 0 );
+		define( 'MODE_TEAM_VS_TEAM', 1 );
+		define( 'MODE_AS_ONE', 2 );
+		define( 'MODE_ONE_VS_ALL', 3 );
+		
+		main.game_mode = main.MODE_FFA;
 		
 		main.isWinter = ( [ 12, 1, 2 ].indexOf( new Date().getMonth() + 1 ) !== -1 );
 		
@@ -3781,7 +3792,7 @@ class main
 		
 		y = highest_y - 1;
 		
-		var next_y_for_chunk_update_flush = ( ~( y / chunk_size ) ) * chunk_size - 1;
+		var next_y_for_chunk_update_flush = ( ~~( y / chunk_size ) ) * chunk_size - 1;
 		
 		TryToRestoreVariables(); ////////
 		
@@ -3793,7 +3804,7 @@ class main
 			if ( y === next_y_for_chunk_update_flush )
 			{
 				FlushChunks( false );
-				next_y_for_chunk_update_flush = ( ~( y / chunk_size ) ) * chunk_size - 1;
+				next_y_for_chunk_update_flush = ( ~~( y / chunk_size ) ) * chunk_size - 1;
 			}
 			
 			y_steps_to_do--;
@@ -4697,7 +4708,8 @@ class main
 				scale = 0;
 			}
 			
-			var normal_size = 89 / 2;
+			//var normal_size = 89 / 2;
+			var normal_size = 89 / 7.5;
 			/*main.crosshair.style.width = ( normal_size * scale * 2 )+'px';
 			main.crosshair.style.height = ( normal_size * scale * 2 )+'px';
 			main.crosshair.style.marginLeft = ( - normal_size * scale )+'px';

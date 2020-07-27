@@ -946,6 +946,9 @@ function Socket(secure, host, port, path, key, wsport) {
     this._queue = [];
     var httpProtocol = secure ? 'https://' : 'http://';
     var wsProtocol = secure ? 'wss://' : 'ws://';
+	
+	//console.warn( httpProtocol, host , port , path , key );
+	
     this._httpUrl = httpProtocol + host + ':' + port + path + key;
     this._wsUrl = wsProtocol + host + ':' + wsport + path + 'peerjs?key=' + key;
 }
