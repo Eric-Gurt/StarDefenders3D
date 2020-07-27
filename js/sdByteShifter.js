@@ -613,14 +613,14 @@ class sdByteShifter
 				dy: Number( parts[ i++ ] ),
 				dz: Number( parts[ i++ ] ),
 				owner: c,
-				knock_power: sdGunClass.weapon_knock_power[ gun_id ],
-				hp_damage: sdGunClass.weapon_hp_damage[ gun_id ],
-				hp_damage_head: sdGunClass.weapon_hp_damage_head[ gun_id ],
-				is_rocket: sdGunClass.weapon_is_rocket[ gun_id ],
-				is_sniper: sdGunClass.weapon_is_sniper[ gun_id ],
-				is_plasma: sdGunClass.weapon_is_plasma[ gun_id ],
-				is_melee: sdGunClass.weapon_melee[ gun_id ],
-				splash_radius: sdGunClass.weapon_splash_radius[ gun_id ]
+				knock_power: sdGunClass.gun_classes[ gun_id ].knock_power,
+				hp_damage: sdGunClass.gun_classes[ gun_id ].hp_damage,
+				hp_damage_head: sdGunClass.gun_classes[ gun_id ].hp_damage_head,
+				is_rocket: sdGunClass.gun_classes[ gun_id ].is_rocket,
+				is_sniper: sdGunClass.gun_classes[ gun_id ].is_sniper,
+				is_plasma: sdGunClass.gun_classes[ gun_id ].is_plasma,
+				is_melee: sdGunClass.gun_classes[ gun_id ].is_melee,
+				splash_radius: sdGunClass.gun_classes[ gun_id ].splash_radius
 			});
 			bullet.local_peer_uid = local_peer_uid;
 			
