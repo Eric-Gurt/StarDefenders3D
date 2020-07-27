@@ -15,7 +15,7 @@
 	
 
 	const three_enable_error_checking = false; // Custom
-	const three_only_z_sort = true; // Custom
+	const three_only_z_sort = false; // Custom
 	const three_enable_multi_materials = false; // Custom
 
 	const three_enable_string_naming_and_typing = false; // Custom
