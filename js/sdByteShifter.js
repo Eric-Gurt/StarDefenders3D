@@ -596,7 +596,7 @@ class sdByteShifter
 			if ( Number( parts[ 12 ] ) === 0 ) // spawn sound for 1st bullet only
 			c.PlayShotSound( gun_id );
 			
-			let active_weapon = ( c.cur_weapon.gun_id === 0 ) ? c.rifle : c.rocket;
+			let active_weapon = ( c.cur_weapon_mesh.gun_id === 0 ) ? c.rifle : c.rocket;
 			let visual = active_weapon.children[ 0 ].getWorldPosition();
 			
 			let bullet = sdBullet.CreateBullet({ 
