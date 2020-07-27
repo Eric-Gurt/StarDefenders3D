@@ -1,0 +1,876 @@
+<html>
+    <head>
+	<title>Star Defenders 3D</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!--<link rel="shortcut icon" sizes="196x196" href="assets/icon-196x196.png">
+    <link rel="apple-touch-icon" sizes="196x196" href="assets/icon-196x196.png">
+    <link rel="icon" sizes="196x196" href="assets/icon-196x196.png">-->
+    <link rel="apple-touch-icon" sizes="128x128" href="assets/icon-128x128.png">
+	<script src="js/three.js-dev/build/three.js"></script>
+	<script src="js/three.js-dev/examples/js/shaders/CopyShader.js"></script>
+	<script src="js/three.js-dev/examples/js/postprocessing/EffectComposer.js"></script>
+	<script src="js/three.js-dev/examples/js/postprocessing/ShaderPass.js"></script>
+	<script src="js/three.js-dev/examples/js/postprocessing/RenderPass.js"></script>
+	<script src="js/three.js-dev/examples/js/renderers/Projector.js"></script>
+   	<script src="js/three.js-dev/examples/js/DeviceOrientationControls.js"></script>
+    
+	<script src="js/THREE_addon.js"></script>
+	<script src="js/BitmapData.js"></script>
+	<script src="js/ftscroller.js"></script>
+	<script src="js/lz-string.js"></script>
+    
+	<script type="text/javascript">
+		var ng = ( document.location.href.indexOf('gevanni.com') === -1 );
+		
+		var allow_music = ( document.location.href.indexOf('itch.io') === -1 && document.location.href.indexOf('hwcdn.net') === -1 );
+	</script>
+    
+	<style>
+	    body
+	    {
+		pointer-events: none;
+		user-select: none;
+	    }
+	    div, img, span, th, td, input, select
+	    {
+		pointer-events: inherit;
+		color: white;
+		font-family: Arial;
+		font-size: 1.75vh;
+		font-weight: bold;
+		box-sizing: border-box;
+		user-select: none;
+	    }
+	    canvas
+	    {
+		pointer-events: auto;
+		user-select: auto;
+	    }
+	    a, a:link, a:visited
+	    {
+		text-decoration: none;
+		color: white;
+		
+		pointer-events: auto;
+		user-select: none;
+	    }
+	    a:hover
+	    {
+		color:yellow;
+	    }
+	    a:active
+	    {
+		color:red;
+	    }
+	    .hakase_links:link, .hakase_links:visited
+	    {
+		color: #7777ff;
+	    }
+	    .hakase_links:hover,  .hakase_links:active
+	    {
+		color: #1db384;
+	    }
+	    .clickable
+	    {
+		pointer-events: auto;
+	    }
+	    .r_conteiner, input, select
+	    {
+		display:block;
+		padding:1vh;
+		background-color:rgba(0,0,0,0.35); /* 0.2 */
+		border-radius:1vh;
+		vertical-align: middle;
+		border:0px;
+	    }
+	    table
+	    {
+		width:100%;
+		border:0px;
+		padding:0px;
+		margin:0px;
+		background-color:rgba(0,0,0,0.6);
+		border-radius:1vh;
+		border-collapse: collapse;
+	    }
+	    tr.red
+	    {
+		background-color:rgba(70,0,0,0.6);
+	    }
+	    tr.blue
+	    {
+		background-color:rgba(0,0,150,0.6);
+	    }
+	    tr.red:nth-child(odd)
+	    {
+		background-color:rgba(90,0,0,0.6);
+	    }
+	    tr.blue:nth-child(odd)
+	    {
+		background-color:rgba(0,0,200,0.6);
+	    }
+	    th, td
+	    {
+		padding: 1vh;
+	    }
+	    td
+	    {
+		border-right: 1px solid rgba(0,0,0,0.25);
+	    }
+	    td:nth-last-child(1)
+	    {
+		border-right:none;
+	    }
+	    th
+	    {
+		background-color:rgba(100,120,150,0.6);
+		border-right: 1px solid rgba(0,0,0,0.25);
+		
+		width: 14%;
+	    }
+	    th:nth-child(1)
+	    {
+		border-radius:1vh 0 0 0;
+	    }
+	    th:nth-last-child(1)
+	    {
+		border-radius:0 1vh 0 0;
+		border-right:none;
+	    }
+	    td.mid
+	    {
+		text-align: center;
+	    }
+	    span.team_score
+	    {
+		color:rgb(255,255,255);
+		text-shadow: 0px 0px 2vh rgba(0,0,0,1);
+		margin-left:1vh;
+		margin-right:1vh;
+		
+		display:inline-block;
+		width:3vh;
+		font-size:3vh;
+		vertical-align: middle;
+	    }
+	    tr:nth-last-child(1) td:nth-child(1)
+	    {
+		border-radius:0 0 0 1vh;
+	    }
+	    tr:nth-last-child(1) td:nth-last-child(1)
+	    {
+		border-radius:0 0 1vh 0;
+	    }
+	    .listplayer
+	    {
+		display:block;
+		width:100%;
+		padding:0.5vh;
+		box-sizing: border-box;
+		border-radius:0.5vh;
+		font-size:1.6vh;
+	    }
+	    .listplayer:hover
+	    {
+		background-color:rgba(0,0,0,0.2);
+	    }
+	    .listplayer_me, .listplayer_me:hover
+	    {
+		background-color:rgba(32, 255, 32, 0.41);
+	    }
+	    .listplayer_invite
+	    {
+		display:block;
+		width:calc( 100% - 2vh );
+		padding:1vh;
+		margin:1vh;
+		margin-top:2vh;
+		box-sizing: border-box;
+		border-radius:0.5vh;
+		background-color:rgba(255,255,0,0.2);
+	    }
+	    #chat_box div
+	    {
+		margin: 1vh;
+	    }
+	    
+	    .slider {
+		-webkit-appearance: none;  /* Override default CSS styles */
+		appearance: none;
+		width: 100%; /* Full-width */
+		/*height: 20px; */
+		height: 1vh; /* Specified height */
+		background: #000000;
+		outline: none; /* Remove outline */
+		opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+		-webkit-transition: .2s; /* 0.2 seconds transition on hover */
+		transition: opacity .2s;
+		padding: 0;
+	    }
+
+	    /* Mouse-over effects */
+	    .slider:hover {
+		opacity: 1; /* Fully shown on mouse-over */
+	    }
+
+	    /* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */ 
+	    .slider::-webkit-slider-thumb {
+		-webkit-appearance: none; /* Override default look */
+		appearance: none;
+		width: 0.5vh; /* Set a specific slider handle width */
+		height: 2vh; /* Slider handle height */
+		background: #FFFFFF;
+		cursor: pointer; /* Cursor on hover */
+	    }
+
+	    .slider::-moz-range-thumb {
+		width: 0.5vh; /* Set a specific slider handle width */
+		height: 2vh; /* Slider handle height */
+		background: #FFFFFF; 
+		cursor: pointer; 
+	    }
+	    
+	    option
+	    {
+		background-color: #000;
+	    }
+	    
+	    #hakase
+	    {
+		transition: filter 1s;
+		filter: brightness(85%) contrast(85%);
+	    }
+	    
+	    #hakase:hover
+	    {
+		filter: brightness(100%) contrast(100%);
+	    }
+	    #message_of_the_day
+	    {
+		opacity:0;
+	    }
+	    #message_of_the_day:before {
+		content: "";
+		position: absolute;
+		top: 100%;
+		width: 0;
+		border-top: 15px solid white;
+		border-left: 10px solid transparent;
+		border-right: 10px solid transparent;
+		right: calc( 50% - 10px );
+	      }
+	</style>
+    </head>
+    <body style="margin:0px;overflow:hidden" ondragstart="return false;" ondrop="return false;">
+	<script src="js/sdShaderMaterial.js"></script>
+	<script src="js/sdRandomPattern.js"></script>
+	<script src="js/peer.js"></script>
+	<script src="js/md5-min.js"></script>
+	<script src="js/sdSync.js"></script>
+	<script src="js/sdByteShifter.js"></script>
+	<script src="js/sdCharacter.js"></script>
+	<script src="js/sdBullet.js"></script>
+	<script src="js/sdAtom.js"></script>
+	<script src="js/sdLamp.js"></script>
+	<script src="js/sdSound.js"></script>
+	<script src="js/pb2HighRangeColor.js"></script>
+	<script src="js/sdChunk.js"></script>
+	
+	<script src="js/main.js"></script>
+	
+	<script src="js/sdNet.js"></script>
+	<script src="js/sdSprite.js"></script>
+	<script src="js/sdAI.js"></script>
+	
+	<div id="ingame_hud" style="display:none">
+    
+	    <div id="mobile_ui" style="display:none">
+        
+        	<span id="mobile_move_button" class="r_conteiner" style="
+                position: fixed;
+                left: 5vh;
+                width: 30vh;
+                height: 30vh;
+                background-color: #ffffff0d;
+                bottom: 5vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 30vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Move</span>
+
+<span id="mobile_jump_button" class="r_conteiner" style="
+                position: fixed;
+                left: 36vh;
+                width: 14vh;
+                height: 14vh;
+                background-color: #ffffff0d;
+                bottom: 24vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 14vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Jump</span>
+            
+            <span id="mobile_zoom_button" class="r_conteiner" style="
+                position: fixed;
+                left: 37vh;
+                width: 14vh;
+                height: 14vh;
+                background-color: #ffffff0d;
+                bottom: 6vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 14vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Zoom</span>
+
+<span id="mobile_crouch_button" class="r_conteiner" style="
+                position: fixed;
+                left: 40%;
+                width: 14vh;
+                height: 14vh;
+                background-color: #ffffff0d;
+                bottom: 6vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 14vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Crouch</span>
+
+<span id="mobile_reload_button" class="r_conteiner" style="
+                position: fixed;
+                right: 40%;
+                width: 14vh;
+                height: 14vh;
+                background-color: #ffffff0d;
+                bottom: 6vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 14vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Reload</span>
+
+<span id="mobile_1_button" class="r_conteiner" style="
+                position: fixed;
+                right: 49vh;
+                width: 14vh;
+                height: 14vh;
+                background-color: #ffffff0d;
+                bottom: 6vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 14vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Rifle</span>
+<span id="mobile_2_button" class="r_conteiner" style="
+                position: fixed;
+                right: 49vh;
+                width: 14vh;
+                height: 14vh;
+                background-color: #ffffff0d;
+                bottom: 24vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 14vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Spark</span>
+
+<span id="mobile_3_button" class="r_conteiner" style="
+                position: fixed;
+                right: 41vh;
+                width: 14vh;
+                height: 14vh;
+                background-color: #ffffff0d;
+                bottom: 40vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 14vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Shogtun</span>
+
+<span id="mobile_4_button" class="r_conteiner" style="
+                position: fixed;
+                right: 24vh;
+                width: 14vh;
+                height: 14vh;
+                background-color: #ffffff0d;
+                bottom: 49vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 14vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Sniper</span>
+
+<span id="mobile_5_button" class="r_conteiner" style="
+                position: fixed;
+                right: 5vh;
+                width: 14vh;
+                height: 14vh;
+                background-color: #ffffff0d;
+                bottom: 48vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 14vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">RL</span>
+
+            <span id="mobile_shoot_button" class="r_conteiner" style="
+                position: fixed;
+                right: 5vh;
+                width: 40vh;
+                height: 40vh;
+                background-color: #ffffff0d;
+                bottom: 5vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 40vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">Shoot</span>
+            
+            <span id="mobile_x_button" class="r_conteiner" style="
+                position: fixed;
+                right: 5vh;
+                width: 8vh;
+                height: 8vh;
+                background-color: #ffffff0d;
+                top: 5vh;
+                border-radius: 20vh;
+                text-align: center;
+                line-height: 8vh;
+                margin: 0px;
+                padding: 0px;
+                font-size: 3vh;
+                color: #ffffff24;
+            ">x</span>
+        	
+        </div>
+	    <!-- Crosshair -->
+	    <!--<img src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -8px;margin-top: -8px;top: 50%;">-->
+	    <img id="crosshair" src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -6px;margin-top: -6px;top: 50%;width:89px;height:89px;/*image-rendering: pixelated;*/">
+
+	    <!-- Healthbar -->
+	    <span class="r_conteiner" style="position:fixed;left:50%;width:40vh;margin-left:-20vh;bottom:0.5vh;padding:0.25vh;border-radius:1.5vh;background-color:rgba(0,0,0,0.5);">
+		<span class="r_conteiner" style="width:100%;display:inline-block;padding:0px;border-radius:1vh;">
+		    <span id="hp_bar" class="r_conteiner" style="width:50%;background-color:rgba(91, 160, 91, 0.5);padding:0vh;text-align:center;border-radius:1vh;color:#ffffff;font-size:0.8vh;text-shadow: 0px 0px 1vh rgba(0,0,0,4);"></span>
+		</span>
+	    </span>
+	    
+	    <!-- Ammo -->
+	    <span id="ammo_bar" class="r_conteiner" style="position:fixed;bottom:3vh;display:block;left:50%;width: 18vh;margin-left: -9vh;text-align:center;font-size: 1vh;font-family:courier">100 | 100</span>
+
+	    <!-- Leaderboard -->
+	    <div id="leader_board" style="display:none">
+	    <span class="r_conteiner" style="position:fixed;left:50%;width:100vh;margin-left:-50vh;top:50%;margin-top:-25vh;">
+		<span class="r_conteiner" style="width:100%;margin-bottom:1vh;">Leaderboard</span>
+		<span class="r_conteiner" style="width:100%;">-
+		    <!-- table caption -->
+		    <table>
+			<tr><th>Status</th><th>Player</th><th>Team</th><th>Score</th><th>Kills</th><th>Deaths</th><th>Ping</th></tr>
+			<tr class="red"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Red team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="red"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Red team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="red"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Red team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+			<tr class="blue"><td class="mid">*Dead*</td><td>UnrealCrash</td><td class="mid">Blue team</td><td class="mid">13</td><td class="mid">13</td><td class="mid">3</td><td class="mid">50 ms</td></tr>
+		    </table>
+		</span>
+	    </span>
+	    </div>
+
+	    <!-- Team score -->
+	    <span id="score_keeper" class="r_conteiner" style="position:fixed;left:50%;width:26vh;margin-left:-13vh;top:0vh;border-radius:0 0 9vh 9vh;padding:0.5vh;text-align:center;background-color:rgba(0,0,0,0.3)">
+		<span class="team_score" style="">23</span>
+		<span class="team_score" style="">41</span>
+		<span class="team_score" style="">23</span>
+		<span class="team_score" style="">41</span>
+	    </span>
+	    <span id="clocks" style="position:fixed;left:50%;top:5vh;width:10vh;margin-left:-5vh;vertical-align: middle;text-align:center;color:rgba(0,0,0,0.4)">1:41</span>
+	    
+	    <!-- Chat -->
+	    <span id="chat_box" class="r_conteiner" style="position:fixed;left:1vh;width:26vh;bottom:5vh;background-color:rgba(0,0,0,0.6);padding:0;">
+	    </span>
+	    <input type="text" id="chat_input_box" class="r_conteiner clickable" style="position:fixed;left:1vh;width:26vh;bottom:1vh;background-color:rgba(0,0,0,0.3);display:none;" contenteditable="true">
+		
+	    </input>
+	
+	    <span id="menu" class="r_conteiner clickable" style="position:fixed;left:50%;width:78vh;margin-left:-39vh;top:50%;margin-top:-44vh;background-color:rgba(27, 27, 27, 0.95);">
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Sensitivity:</span><input id="sensitivity" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="0.01" step="0.0001" onChange="localStorage.setItem('stardefenders_sensitivity', this.value ); main.sensitivity = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Turn method:</span><select id="turn_method" style="width:80%;display:inline-block;" onChange="localStorage.setItem('stardefenders_turn_method', this.value ); main.turn_method = Number( this.value );">
+		    <option value="0">Freely</option>
+		    <option value="1">2-Axis</option>
+		</select></div>
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Quality:</span><input id="quality" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="1" step="0.01" onChange="main.SetPixelRatio( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">AI difficulty</span><input id="ai_difficulty" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="1" step="0.01" onChange="localStorage.setItem('ai_difficulty', this.value ); main.ai_difficulty = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">FOV:</span><input id="fov" class="slider" style="width:60%;display:inline-block;" type="range" min="60" max="180" step="1" onChange="localStorage.setItem('stardefenders_fov', this.value ); main.fov = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Light intensity:</span><input id="dynamic_light_intensity" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="1" step="0.01" onChange="localStorage.setItem('stardefenders_dynamic_light_intensity', this.value ); main.dynamic_light_intensity = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Sound volume:</span><input id="sound_volume" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="1" step="0.001" onChange="localStorage.setItem('stardefenders_sound_volume', this.value ); main.sound_volume = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Music volume:</span><input id="music_volume" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="1" step="0.001" onChange="localStorage.setItem('stardefenders_music_volume', this.value ); main.music_volume = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Gun X offset</span><input id="gun_x_offset" class="slider" style="width:60%;display:inline-block;" type="range" min="-10" max="10" step="0.25" onChange="localStorage.setItem('stardefenders_gun_x_offset', this.value ); main.gun_x_offset = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Gun Y offset</span><input id="gun_y_offset" class="slider" style="width:60%;display:inline-block;" type="range" min="-10" max="10" step="0.25" onChange="localStorage.setItem('stardefenders_gun_y_offset', this.value ); main.gun_y_offset = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Gun Z offset</span><input id="gun_z_offset" class="slider" style="width:60%;display:inline-block;" type="range" min="-10" max="10" step="0.25" onChange="localStorage.setItem('stardefenders_gun_z_offset', this.value ); main.gun_z_offset = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Gun recoil</span><input id="gun_recoil" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="5" step="0.1" onChange="localStorage.setItem('stardefenders_gun_recoil', this.value ); main.gun_recoil = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">First person camera</span><input id="first_person_camera" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="1" step="1" onChange="localStorage.setItem('stardefenders_first_person_camera', this.value ); main.first_person_camera = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Report damage</span><input id="report_damage" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="1" step="1" onChange="localStorage.setItem('report_damage', this.value ); main.report_damage = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<div style="margin-bottom:1vh"><span style="display:inline-block;width:20%">Low physics</span><input id="low_physics" class="slider" style="width:60%;display:inline-block;" type="range" min="0" max="1" step="1" onChange="localStorage.setItem('low_physics', this.value ); main.low_physics = Number( this.value ); main.ShowSliderNumber( this, 0 );" onFocus="main.ShowSliderNumber( this, 1 );" onBlur="main.ShowSliderNumber( this, 2 );"><input type="text" value="?" style="width:15%;display:inline-block;margin-left:1vh"></div>
+		
+		<a href="javascript:document.getElementById('menu').style.display='none';main.ingame_menu_visible=false;main.GoFullscreen();" class="r_conteiner" style="margin-bottom:1vh;background-color: #254e36;">Continue</a>
+        
+		<a href="javascript:sdNet.EndGame();" class="r_conteiner" style="background-color: #482926;">Leave match</a>
+	    </span>
+	</div>
+	<!-- background-color:#677a77; -->
+	<div id="lobby_ui" style="width:100%;height:100%;position:fixed;left:0px;top:0px;display:none;background-image: url(assets/menu_bg.png);background-size: cover;background-position: center;" >
+	    
+	    <div id="hakase_talk_blob" style="min-width:500px;position:fixed;right:30px;bottom:300px;display:block;text-align: center"><span id="message_of_the_day" class="clickable" style="padding:15px;display:inline-block;background-color:#FFFFFF;border-radius:15px;color:black;text-align:center;"></span></div>
+	    
+	    <img id="hakase" src="assets/hakase2.gif" class="clickable" style="width:500px;height:275px;position:fixed;right:0px;bottom:0px;" onClick="Boop()">
+	    
+	    <!--<span id="sd_stats" class="r_conteiner clickable" style="display:block;text-align:right;position:fixed;top:10px;right:10px;width:300px;">Skill points</span>-->
+
+	    <!-- some beta UI -->
+	    <span class="r_conteiner clickable" style="position:fixed;left:1vh;top:1vh;width: 131vh;"><!--
+		--><a href="javascript:sdNet.OfflineTraining( 2 );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Play solo vs AI</a><!--
+		--><a href="javascript:sdNet.OfflineTraining( 1 );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Play with AI vs AI</a><!--
+		--><a href="javascript:sdNet.OfflineTraining( 0 );" class="r_conteiner" style="display:inline-block;margin-right:3vh;">Play alone</a><!--
+		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_FFA );" class="r_conteiner" style="display:inline-block;margin-right:1vh;" id="play_ffa_btn">Quick Play FFA <span style="color:rgba(255,255,255,0.3)">(2+ players, multiplayer)</span></a><!--
+		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_TEAM_VS_TEAM );" class="r_conteiner" style="display:inline-block;margin-right:1vh;" id="play_tvt_btn">Quick Play TvT <span style="color:rgba(255,255,255,0.3)">(2+ players, multiplayer)</span></a><!--
+		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_AS_ONE );" class="r_conteiner" style="display:inline-block;margin-right:3vh;" id="play_as1_btn">Quick Play As One <span style="color:rgba(255,255,255,0.3)">(4+ players, multiplayer)</span></a><!--
+        
+		--><a href="javascript:(function(){if(window.location.href.indexOf('https://')!==0){if(confirm('We have to move you to https version of this page first (we might miss SSL certificate for now)')){window.location=window.location.href.split('http:').join('https:');}return;}alert('Just press ⋮ at right top corner of your browser and press \'\'Add to homescreen\'\'.');})()" class="r_conteiner" style="display:inline-block;" id="install_to_android_btn">Install to Android <span style="color:rgba(255,255,255,0.3)">(no permissions required - just Chrome)</span></a><br><!--
+		--><span id='status_field' class="r_conteiner" style="display:inline-block;background-color:#000;color:#666;width:100%;margin-top:1vh">status</span><!--
+	    --></span>
+
+	    <span class="r_conteiner clickable" style="position:fixed;left:1vh;top:13vh;width:20vh;height:86vh;">
+		<span class="r_conteiner" style="width:100%;margin-bottom:1vh;font-size: 1.5vh;">Players in lobby now</span>
+		<div id="online_players" class="clickable" style="height:calc(100% - 5vh);">
+		    Loading...
+		</div>
+	    </span>
+
+	    <span class="r_conteiner clickable" style="position:fixed;left:22vh;top:12vh;width:20vh;height:87vh;display:none;">
+		<span class="r_conteiner" style="width:100%;margin-bottom:1vh;font-size: 1.5vh;">Your group</span>
+		<div id="group_players" class="clickable" style="height:calc(100% - 5vh);">
+		    Loading...
+		</div>
+	    </span>
+
+	    <span class="r_conteiner clickable" style="position:fixed;left:43vh;top:12vh;width:20vh;height:87vh;display:none;">
+		<span class="r_conteiner" style="width:100%;margin-bottom:1vh;font-size: 1.5vh;">Your opponent group</span>
+		<div id="enemy_group_players" class="clickable" style="height:calc(100% - 5vh);">
+		    Loading...
+		</div>
+	    </span>
+
+	    <span class="r_conteiner clickable" style="position:fixed;left:64vh;top:13vh;width:68vh;height:20vh;color:rgba(230,255,230,0.4);text-align: justify;overflow-y: auto;" id="news_box">
+		Star Defenders 3D news:<br>
+		<br>
+		<span style="color:white">8 October 2019</span> - Reworked voxel world representation, optimizations, TTS, slight visual changes, game mechanics update, few new sound effects, grappling hook.<br>
+		<br>
+		<span style="color:white">6 June 2019</span> - New weapon (saw), 3rd person view option, weapon position options, some improved sounds effetcs and particles.<br>
+		<br>
+		<span style="color:white">5 April 2019</span> - Some sort of Android devices support was added (now I understand why games like these are rare on mobile).<br>
+		<br>
+		<span style="color:white">1 April 2019</span> - Some big updates. New weapons, optimizations, new world generation logic, effects, sounds, improved AI.<br>
+		<br>
+		<span style="color:white">11 July 2018</span> - First upload.
+	    </span>
+	    <span class="r_conteiner clickable" style="position:fixed;left:64vh;top:34vh;width:68vh;height:65vh;color:rgba(230,255,230,0.4);text-align: justify;overflow-y: auto;" id="descr_box">
+		Hi!<br>
+		<br>
+		This is a peer-to-peer arena-like shooter game built around ideas of destructive world, inertive movement and relative projectile velocities. Should work best in webkit-based web browsers (Opera needs UDP enabled in settings. Works "out of box" in Chrome).<br>
+		<br>
+		Controls: W, S, A, D, 1, 2, 3, 4, 5, 6, Left Mouse Button, Right Mouse Button, Mouse Wheel Click, Space, Ctrl, Esc, Enter and Tab.<br>
+		<br>
+		There are few game modes (some might be hidden just so it is quicker to find match):<br>
+		> Free for all - you are against everyone else;<br>
+		> Team vs Team - your team against enemy team;<br>
+		> As One - multiple teams, 2 players per each.<br>
+		<br>
+		All game modes are endless, have timer and 6 weapons:<br>
+		> Rifle<br>
+		> Spark gun<br>
+		> Shotgun<br>
+		> Sniper rifle<br>
+		> Rocket launcher<br>
+		> Build tool<br>
+		<br>
+		Weapons have different stats such as knockback, self-knockback, damage, speed, projectile count and spread.<br>
+		<br>
+		<br>
+		First prototype of this game was built in ~6 days using Star Defender assets from my long-ago-and-never-released game which you probably already heard about by now (if you're happened to check <a href='https://www.plazmaburst2.com'>Plazma Burst 2</a> website from time to time).<br>
+		<br>
+		So that is pretty much it - I'm <a href='http://www.gevanni.com'>Eric Gurt</a> and this is a rather unfinished project. I don't think I'm ever going to continue work on it myself, if you want to - you can  ask me for my public permission to continue this project.<br>
+		<a href="https://github.com/Eric-Gurt/StarDefenders3D">https://github.com/Eric-Gurt/StarDefenders3D</a><br>
+		<br>
+		Game might require special network/firewall/ISP configuration in order to be able to connect with other players (since it is peer-to-peer).<br>
+		<br>
+		Also it might take some time while it is building world. FFA is quickest one once at least 2 players are looking for match within this mode.<br>
+		<br>
+		Be sure that it will search forever if you'll add players to your group while searching in mode that has no teammates like FFA, or if you have more temmates than allowed (usually 4 in TvT and 2 in As One).<br>
+		<br>
+		It does use <a href='https://threejs.org'>three.js</a>, <a href='https://peerjs.com'>peer.js</a>, <a href='https://www.bfxr.net/'>bfxr.net</a>, <a href='http://pieroxy.net/blog/pages/lz-string/index.html'>lz-string.js</a> and <a href='https://github.com/ftlabs/ftscroller'>ftscroller.js</a>.
+	    Music by <a href='http://freemusicarchive.org/music/maD__Alg0rh1tm/'>maD & Alg0rh1tm</a></span>
+	
+	    <div id="floating_user_info_bg" style="position:fixed;left:0px;top:0px;width:100%;height:100%;background-color: transparent;display:none" class="r_conteiner clickable" onMouseDown="if (event.target===this)sdNet.CloseUserMenu();">
+		<div id="floating_user_info" style="position:fixed;left:0px;top:0px;background-color: rgba(0,0,0,0.8)" class="r_conteiner clickable">
+
+		</div>
+	    </div>
+	</div>
+	
+	<div id="loading_screen" class="clickable" style="display:none;background:repeating-linear-gradient(-45deg, rgba(0,0,0,0.75) 0px, rgba(0,0,0,0.75) 10px, rgba(0,0,0,0.8) 10px, rgba(0,0,0,0.8) 20px);width:100%;height:100%;position:fixed;left:0px;top:0px;">
+	    
+	    <div class="r_conteiner" style="background-color:rgba(0,0,0,1);margin-left: auto;margin-right: auto;text-align: center;width: 79vh;margin-top: 15%;padding: 5vh;">
+	    Building map, please wait...<br><br><span style="color: #474;">(it can take 15 seconds or more, depending on browser and PC characteristics)</span>
+	    </div>
+	    
+	</div>
+	
+	<script type="text/javascript">
+		/*if ( matchMedia('(display-mode: standalone)').matches )
+		{
+			alert('You are in standalone mode! It means nothing yet though :P');
+		}*/
+		
+		if ( ng )
+		{
+		    document.getElementById('hakase').style.display = 'none';
+		    document.getElementById('hakase_talk_blob').style.display = 'none';
+		    document.getElementById('play_ffa_btn').style.display = 'none';
+		    //document.getElementById('play_tvt_btn').style.display = 'none';
+		    document.getElementById('play_as1_btn').style.display = 'none';
+		    document.getElementById('install_to_android_btn').style.display = 'none';
+
+		    document.getElementById('descr_box').style.display = 'none';
+		    document.getElementById('news_box').style.display = 'none';
+		}
+		else
+		{
+		    document.getElementById('play_ffa_btn').style.display = 'none';
+		    //document.getElementById('play_tvt_btn').style.display = 'none';
+		    document.getElementById('play_as1_btn').style.display = 'none';
+		    document.getElementById('install_to_android_btn').style.display = 'none';
+		}
+		document.getElementById('lobby_ui').style.display = 'inherit';
+	    
+	    let scroll = new FTScroller( document.getElementById('online_players'), { scrollbars: true, scrollingX: false, scrollingY: true, bouncing: false });
+	    scroll = new FTScroller( document.getElementById('group_players'), { scrollbars: true, scrollingX: false, scrollingY: true, bouncing: false });
+	    scroll = new FTScroller( document.getElementById('enemy_group_players'), { scrollbars: true, scrollingX: false, scrollingY: true, bouncing: false });
+	    
+	    let first_upd = setInterval( function()
+	    {
+		sdNet.QuickPlaySeeker();
+		
+		//if ( !document.hasFocus() )
+		//return;
+		    
+		if ( sdNet.pass_plus_key === null )
+		return;
+	    
+		if ( document.getElementById('lobby_ui').style.display === 'inherit' )
+		{
+		    sdNet.UpdateOnlinePlayers();
+		    sdNet.UpdateGroupPlayers();
+		    sdNet.UpdateEnemyGroupPlayers();
+		}
+	    }, 1000 );
+	    
+	    document.addEventListener('mousedown', function( e )
+	    {
+		//if ( e.srcElement.nodeName === 'A' )
+		if ( e.currentTarget.nodeName === 'A' )
+		sdSound.PlayInterfaceSound({ sound: lib.ui_down, volume: 1 });
+		
+		return false;
+		
+	    }, false);
+	    
+	    let message_of_the_day = document.getElementById('message_of_the_day');
+	    let message_of_the_day_current_phrase = 'Welcome back!';
+	    setInterval( motd, 15 );
+	    function motd()
+	    {
+		let op = Number( message_of_the_day.style.opacity );
+		
+		if ( message_of_the_day.innerHTML !== message_of_the_day_current_phrase )
+		{
+		    if ( op > 0 )
+		    op -= 0.05;
+		    else
+		    message_of_the_day.innerHTML = message_of_the_day_current_phrase;
+		}
+		else
+		{
+		    if ( op < 1 )
+		    op += 0.05;
+		    else
+		    {
+			boop_active = true;
+		    }
+		}
+		message_of_the_day.style.opacity = op;
+	    }
+	    var boop_array = [ 
+		    'Oh, hello there!',
+		    'Click!',
+		    'Boop',
+		    'How are you today?',
+		    'Stop clicking me and start playing',
+		    'Feeling hungry yet?',
+		    'This is a shark',
+		    'Have you seen Nichijou?',
+		    'I\'m Hakase apparently',
+		    'I wish it was easier to find owner of this GIF',
+		    'Hey, do you want me to share with you?',
+		    'Nom-nom.',
+		    'Today will be a good day',
+		    '16%',
+		    'No need to wait',
+		    'This is my 16th shark for today',
+		    'I wonder if somebody would like to continue this game',
+		    'I kind of wish to work on this game but my people need me~',
+		    'Woosh',
+		    'IPv6 are still rare',
+		    'Make it better',
+		    'Have fun!',
+		    'Somebody needs your help',
+		    'I guess I\'ll eat your cursor next',
+		    'I haven\'t finished yet~',
+		    'Beep-boop',
+		    '*sound of bone crunch*',
+		    'I guess we can just chill here for now',
+		    'Can you play any good song?',
+		    'I want to do science once I grow up',
+		    'Would be cool to have own laboratory ond day...',
+		    'Computers are not fast',
+		    'You\'ll not notice difference between 60 and 144 FPS, but some people will',
+		    'People have different FOV IRL',
+		    'You\'ll need friends to play this',
+		    'Sometimes Plazma Burst 2 custom maps amaze me',
+		    'Game Dead Drunk was more popular than Plazma Burst: Forward to the Past',
+		    'What will people do when robots will replace them at each job?',
+		    'Neural Networks can be used to generate art if trained properly',
+		    'Do you know artists who use Neural Networks to speedup their working process?',
+		    'Always remember to save. In fact, you should have image/copy of your hard drive by now~',
+		    'JavaScript should have been typed from the beginning',
+		    'It is fine to keep shooting at everything until only floor is left. It is more fun to do it together too',
+		    'Why start wars if we can just sit and play free games?~',
+		    'Star Defenders! Game where you defend... Stars?',
+		    'Now with special effects!',
+		    'Here begins your journey!',
+		    '1, 2, 2.5, 2.75, 2.875, 2.9375...',
+		    'You can do it, but what next?',
+		    'Don\'t we all need the same?',
+		    'I wonder when Chrome dev team will fix random values coming from MouseEvent.movementX and MouseEvent.movementY',
+		    'Miss something? Perhaps <a class="hakase_links" href="http://www.gevanni.com/projects/StarDefenders3D/server_raw.php">server source code</a>?'
+		];
+	    var current_boop = [];
+	    var boop_active = true;
+	    function Boop()
+	    {
+		if ( !boop_active )
+		return;
+	    
+		boop_active = false;
+		
+		if ( current_boop.length === 0 )
+		{
+		    current_boop = boop_array.slice();
+		}
+	 
+		var i = ~~(Math.random()*current_boop.length);
+		message_of_the_day_current_phrase = current_boop[ i ];
+		
+		current_boop.splice( i, 1 );
+	    }
+	    
+	    setInterval( clocks, 100 );
+	    function clocks()
+	    {
+		var dateFuture = new Date();
+
+		var seconds = Math.floor((dateFuture - (main.date_match_started))/1000);
+		var minutes = Math.floor(seconds/60);
+		var hours = Math.floor(minutes/60);
+		var days = Math.floor(hours/24);
+
+		hours = hours-(days*24);
+		minutes = minutes-(days*24*60)-(hours*60);
+		seconds = seconds-(days*24*60*60)-(hours*60*60)-(minutes*60);
+
+		if ( hours > 0  || true)
+		{
+			if ( hours < 10 )
+			hours = '0'+hours;
+
+			if ( minutes < 10 )
+			minutes = '0'+minutes;
+
+			if ( seconds < 10 )
+			seconds = '0'+seconds;
+
+			document.getElementById('clocks').innerHTML = hours+':'+minutes+':'+seconds;
+		}
+		else
+		document.getElementById('clocks').innerHTML = minutes+':'+seconds;
+
+
+		var pos = document.getElementById('score_keeper').getBoundingClientRect();
+		document.getElementById('clocks').style.top = ( pos.top + pos.height ) + 'px';
+	    }
+	    
+	</script>
+    </body>
+</html>
