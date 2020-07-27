@@ -284,16 +284,9 @@
 	<script src="js/sdNet.js"></script>
 	<script src="js/sdSprite.js"></script>
 	<script src="js/sdAI.js"></script>
-
+	
+	<script src="js/Guns/sdGun.js"></script>
 	<script src="js/Guns/sdGunClass.js"></script>
-	<script src ="js/Guns/sdGun.js"></script>
-	<script src ="js/Guns/sdRifle.js"></script>
-	<script src ="js/Guns/sdRocket.js"></script>
-	<script src ="js/Guns/sdShotgun.js"></script>
-	<script src ="js/Guns/sdSniper.js"></script>
-	<script src ="js/Guns/sdSpark.js"></script>
-	<script src ="js/Guns/sdBuild.js"></script>
-	<script src ="js/Guns/sdSaw.js"></script>
 	
 	<div id="ingame_hud" style="display:none">
     
@@ -493,7 +486,7 @@
         </div>
 	    <!-- Crosshair -->
 	    <!--<img src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -8px;margin-top: -8px;top: 50%;">-->
-	    <img id="crosshair" src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -6px;margin-top: -6px;top: 50%;width:89px;height:89px;image-rendering: pixelated;">
+	    <img id="crosshair" src="assets/crosshair.png" style="position: fixed;left:50%;margin-left: -6px;margin-top: -6px;top: 50%;width:89px;height:89px;/*image-rendering: pixelated;*/">
 
 	    <!-- Healthbar -->
 	    <span class="r_conteiner" style="position:fixed;left:50%;width:40vh;margin-left:-20vh;bottom:0.5vh;padding:0.25vh;border-radius:1.5vh;background-color:rgba(0,0,0,0.5);">
@@ -591,7 +584,8 @@
 
 	    <!-- some beta UI -->
 	    <span class="r_conteiner clickable" style="position:fixed;left:1vh;top:1vh;width: 131vh;"><!--
-		--><a href="javascript:sdNet.OfflineTraining( 1 );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Play with AI</a><!--
+		--><a href="javascript:sdNet.OfflineTraining( 2 );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Play solo vs AI</a><!--
+		--><a href="javascript:sdNet.OfflineTraining( 1 );" class="r_conteiner" style="display:inline-block;margin-right:1vh;">Play with AI vs AI</a><!--
 		--><a href="javascript:sdNet.OfflineTraining( 0 );" class="r_conteiner" style="display:inline-block;margin-right:3vh;">Play alone</a><!--
 		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_FFA );" class="r_conteiner" style="display:inline-block;margin-right:1vh;" id="play_ffa_btn">Quick Play FFA <span style="color:rgba(255,255,255,0.3)">(2+ players, multiplayer)</span></a><!--
 		--><a href="javascript:sdNet.QuickPlay( sdNet.MODE_TEAM_VS_TEAM );" class="r_conteiner" style="display:inline-block;margin-right:1vh;" id="play_tvt_btn">Quick Play TvT <span style="color:rgba(255,255,255,0.3)">(2+ players, multiplayer)</span></a><!--

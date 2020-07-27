@@ -21,9 +21,9 @@ class sdSaw extends sdGun
 			}
 			rel = rel * 1.2 - 0.2;
 
-			c.cur_weapon.rotation.y -= Math.PI / 4 * rel;
-			c.cur_weapon.rotation.x += Math.PI / 2 * rel;
-			c.cur_weapon.rotation.z -= Math.PI / 8 * rel;
+			c.cur_weapon_mesh.rotation.y -= Math.PI / 4 * rel;
+			c.cur_weapon_mesh.rotation.x += Math.PI / 2 * rel;
+			c.cur_weapon_mesh.rotation.z -= Math.PI / 8 * rel;
 
 			/*
 			active_weapon.position.x = 0;
@@ -51,18 +51,18 @@ class sdSaw extends sdGun
 			}
 			rel = rel * 1.2 - 0.2;
 
-			c.cur_weapon.rotation.y -= Math.PI / 4 * rel;
-			c.cur_weapon.rotation.x += Math.PI / 2 * rel;
-			c.cur_weapon.rotation.z -= Math.PI / 8 * rel;
+			c.cur_weapon_mesh.rotation.y -= Math.PI / 4 * rel;
+			c.cur_weapon_mesh.rotation.x += Math.PI / 2 * rel;
+			c.cur_weapon_mesh.rotation.z -= Math.PI / 8 * rel;
 
 
-			c.cur_weapon.position.x = 0;
-			c.cur_weapon.position.y = -4 * (1-rel) + (-5.25) * rel;
-			c.cur_weapon.position.z = -4.5;
+			c.cur_weapon_mesh.position.x = 0;
+			c.cur_weapon_mesh.position.y = -4 * (1-rel) + (-5.25) * rel;
+			c.cur_weapon_mesh.position.z = -4.5;
 
-			c.cur_weapon.position.x += 4 * rel;
-			c.cur_weapon.position.y += 4 * rel;
-			c.cur_weapon.position.z += 4 * rel;
+			c.cur_weapon_mesh.position.x += 4 * rel;
+			c.cur_weapon_mesh.position.y += 4 * rel;
+			c.cur_weapon_mesh.position.z += 4 * rel;
 		}
 	}
 }

@@ -45,8 +45,10 @@ class sdSprite
 				bmp.ctx.drawImage( mini_texture, 0, 0 );
 
 				sdSprite.texture_blood = new THREE.CanvasTexture( bmp.canvas );
-				sdSprite.texture_blood.magFilter = THREE.NearestFilter;
-				sdSprite.texture_blood.minFilter = THREE.NearestMipMapNearestFilter;
+				//sdSprite.texture_blood.magFilter = THREE.NearestFilter;
+				sdSprite.texture_blood.magFilter = THREE.LinearFilter;
+				sdSprite.texture_blood.minFilter = THREE.LinearFilter;
+				//sdSprite.texture_blood.minFilter = THREE.NearestMipMapNearestFilter;
 				sdSprite.texture_blood.flipY = false;
 			};
 		}
@@ -297,7 +299,8 @@ class sdSprite
 		
 		var rot = new THREE.Quaternion();
 		if ( rand_rot )
-		rot.setFromEuler( new THREE.Euler( 0, 0, ~~( Math.random() * 4 ) * Math.PI * 0.5 ) );
+		rot.setFromEuler( new THREE.Euler( 0, 0, Math.PI * 2 * Math.random() ) );
+		//rot.setFromEuler( new THREE.Euler( 0, 0, ~~( Math.random() * 4 ) * Math.PI * 0.5 ) );
 		this.rotation_quaternion = rot;
 		
 		

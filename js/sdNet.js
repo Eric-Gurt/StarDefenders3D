@@ -5,18 +5,12 @@
 	It generates uid + pass, then requests key from server, and after than uses these uid + md5(pass+key) in order to request specific user-related info or pushing quick play requests.
 
 */
-/* global main, sdCharacter, sdAtom, lib, sdSound */
+/* global main, sdCharacter, sdAtom, lib, sdSound, sdChain */
 
 class sdNet
 {
 	static init_class()
 	{
-		function define( n, v )
-		{ sdNet[ n ] = v; }
-		
-		define( 'MODE_FFA', 0 );
-		define( 'MODE_TEAM_VS_TEAM', 1 );
-		define( 'MODE_AS_ONE', 2 );
 		
 		sdNet.match_my_uid = -1;
 		sdNet.match_dataConnections = [];
@@ -26,6 +20,9 @@ class sdNet
 		sdNet.respawn_time = 2000;
 		sdNet.GuessTeam = function( i, max_teams )
 		{
+			if ( main.game_mode === main.MODE_ONE_VS_ALL )
+			return ( i === 0 ) ? 0 : 1;
+			
 			if ( main.MP_mode )
 			return ( i % max_teams );
 		
@@ -46,6 +43,7 @@ class sdNet
 		{
 			sdNet.peer = new Peer( undefined, { 
 							//host: 'localhost', port: 9000, path: '/',
+							host: 'gevanni.com', port: 9000, path: '/',
 							debug:2, config:{ 'iceServers': [
 						//{ 'url': 'stun:stun.l.google.com:19302' },
 						{ url: 'stun:stun.l.google.com:19302?transport=udp' },
@@ -526,9 +524,22 @@ class sdNet
 		
 		sdNet.match_my_uid = 0;
 		
+		let max_players = sdNet.offline_players;
+		let mode = main.MODE_FFA;
+		
+		if ( enemies === 2 )
+		{
+			max_players = 10;
+			mode = main.MODE_ONE_VS_ALL;
+		}
+		if ( enemies === 0 )
+		{
+			max_players = 1;
+		}
+		
 		sdNet.StartMatch({
 			
-			max_players: enemies ? sdNet.offline_players : 1,
+			max_players: max_players,
 			
 			max_teams: 2,
 			
@@ -536,7 +547,7 @@ class sdNet
 			
 			map_uid: 0,
 			
-			mode: sdNet.MODE_FFA
+			mode: mode
 			
 		}, then );
 		
@@ -787,6 +798,8 @@ class sdNet
 				return;
 			}
 			
+			main.game_mode = params.mode;
+			
 			main.BuildLevel( Number( params.world_seed ) );
 			
 			document.getElementById('loading_screen').style.display = 'none';
@@ -810,7 +823,7 @@ class sdNet
 				c.Respawn();
 			}
 
-			sdChain.enable_reuse = true;
+			sdChain.enable_reuse = sdChain.enable_reuse_persistent; // true
 			sdChain.initial_length = sdChain.chains.length;
 
 			main.SetActiveCharacter( sdCharacter.characters[ sdNet.match_my_uid ] );

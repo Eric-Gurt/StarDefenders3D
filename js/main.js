@@ -1,6 +1,6 @@
 /*
 
-	(C) 2018 Eric Gurt http://www.gevanni.com
+	(C) 2018-2020 Eric Gurt http://www.gevanni.com
 
 */
 	
@@ -91,6 +91,17 @@ class main
 		main.base_resolution_y = 1080;
 		
 		main.mobile = false;
+		
+		
+		function define( n, v )
+		{ main[ n ] = v; }
+		
+		define( 'MODE_FFA', 0 );
+		define( 'MODE_TEAM_VS_TEAM', 1 );
+		define( 'MODE_AS_ONE', 2 );
+		define( 'MODE_ONE_VS_ALL', 3 );
+		
+		main.game_mode = main.MODE_FFA;
 		
 		main.isWinter = ( [ 12, 1, 2 ].indexOf( new Date().getMonth() + 1 ) !== -1 );
 		
@@ -3781,7 +3792,7 @@ class main
 		
 		y = highest_y - 1;
 		
-		var next_y_for_chunk_update_flush = ( ~( y / chunk_size ) ) * chunk_size - 1;
+		var next_y_for_chunk_update_flush = ( ~~( y / chunk_size ) ) * chunk_size - 1;
 		
 		TryToRestoreVariables(); ////////
 		
@@ -3793,7 +3804,7 @@ class main
 			if ( y === next_y_for_chunk_update_flush )
 			{
 				FlushChunks( false );
-				next_y_for_chunk_update_flush = ( ~( y / chunk_size ) ) * chunk_size - 1;
+				next_y_for_chunk_update_flush = ( ~~( y / chunk_size ) ) * chunk_size - 1;
 			}
 			
 			y_steps_to_do--;
@@ -4678,16 +4689,16 @@ class main
 		}
 		else
 		{
-			var scale = 1 + Math.max( 0, main.my_character.reload_timer * 0.5 );
+			var scale = 1 + Math.max( 0, main.my_character.cur_weapon_object.reload_timer * 0.5 );
 			
 			if ( main.my_character.time_to_reload > 0 )
 			scale += main.my_character.time_to_reload;
 			else
-			if ( main.my_character.ammo[ main.my_character.cur_weapon.gun_id ] <= 0 )
+			if ( main.my_character.cur_weapon_object.gun_class.ammo_per_clip <= 0 )
 			scale += Math.PI;
 			//( ( main.my_character.ammo[ main.my_character.curwea ] <= 0 || main.my_character.time_to_reload > 0 ) ? main.my_character.time_to_reload : 2 ) );
 			
-			var recoil_scale = ( 0.6667 + 40/sdGunClass.weapon_speed[ main.my_character.cur_weapon.gun_id ] * ( 0.6667 * sdGunClass.weapon_knock_spread[ main.my_character.cur_weapon.gun_id ] + main.my_character.recoil * 2 / 5*sdGunClass.weapon_spread_from_recoil[ main.my_character.cur_weapon.gun_id ] ) ) * 103 / main.fov / main.zoom_intensity;
+			var recoil_scale = ( 0.6667 + 40 / main.my_character.cur_weapon_object.gun_class.speed * ( 0.6667 * main.my_character.cur_weapon_object.gun_class.projectile_spread + main.my_character.recoil * 2 / 5 * main.my_character.cur_weapon_object.gun_class.spread_from_recoil ) ) * 103 / main.fov / main.zoom_intensity;
 			
 			if ( recoil_scale > 1.5 )
 			recoil_scale = 1.5;
@@ -4697,7 +4708,8 @@ class main
 				scale = 0;
 			}
 			
-			var normal_size = 89 / 2;
+			//var normal_size = 89 / 2;
+			var normal_size = 89 / 7.5;
 			/*main.crosshair.style.width = ( normal_size * scale * 2 )+'px';
 			main.crosshair.style.height = ( normal_size * scale * 2 )+'px';
 			main.crosshair.style.marginLeft = ( - normal_size * scale )+'px';

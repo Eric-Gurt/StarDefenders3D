@@ -15,7 +15,8 @@ class sdChain
 		sdChain.chains = [];
 		
 		sdChain.initial_length = 0;
-		sdChain.enable_reuse = false;
+		sdChain.enable_reuse = false; // current value
+		sdChain.enable_reuse_persistent = false; // true
 	}
 	static CreateChain( a, b, def, in_limb )
 	{
@@ -63,10 +64,22 @@ class sdChain
 	}
 	remove()
 	{
-		//if ( sdChain.chains[ this.uid ] === this )
+		this.removed = true;
+		
+		if ( sdChain.enable_reuse )
 		{
-			this.removed = true;
+			
 		}
+		else
+		{
+			if ( !this.removed )
+			{
+				var id = sdChain.chains.indexOf( this );
+				
+				//if ( id >= 0 )
+				sdChain.chains.splice( id, 1 );
+	}
+}
 	}
 }
 sdChain.init_class();
@@ -351,9 +364,11 @@ class sdAtom
 		var GSPEED_old = GSPEED;
 		
 		
-		if ( main.low_physics === 1 )
+		//if ( main.low_physics === 1 )
 		steps = 1;
 	
+		const sdAtom_MATERIAL_ALIVE_PLAYER_GUN = sdAtom.MATERIAL_ALIVE_PLAYER_GUN;
+		
 		for ( var step = 0; step < steps; step++ )
 		{
 			let GSPEED = GSPEED_old / steps;
@@ -364,88 +379,97 @@ class sdAtom
 			}
 
 			if ( main.low_physics === 0 )
-			for ( var i = 0; i < sdChain.chains.length; i++ )
 			{
-				var ch = sdChain.chains[ i ];
+				const chains = sdChain.chains;
 
-				var a = ch.a;
+				var i = 0;
+				var len = chains.length;
 
-				if ( a.material <= sdAtom.MATERIAL_ALIVE_PLAYER_GUN )
-				continue;
-
-				if ( ch.removed )
-				continue;
-
-
-				var b = ch.b;
-
-				if ( a.sleep_tim >= 1 )
-				if ( b.sleep_tim >= 1 )
-				continue;
-
-				a.sleep_tim = b.sleep_tim = Math.min( a.sleep_tim, b.sleep_tim );
-
-				var target_di = ch.def;
-
-				var di = main.Dist3D( a.x, a.y, a.z, b.x, b.y, b.z );
-
-				var dx = b.x - a.x;
-				var dy = b.y - a.y;
-				var dz = b.z - a.z;
-
-				if ( di > 0 )
+				//for ( var i = 0; i < sdChain.chains.length; i++ )
+				while ( i < len ) // Faster by almost a 1/3
 				{
-					dx /= di;
-					dy /= di;
-					dz /= di;
+					var ch = chains[ i ];
 
-					if ( ch.in_limb )
-					//if ( di > target_di + 2 * GSPEED )
-					//if ( di > target_di + 2 + 2 * GSPEED )
-					if ( di > target_di + 8 )
+					var a = ch.a;
+
+					if ( a.material > sdAtom_MATERIAL_ALIVE_PLAYER_GUN )
 					{
-						sdBullet.DrawSingleAtomDamage( ch.a );
-						sdBullet.DrawSingleAtomDamage( ch.b );
-						ch.remove();
-						i--;
-						continue;
+						if ( !ch.removed )
+						{
+							var b = ch.b;
+
+							if ( a.sleep_tim < 1 || b.sleep_tim < 1 )
+							{
+								a.sleep_tim = b.sleep_tim = Math.min( a.sleep_tim, b.sleep_tim );
+
+								var target_di = ch.def;
+
+								var di = main.Dist3D( a.x, a.y, a.z, b.x, b.y, b.z );
+
+								var dx = b.x - a.x;
+								var dy = b.y - a.y;
+								var dz = b.z - a.z;
+
+								if ( di > 0 )
+								{
+									dx /= di;
+									dy /= di;
+									dz /= di;
+
+									if ( ch.in_limb )
+									//if ( di > target_di + 2 * GSPEED )
+									//if ( di > target_di + 2 + 2 * GSPEED )
+									if ( di > target_di + 8 )
+									{
+										sdBullet.DrawSingleAtomDamage( ch.a );
+										sdBullet.DrawSingleAtomDamage( ch.b );
+										ch.remove();
+										i--;
+										len--;
+										continue;
+									}
+								}
+
+								a.temp_grav_disable_tim = b.temp_grav_disable_tim = Math.min( a.temp_grav_disable_tim, b.temp_grav_disable_tim );
+
+								if ( di > 0.1 )
+								{
+									var cx = ( a.x + b.x ) / 2;
+									var cy = ( a.y + b.y ) / 2;
+									var cz = ( a.z + b.z ) / 2;
+
+									var power = 0.25;
+									var power_pos = 0.5;
+									/*
+									var xx = ( cx - dx * target_di * 0.5 - a.x );
+									var yy = ( cy - dy * target_di * 0.5 - a.y );
+									var zz = ( cz - dz * target_di * 0.5 - a.z );
+									*/
+									var xx = ( cx - a.x ) / di * ( di - target_di );
+									var yy = ( cy - a.y ) / di * ( di - target_di );
+									var zz = ( cz - a.z ) / di * ( di - target_di );
+
+									a.tox += xx * power;
+									a.toy += yy * power;
+									a.toz += zz * power;
+
+									b.tox -= xx * power;
+									b.toy -= yy * power;
+									b.toz -= zz * power;
+
+									a.x += xx * power_pos;
+									a.y += yy * power_pos;
+									a.z += zz * power_pos;
+
+									b.x -= xx * power_pos;
+									b.y -= yy * power_pos;
+									b.z -= zz * power_pos;
+								}
+							}
+						}
 					}
-				}
 
-				a.temp_grav_disable_tim = b.temp_grav_disable_tim = Math.min( a.temp_grav_disable_tim, b.temp_grav_disable_tim );
-
-				if ( di > 0.1 )
-				{
-					var cx = ( a.x + b.x ) / 2;
-					var cy = ( a.y + b.y ) / 2;
-					var cz = ( a.z + b.z ) / 2;
-
-					var power = 0.25;
-					var power_pos = 0.5;
-					/*
-					var xx = ( cx - dx * target_di * 0.5 - a.x );
-					var yy = ( cy - dy * target_di * 0.5 - a.y );
-					var zz = ( cz - dz * target_di * 0.5 - a.z );
-					*/
-					var xx = ( cx - a.x ) / di * ( di - target_di );
-					var yy = ( cy - a.y ) / di * ( di - target_di );
-					var zz = ( cz - a.z ) / di * ( di - target_di );
-
-					a.tox += xx * power;
-					a.toy += yy * power;
-					a.toz += zz * power;
-
-					b.tox -= xx * power;
-					b.toy -= yy * power;
-					b.toz -= zz * power;
-
-					a.x += xx * power_pos;
-					a.y += yy * power_pos;
-					a.z += zz * power_pos;
-
-					b.x -= xx * power_pos;
-					b.y -= yy * power_pos;
-					b.z -= zz * power_pos;
+					i++;
 				}
 			}
 
@@ -733,10 +757,9 @@ class sdAtom
 			}
 			
 			if ( c.muzzle_a > 0 )
-			if ( !(c.cur_weapon instanceof(sdBuild)) )
-			if ( !(c.cur_weapon instanceof(sdSaw)) )
+			if ( c.cur_weapon_object.gun_class.has_muzzle_flash )
 			{
-				var visual = c.cur_weapon.children[ 0 ].getWorldPosition();
+				var visual = c.cur_weapon_mesh.children[ 0 ].getWorldPosition();
 
 				for ( var f = 0; f < 16; f++ )
 				{
@@ -980,12 +1003,12 @@ class sdAtom
 		}
 		
 		if ( main.my_character !== null )
-		if ( main.my_character.cur_weapon.gun_id === main.WEAPON_BUILD1 )
+		if ( main.my_character.cur_weapon_object.gun_class.is_build_tool )
 		{
-			var gun_id = main.my_character.cur_weapon.gun_id;
+			//var gun_id = main.my_character.cur_weapon_mesh.gun_id;
 			var c = main.my_character;
 			
-			var rad = sdGunClass.weapon_splash_radius[ gun_id ];
+			var rad = main.my_character.cur_weapon_object.gun_class.splash_radius;
 									
 			var new_x = c.x - c.look_direction.x * ( rad + sdCharacter.player_half_height + 1 );
 			var new_y = c.y + sdCharacter.shoot_offset_y - c.look_direction.y * ( rad + sdCharacter.player_half_height + 1 );
