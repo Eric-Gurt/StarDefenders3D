@@ -43,7 +43,7 @@ class sdNet
 		{
 			sdNet.peer = new Peer( undefined, { 
 							//host: 'localhost', port: 9000, path: '/',
-							host: 'gevanni.com', port: 9000, path: '/',
+							host: 'www.gevanni.com', port: 9000, path: '/',
 							debug:2, config:{ 'iceServers': [
 						//{ 'url': 'stun:stun.l.google.com:19302' },
 						{ url: 'stun:stun.l.google.com:19302?transport=udp' },
