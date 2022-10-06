@@ -424,7 +424,7 @@ class sdAtom
 										sdBullet.DrawSingleAtomDamage( ch.a );
 										sdBullet.DrawSingleAtomDamage( ch.b );
 										ch.remove();
-										i--;
+										//i--; Not needed in case of while loop
 										len--;
 										continue;
 									}

@@ -276,16 +276,28 @@ class sdCharacter
 				this.y = main.level_chunks_y * main.chunk_size + 20;
 				this.z = 10 + Math.random() * ( main.level_chunks_z * main.chunk_size - 20 );
 				
-				var ok = true;
-				for ( var i = 0; i < sdCharacter.characters.length; i++ )
-				if ( sdCharacter.characters[ i ].team !== this.team )
-				if ( main.Dist3D( this.x, 0, this.z, sdCharacter.characters[ i ].x, 0, sdCharacter.characters[ i ].z ) < 128 * tr / 2000 )
+				if ( sdAI.use_brain_js )
 				{
-					ok = false;
 					break;
 				}
-				if ( ok )
-				break;
+				else
+				{
+					var ok = true;
+					for ( var i = 0; i < sdCharacter.characters.length; i++ )
+					if ( sdCharacter.characters[ i ].team !== this.team )
+					if ( main.Dist3D( this.x, 0, this.z, sdCharacter.characters[ i ].x, 0, sdCharacter.characters[ i ].z ) < 128 * tr / 2000 )
+					{
+						ok = false;
+						break;
+					}
+					if ( ok )
+					break;
+				}
+			}
+			
+			if ( sdAI.use_brain_js )
+			{
+				sdAI.RunTraining();
 			}
 			
 			//var morph2 = main.TraceLine( this.x, this.y, this.z, this.x, 0, this.z, null, 5, 0 );
@@ -620,29 +632,38 @@ class sdCharacter
 				var old_char = this;
 				
 				setTimeout( function()
-				{
-					if ( !main.game_loop_started )
-					return;
-				
-					for ( var i = 0; i < ragdoll_chains.length; i++ )
-					ragdoll_chains[ i ].remove();
-					/*
-					if ( was_me )
-					if ( !main.MP_mode )
-					main.GAME_FPS = 30;
-					*/
-					if ( was_me || !main.MP_mode )
 					{
-		
-						old_char.Ressurect( was_me );
-						
-						if ( main.MP_mode )
-						sdSync.MP_SendEvent( sdSync.COMMAND_I_RESSURECT );
-					}
-					
-				//}, 2000 );
-				//}, ( !main.MP_mode && was_me ) ? 500 : 2000 );
-				}, ( ( !main.MP_mode && was_me ) ? 250 : ( main.MP_mode ? sdNet.respawn_time : 5000 ) ) * 30 / main.GAME_FPS );
+						if ( !main.game_loop_started )
+						return;
+
+						for ( var i = 0; i < ragdoll_chains.length; i++ )
+						ragdoll_chains[ i ].remove();
+						/*
+						if ( was_me )
+						if ( !main.MP_mode )
+						main.GAME_FPS = 30;
+						*/
+						if ( was_me || !main.MP_mode )
+						{
+
+							old_char.Ressurect( was_me );
+
+							if ( main.MP_mode )
+							sdSync.MP_SendEvent( sdSync.COMMAND_I_RESSURECT );
+						}
+
+					//}, 2000 );
+					//}, ( !main.MP_mode && was_me ) ? 500 : 2000 );
+					}, (	
+							sdAI.use_brain_js ?
+							500 :
+							( 
+								!main.MP_mode && was_me 
+							) ? 
+							250 : 
+							( main.MP_mode ? sdNet.respawn_time : 5000 ) 
+						) * 30 / main.GAME_FPS 
+				);
 			}
 		}
 	}
@@ -706,6 +727,11 @@ class sdCharacter
 		this.x = params.x;
 		this.y = params.y;
 		this.z = params.z;
+		
+		//this.last_positions = [];
+		this.previous_neural_inputs = [];
+		this.last_neural_input_time = 0;
+		this.neural_input_size = 0;
 		
 		this.last_out_of_bounds_timer = 0;
 		
@@ -1717,6 +1743,7 @@ class sdCharacter
 			var dir_unscaled = new THREE.Vector2( c.act_x, c.act_y );
 			
 			// Prevent AI from falling
+			if ( !sdAI.use_brain_js )
 			if ( c.ai !== null && main.my_character !== c )
 			{
 				if ( c.x < 10 )
@@ -1848,6 +1875,11 @@ class sdCharacter
 				if ( c.muzzle_a < 0 )
 				c.muzzle_a = 0;
 			}
+			
+			if ( c.act_weapon < 0 )
+			c.act_weapon = 0;
+			if ( c.act_weapon > main.WEAPON_SAW )
+			c.act_weapon = main.WEAPON_SAW;
 
 			if ( c.cur_weapon_slot !== c.act_weapon )
 			{
@@ -2105,7 +2137,7 @@ class sdCharacter
 		if ( c.hurt_timeout > 0 )
 		c.hurt_timeout -= GSPEED;
 	
-		if ( !main.MP_mode && c === main.my_character )
+		if ( !main.MP_mode && ( c === main.my_character || sdAI.use_brain_js ) )
 		{
 			if ( c.hea < this.max_hea )
 			{
@@ -2943,6 +2975,15 @@ class sdCharacter
 		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_SPARK ], c.spark, c );
 		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_BUILD1 ], c.build1, c );
 		MoveLimbTo( c.atoms[ sdCharacter.ATOMS_SAW ], c.saw, c );
+		
+		//c.last_positions.push( c.x, c.y, c.z );
+		//if ( c.last_positions.length > 30 )
+		//c.last_positions.splice( 0, 3 );
+		
+		if ( !main.MP_mode && c === main.my_character )
+		{
+			sdAI.TrainAIWithPlayerBehavior( c );
+		}
 	}
 
 	static ThinkNow( GSPEED )

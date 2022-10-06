@@ -5,7 +5,7 @@
 	It generates uid + pass, then requests key from server, and after than uses these uid + md5(pass+key) in order to request specific user-related info or pushing quick play requests.
 
 */
-/* global main, sdCharacter, sdAtom, lib, sdSound, sdChain */
+/* global main, sdCharacter, sdAtom, lib, sdSound, sdChain, sdAI */
 
 class sdNet
 {
@@ -38,9 +38,13 @@ class sdNet
 		setInterval( sdNet.ContentStackWorker, 100 );
 		
 		sdNet.peer = null;
+		let peer_give_up = false;
 		SpawnPeer();
 		function SpawnPeer()
 		{
+			if ( peer_give_up )
+			return;
+		
 			sdNet.peer = new Peer( undefined, { 
 							//host: 'localhost', port: 9000, path: '/',
 							host: 'www.gevanni.com', port: 9000, path: '/',
@@ -80,6 +84,16 @@ class sdNet
 							sdNet.peer.reconnect();
 						}
 					}, 500 );
+				}
+			);
+			sdNet.peer.on('error', 
+				function( e ) 
+				{ 
+					if ( peer_give_up )
+					return;
+
+					console.warn( e );
+					peer_give_up = true;
 				}
 			);
 		}
@@ -430,7 +444,7 @@ class sdNet
 		let theUrl;
 
 		//var theUrl = 'server.php';
-		if ( window.location.href.indexOf( 'https://' ) === 0 )
+		if ( window.location.href.indexOf( 'https://' ) === 0 || window.location.href.indexOf( 'localhost' ) !== -1 )
 		theUrl = 'https://www.gevanni.com/projects/StarDefenders3D/server.php';
 		else
 		theUrl = 'http://www.gevanni.com/projects/StarDefenders3D/server.php';
@@ -523,6 +537,7 @@ class sdNet
 		sdNet.match_queued_dataConnections = [];
 		
 		sdNet.match_my_uid = 0;
+		sdAI.use_brain_js = false;
 		
 		let max_players = sdNet.offline_players;
 		let mode = main.MODE_FFA;
@@ -535,6 +550,11 @@ class sdNet
 		if ( enemies === 0 )
 		{
 			max_players = 1;
+		}
+		if ( enemies === 3 ) // Mimicking AI
+		{
+			max_players = 2;
+			sdAI.use_brain_js = true;
 		}
 		
 		sdNet.StartMatch({

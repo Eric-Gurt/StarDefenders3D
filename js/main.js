@@ -92,6 +92,7 @@ class main
 		
 		main.mobile = false;
 		
+		main.last_activity = 0;
 		
 		function define( n, v )
 		{ main[ n ] = v; }
@@ -700,6 +701,8 @@ class main
 	}
 	static onKeyDown( e )
 	{
+		main.last_activity = main.ticks_passed;
+		
 		if ( document.activeElement.tagName === 'INPUT' && !document.activeElement.isContentEditable )
 		{
 			return true;
@@ -842,7 +845,7 @@ class main
 			}
 		}
 		
-		if ( e.keyCode === 82 && e.ctrlKey ) // Allow Ctrl+R
+		if ( ( e.keyCode === 82 && e.ctrlKey ) || ( e.keyCode === 116 ) ) // Allow Ctrl+R, F5
 		{
 		}
 		else
@@ -898,6 +901,8 @@ class main
 	}
 	static onKeyUp( e )
 	{
+		main.last_activity = main.ticks_passed;
+		
 		//console.log( e );
 		var v = 0;
 		
@@ -924,6 +929,8 @@ class main
 	}
 	static onMouseDown( e )
 	{
+		main.last_activity = main.ticks_passed;
+		
 		main.GoFullscreen();
 		
 		if ( e.which === 2 )
@@ -979,10 +986,10 @@ class main
 	}
 	static onMouseUp( e )
 	{
-		main.hold_fire = 0;
-		
 		if ( e.which === 3 )
 		main.zoom_intensity_target = 1;
+		else
+		main.hold_fire = 0;
 	}
 	/*static onMouseMove( e ) // Apparently this solves Chrome bug?
 	{
@@ -1194,6 +1201,8 @@ class main
 	{
 		if ( main.ingame_menu_visible )
 		return;
+	
+		main.last_activity = main.ticks_passed;
 	
 		/*if ( main.Dist3D( e.movementX, e.movementY, 0, 0,0,0) > 400 ) // Chrome MouseLock bug (cursor thrown in random direction when cursor leaves browser window, or something like that
 		{
@@ -1454,9 +1463,22 @@ class main
 		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
 		var level_chunks_z = ~~( 8 * 32 / chunk_size ); // 4
 		 */
-		var level_chunks_x = ~~( 8 * 32 / chunk_size ); // 10
-		var level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
-		var level_chunks_z = ~~( 8 * 32 / chunk_size ); // 4
+		var level_chunks_x;
+		var level_chunks_y;
+		var level_chunks_z;
+		
+		if ( sdAI.use_brain_js )
+		{
+			level_chunks_x = ~~( 4 * 32 / chunk_size ); // 10
+			level_chunks_y = ~~( 1 * 32 / chunk_size ); // 3
+			level_chunks_z = ~~( 4 * 32 / chunk_size ); // 4
+		}
+		else
+		{
+			level_chunks_x = ~~( 8 * 32 / chunk_size ); // 10
+			level_chunks_y = ~~( 3 * 32 / chunk_size ); // 3
+			level_chunks_z = ~~( 8 * 32 / chunk_size ); // 4
+		}
 		
 		/*if ( confirm('Build simple world? (not for multiplayer)') )
 		{

@@ -378,7 +378,7 @@ THREE.Matrix4.prototype.transformVector = function( v )
 	
 	return v2;
 };
-Object.getOwnPropertyNames( Array.prototype ).filter(
+/*Object.getOwnPropertyNames( Array.prototype ).filter(
 	function ( p )
 	{
 		if ( typeof Array.prototype[ p ] === 'function' )
@@ -423,7 +423,7 @@ Object.getOwnPropertyNames( Object.prototype ).filter(
 			delete Object.prototype[ p ];
 		}
 	}
-);
+);*/
 
 var trace = console.log;
 var once_traced = [];
